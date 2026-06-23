@@ -1,0 +1,82 @@
+// Libellés FR des clés d'entrée, regroupées par onglet métier.
+
+export const INPUT_SECTIONS: Record<string, { title: string; keys: string[] }> = {
+  promoteur: {
+    title: "Promoteur",
+    keys: ["promoter_completed_projects", "promoter_gearing", "governance_quality", "mono_project_concentration", "promoter_type", "equity_injected_ratio"],
+  },
+  foncier: {
+    title: "Foncier",
+    keys: ["land_permits_status", "land_cost_ratio"],
+  },
+  autorisations: {
+    title: "Autorisations & avancement",
+    keys: ["progress_vs_plan", "construction_delay_months", "admin_problems_over_1y", "construction_delay_over_1y", "technical_complexity"],
+  },
+  commercialisation: {
+    title: "Commercialisation",
+    keys: ["pre_sale_rate", "sales_vs_plan", "market_positioning", "dso_days", "commercialization_below_50_1y", "finished_2y_no_sales"],
+  },
+  financement: {
+    title: "Financement",
+    keys: ["ltc", "ltv_stressed", "gross_margin_pct", "stressed_margin_pct", "interest_coverage", "first_rank", "guarantee_coverage", "equity_negative"],
+  },
+  cashflow: {
+    title: "Cash-flow",
+    keys: ["cash_coverage", "funding_gap_pct", "funding_gap_persistent", "stock_rotation_months"],
+  },
+  regulatoire: {
+    title: "Vulnérabilité réglementaire",
+    keys: ["dpd_days", "restructured", "restructuring_count", "restructuring_deferral_months", "legal_exposure", "project_stopped_months", "project_stopped_over_1y", "judicial_recovery", "debt_equity_ratio", "revenue_drop_pct"],
+  },
+};
+
+export const INPUT_LABELS: Record<string, string> = {
+  promoter_completed_projects: "Projets similaires livrés (5 ans)",
+  promoter_gearing: "Gearing promoteur (%)",
+  governance_quality: "Gouvernance",
+  mono_project_concentration: "Concentration mono-projet (%)",
+  promoter_type: "Typologie promoteur",
+  equity_injected_ratio: "Apport effectif injecté / prévu (%)",
+  land_permits_status: "Foncier & autorisations",
+  land_cost_ratio: "Coût foncier / CA (%)",
+  progress_vs_plan: "Avancement vs planning (%)",
+  construction_delay_months: "Retard chantier (mois)",
+  admin_problems_over_1y: "Problèmes administratifs > 1 an",
+  construction_delay_over_1y: "Retard construction > 1 an",
+  technical_complexity: "Complexité technique",
+  pre_sale_rate: "Préventes sécurisées (%)",
+  sales_vs_plan: "Ventes vs planning (%)",
+  market_positioning: "Marché & positionnement",
+  dso_days: "DSO (jours)",
+  commercialization_below_50_1y: "Commercialisation < 50% à 1 an",
+  finished_2y_no_sales: "Finalisé ≥ 2 ans, ventes figées",
+  ltc: "LTC (%)",
+  ltv_stressed: "LTV stressée (%)",
+  gross_margin_pct: "Marge brute (%)",
+  stressed_margin_pct: "Marge stressée -10% (%)",
+  interest_coverage: "Interest coverage (x)",
+  first_rank: "Rang bancaire 1er rang",
+  guarantee_coverage: "Couverture garanties (%)",
+  equity_negative: "Fonds propres négatifs",
+  cash_coverage: "Cash coverage (x)",
+  funding_gap_pct: "Impasse brute (%)",
+  funding_gap_persistent: "Impasse persistante",
+  stock_rotation_months: "Rotation stock (mois)",
+  dpd_days: "Retard de paiement (jours)",
+  restructured: "Restructuré",
+  restructuring_count: "Nombre de restructurations",
+  restructuring_deferral_months: "Différé accordé (mois)",
+  legal_exposure: "Exposition contentieuse",
+  project_stopped_months: "Arrêt du projet (mois)",
+  project_stopped_over_1y: "Projet à l'arrêt > 1 an",
+  judicial_recovery: "Redressement judiciaire",
+  debt_equity_ratio: "Dettes financières / FP (x)",
+  revenue_drop_pct: "Baisse du CA sur 1 an (%)",
+};
+
+export function fmtInput(v: number | string | boolean | null): string {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "boolean") return v ? "Oui" : "Non";
+  return String(v);
+}
