@@ -118,6 +118,13 @@ enum SaleMode {
   VEFA
 }
 
+// Statut d'une facilité de crédit (tranche de financement).
+enum FacilityStatus {
+  ACTIVE
+  CLOSED
+  DEFAULTED
+}
+
 // =====================================================================
 //  RBAC / UTILISATEURS
 // =====================================================================
@@ -229,6 +236,7 @@ model RealEstateProject {
   updatedAt     DateTime @updatedAt
 
   inputs            ProjectInput[]
+  facilities        Facility[]
   scoringRuns       ScoringRun[]
   classificationRuns ClassificationRun[]
   provisionRuns     ProvisionRun[]
@@ -626,6 +634,44 @@ model WorkflowStep {
   createdAt DateTime @default(now())
 
   @@index([projectId])
+}
+
+// Facilité de crédit (tranche de financement) rattachée à un projet.
+// Porte le montant autorisé, l'encours tiré et un échéancier d'impayés, d'où
+// se déduit l'EAD réel (encours + non-tiré pondéré par CCF) servant d'assiette
+// au provisionnement — au lieu du seul montant de prêt autorisé.
+model Facility {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label            String   // ex. "Tranche 1 — gros œuvre"
+  authorizedAmount Float    // montant autorisé (MAD)
+  drawnAmount      Float    @default(0) // encours tiré (MAD)
+  ccf              Float    @default(1) // credit conversion factor sur le non-tiré (0..1)
+  reservedAgios    Float    @default(0)
+  status           FacilityStatus @default(ACTIVE)
+  startedAt        DateTime? // date de démarrage des travaux financés
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  installments     Installment[]
+
+  @@index([projectId])
+}
+
+// Échéance d'une facilité : montant dû, montant payé et date d'exigibilité.
+// Les échéances échues et non soldées déterminent le retard (DPD) et l'impayé.
+model Installment {
+  id          String   @id @default(cuid())
+  facilityId  String
+  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  seq         Int      // rang dans l'échéancier
+  dueDate     DateTime
+  amountDue   Float
+  amountPaid  Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([facilityId])
 }
 
 // Groupe d'intérêt (contrepartie consolidée) — support de l'effet groupe

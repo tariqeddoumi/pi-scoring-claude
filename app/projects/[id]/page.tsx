@@ -8,6 +8,7 @@ import { RunScoringButton } from "@/components/RunScoringButton";
 import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { GfaVefaCard } from "@/components/GfaVefaCard";
+import { FacilitiesCard } from "@/components/FacilitiesCard";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
@@ -144,6 +145,8 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
         />
       )}
+
+      <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
 
       {p.workflowSteps.length > 0 && (
         <Card>

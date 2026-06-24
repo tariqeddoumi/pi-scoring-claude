@@ -14,6 +14,7 @@ import { computeEligibleGuarantees } from "@/server/engines/guaranteeEligibility
 import { computeProvision } from "@/server/engines/provisioningEngine";
 import { computeGfaRelief } from "@/lib/domain/gfaVefa";
 import { mostSevereClass } from "@/lib/domain/groups";
+import { projectEad } from "@/lib/domain/facility";
 import {
   loadActiveModelConfig,
   loadActiveRegime,
@@ -41,7 +42,10 @@ export async function runFullScoring(opts: RunScoringOptions) {
 
     const project = await tx.realEstateProject.findUniqueOrThrow({
       where: { id: projectId },
-      include: { guarantees: { include: { type: true } } },
+      include: {
+        guarantees: { include: { type: true } },
+        facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
+      },
     });
 
     // 1bis. Effet groupe (art.33/50) : classe la plus sévère des entités liées.
@@ -154,7 +158,10 @@ export async function runFullScoring(opts: RunScoringOptions) {
       orderBy: { effectiveFrom: "desc" },
     });
     const rate = rateRow?.rate ?? 0;
-    const ead = opts.ead ?? project.loanAmount ?? 0;
+    // EAD réel : somme des facilités (encours + non-tiré pondéré CCF) ; à défaut,
+    // le montant de prêt autorisé. Un EAD explicite (opts.ead) reste prioritaire.
+    const { ead: realEad } = projectEad(project.facilities, project.loanAmount ?? 0);
+    const ead = opts.ead ?? realEad;
     const isDefault = ["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"].includes(
       classification.resultClass,
     );

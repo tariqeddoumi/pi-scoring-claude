@@ -237,4 +237,40 @@ for (const d of demos) {
   emitWorkflow(d);
 }
 
+// --- Facilités & échéanciers (EAD réel) -------------------------------------
+// demo_p4/demo_p9 : leurs facilités sont purgées par la suppression des projets
+// en tête ; proj_1 (seed de base) nécessite une purge explicite.
+out.push(`DELETE FROM "Facility" WHERE "projectId"='proj_1';`);
+
+interface FacSeed {
+  id: string; projectId: string; label: string; authorized: number; drawn: number; ccf: number; startedAt: string;
+  installments: { seq: number; due: string; amountDue: number; amountPaid: number }[];
+}
+const facilities: FacSeed[] = [
+  { id: "fac_p4_a", projectId: "demo_p4", label: "Tranche 1 — gros œuvre", authorized: 30_000_000, drawn: 30_000_000, ccf: 1, startedAt: "2025-01-15", installments: [
+    { seq: 1, due: "2025-09-30", amountDue: 5_000_000, amountPaid: 5_000_000 },
+    { seq: 2, due: "2025-12-31", amountDue: 5_000_000, amountPaid: 5_000_000 },
+    { seq: 3, due: "2026-03-15", amountDue: 5_000_000, amountPaid: 2_000_000 },
+    { seq: 4, due: "2026-09-30", amountDue: 5_000_000, amountPaid: 0 },
+  ] },
+  { id: "fac_p4_b", projectId: "demo_p4", label: "Tranche 2 — finitions", authorized: 22_000_000, drawn: 8_000_000, ccf: 0.5, startedAt: "2026-02-01", installments: [
+    { seq: 1, due: "2026-06-15", amountDue: 2_000_000, amountPaid: 0 },
+  ] },
+  { id: "fac_p9_a", projectId: "demo_p9", label: "Crédit promoteur", authorized: 60_000_000, drawn: 45_000_000, ccf: 1, startedAt: "2024-06-01", installments: [
+    { seq: 1, due: "2025-09-15", amountDue: 10_000_000, amountPaid: 10_000_000 },
+    { seq: 2, due: "2025-12-15", amountDue: 10_000_000, amountPaid: 4_000_000 },
+    { seq: 3, due: "2026-09-15", amountDue: 10_000_000, amountPaid: 0 },
+  ] },
+  { id: "fac_proj1_a", projectId: "proj_1", label: "Ligne de construction", authorized: 110_000_000, drawn: 70_000_000, ccf: 0.5, startedAt: "2025-09-01", installments: [
+    { seq: 1, due: "2026-03-31", amountDue: 10_000_000, amountPaid: 10_000_000 },
+    { seq: 2, due: "2026-09-30", amountDue: 10_000_000, amountPaid: 0 },
+  ] },
+];
+for (const f of facilities) {
+  out.push(`INSERT INTO "Facility"("id","projectId","label","authorizedAmount","drawnAmount","ccf","reservedAgios","status","startedAt","updatedAt") VALUES (${q(f.id)},${q(f.projectId)},${q(f.label)},${f.authorized},${f.drawn},${f.ccf},0,'ACTIVE'::"FacilityStatus",${ts(f.startedAt)},now());`);
+  for (const i of f.installments) {
+    out.push(`INSERT INTO "Installment"("id","facilityId","seq","dueDate","amountDue","amountPaid") VALUES (${q(f.id + "_i" + i.seq)},${q(f.id)},${i.seq},${ts(i.due)},${i.amountDue},${i.amountPaid});`);
+  }
+}
+
 process.stdout.write(out.join("\n") + "\n");

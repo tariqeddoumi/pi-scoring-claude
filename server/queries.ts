@@ -42,6 +42,10 @@ export async function getProjectDetail(id: string) {
       comments: { include: { author: true }, orderBy: { createdAt: "desc" } },
       attachments: true,
       group: true,
+      facilities: {
+        orderBy: { createdAt: "asc" },
+        include: { installments: { orderBy: { seq: "asc" } } },
+      },
       workflowSteps: { include: { actor: true }, orderBy: { createdAt: "desc" } },
       committeeDecisions: { include: { chair: true }, orderBy: { createdAt: "desc" } },
       scoringRuns: {
