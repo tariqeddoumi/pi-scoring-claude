@@ -10,6 +10,10 @@ import {
   type WorkflowStateName,
 } from "@/lib/workflow";
 import type { RoleName } from "@/lib/rbac";
+import {
+  migrationMatrixFromSequences,
+  type MigrationMatrix,
+} from "@/lib/domain/migrationMatrix";
 
 export async function getProjectsWithLatestRun() {
   const projects = await prisma.realEstateProject.findMany({
@@ -231,6 +235,35 @@ export async function getWorkflowQueue(role: RoleName): Promise<{
     .map((s) => ({ state: s, label: WORKFLOW_LABELS[s], items: groups.get(s)! }));
   const total = ordered.reduce((n, g) => n + g.items.length, 0);
   return { groups: ordered, total };
+}
+
+// ---------------------------------------------------------------------
+//  Matrice de migration des notes : transitions de classe réglementaire
+//  entre runs de classification successifs, par dossier.
+// ---------------------------------------------------------------------
+
+export async function getMigrationMatrix(): Promise<{
+  matrix: MigrationMatrix;
+  projectsTracked: number;
+  projectsWithHistory: number;
+}> {
+  const runs = await prisma.classificationRun.findMany({
+    orderBy: [{ projectId: "asc" }, { createdAt: "asc" }],
+    select: { projectId: true, resultClass: true, createdAt: true },
+  });
+
+  const byProject = new Map<string, string[]>();
+  for (const r of runs) {
+    const list = byProject.get(r.projectId) ?? [];
+    list.push(r.resultClass);
+    byProject.set(r.projectId, list);
+  }
+
+  const sequences = [...byProject.values()];
+  const projectsWithHistory = sequences.filter((s) => s.length >= 2).length;
+  const matrix = migrationMatrixFromSequences(sequences);
+
+  return { matrix, projectsTracked: byProject.size, projectsWithHistory };
 }
 
 export async function getAuditLog(limit = 100) {
