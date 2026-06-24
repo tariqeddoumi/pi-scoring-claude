@@ -9,6 +9,7 @@ import { formatMAD } from "@/lib/utils";
 
 interface Props {
   projectId: string;
+  assetType: "PROMOTION" | "EXPLOITATION";
   saleMode: "CLASSIC" | "VEFA";
   hasGFA: boolean;
   gfaAmount: number | null;
@@ -23,6 +24,7 @@ export function GfaVefaCard(p: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({
+    assetType: p.assetType,
     saleMode: p.saleMode,
     hasGFA: p.hasGFA,
     gfaAmount: p.gfaAmount != null ? String(p.gfaAmount) : "",
@@ -59,8 +61,11 @@ export function GfaVefaCard(p: Props) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
-          <span className="flex items-center gap-2">
+          <span className="flex items-center gap-2 flex-wrap">
             Commercialisation & GFA
+            <Badge className={p.assetType === "EXPLOITATION" ? "bg-orange-100 text-orange-800 border-orange-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
+              {p.assetType === "EXPLOITATION" ? "Actif d'exploitation" : "Promotion"}
+            </Badge>
             <Badge className={p.saleMode === "VEFA" ? "bg-blue-100 text-blue-800 border-blue-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
               {p.saleMode === "VEFA" ? "VEFA (sur plan)" : "Vente classique"}
             </Badge>
@@ -73,6 +78,12 @@ export function GfaVefaCard(p: Props) {
       <CardContent className="space-y-3 text-sm">
         {!editing ? (
           <>
+            {p.assetType === "EXPLOITATION" && (
+              <p className="rounded-md bg-orange-50 border border-orange-200 px-3 py-2 text-orange-900 text-xs">
+                Actif d'exploitation (ex. hôtel) : le modèle de scoring promotion est indicatif et
+                cette composante est exclue de la note consolidée de programme.
+              </p>
+            )}
             <div className="flex flex-wrap items-center gap-3">
               <Badge className={p.hasGFA ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
                 {p.hasGFA ? "GFA en place" : "Sans GFA"}
@@ -91,6 +102,12 @@ export function GfaVefaCard(p: Props) {
           </>
         ) : (
           <form onSubmit={onSave} className="space-y-3">
+            <label className="space-y-1 block"><span className="font-medium">Nature de l'actif</span>
+              <select value={form.assetType} onChange={(e) => setForm((f) => ({ ...f, assetType: e.target.value as Props["assetType"] }))} className={input}>
+                <option value="PROMOTION">Promotion (vente)</option>
+                <option value="EXPLOITATION">Actif d'exploitation (hôtel…)</option>
+              </select>
+            </label>
             <div className="grid sm:grid-cols-2 gap-3">
               <label className="space-y-1"><span className="font-medium">Mode de vente</span>
                 <select value={form.saleMode} onChange={(e) => setForm((f) => ({ ...f, saleMode: e.target.value as Props["saleMode"] }))} className={input}>

@@ -15,6 +15,7 @@ import {
   type MigrationMatrix,
 } from "@/lib/domain/migrationMatrix";
 import { mostSevereClass } from "@/lib/domain/groups";
+import { consolidateProgram, type ProgramConsolidation, type AssetTypeCode } from "@/lib/domain/program";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
 
 export async function getProjectsWithLatestRun() {
@@ -284,6 +285,8 @@ export interface GroupMember {
   name: string;
   exposure: number;
   cls: RegulatoryClassCode | null;
+  scoreFinal: number | null;
+  assetType: AssetTypeCode;
 }
 
 export interface GroupView {
@@ -293,6 +296,7 @@ export interface GroupView {
   members: GroupMember[];
   exposure: number;
   severeClass: RegulatoryClassCode | undefined;
+  consolidation: ProgramConsolidation;
 }
 
 export async function getGroups(): Promise<GroupView[]> {
@@ -306,7 +310,9 @@ export async function getGroups(): Promise<GroupView[]> {
           reference: true,
           name: true,
           loanAmount: true,
+          assetType: true,
           classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultClass: true } },
+          scoringRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { scoreFinal: true } },
         },
       },
     },
@@ -319,6 +325,8 @@ export async function getGroups(): Promise<GroupView[]> {
       name: p.name,
       exposure: p.loanAmount ?? 0,
       cls: (p.classificationRuns[0]?.resultClass ?? null) as RegulatoryClassCode | null,
+      scoreFinal: p.scoringRuns[0]?.scoreFinal ?? null,
+      assetType: p.assetType as AssetTypeCode,
     }));
     return {
       id: g.id,
@@ -327,6 +335,9 @@ export async function getGroups(): Promise<GroupView[]> {
       members,
       exposure: members.reduce((s, m) => s + m.exposure, 0),
       severeClass: mostSevereClass(members.map((m) => m.cls)),
+      consolidation: consolidateProgram(
+        members.map((m) => ({ scoreFinal: m.scoreFinal, exposure: m.exposure, assetType: m.assetType, cls: m.cls })),
+      ),
     };
   });
 }

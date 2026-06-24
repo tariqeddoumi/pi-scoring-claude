@@ -84,6 +84,7 @@ interface Demo {
   saleMode?: "CLASSIC" | "VEFA";
   gfa?: { amount: number; provider: string };
   groupId?: string;
+  assetType?: "PROMOTION" | "EXPLOITATION";
 }
 
 // 4 promoteurs de démo.
@@ -100,7 +101,7 @@ const DATES = ["2025-06-30", "2025-12-31", "2026-06-15"];
 const demos: Demo[] = [
   { id: "demo_p3", ref: "PI-2026-101", name: "Tranche Verdure", promoterId: "dpromo_1", city: "Casablanca", region: "Casablanca-Settat", segment: "moyen_haut", zone: "casa_centre", loanAmount: 95_000_000, trajectory: ["SAIN", "SAIN", "SAIN"], finalState: "APPROVED", saleMode: "VEFA", gfa: { amount: 60_000_000, provider: "Wafa Assurance" }, groupId: "grp_detroit" },
   { id: "demo_p4", ref: "PI-2026-102", name: "Les Oliviers", promoterId: "dpromo_2", city: "Rabat", region: "Rabat-Salé-Kénitra", segment: "intermediaire", zone: "rabat_centre", loanAmount: 52_000_000, trajectory: ["SAIN", "SENSIBLE", "PRE_DOUTEUX"], finalState: "MANAGER_VALIDATION", saleMode: "CLASSIC", gfa: { amount: 30_000_000, provider: "BMCE Garanties" } },
-  { id: "demo_p5", ref: "PI-2026-103", name: "Marina Bleue", promoterId: "dpromo_3", city: "Agadir", region: "Souss-Massa", segment: "touristique", zone: "agadir", loanAmount: 130_000_000, trajectory: ["SAIN", "DOUTEUX", "COMPROMIS"], finalState: "REJECTED", groupId: "grp_souss" },
+  { id: "demo_p5", ref: "PI-2026-103", name: "Marina Bleue", promoterId: "dpromo_3", city: "Agadir", region: "Souss-Massa", segment: "touristique", zone: "agadir", loanAmount: 130_000_000, trajectory: ["SAIN", "DOUTEUX", "COMPROMIS"], finalState: "REJECTED", groupId: "grp_souss", assetType: "EXPLOITATION" },
   { id: "demo_p6", ref: "PI-2026-104", name: "Riad El Fath", promoterId: "dpromo_4", city: "Marrakech", region: "Marrakech-Safi", segment: "intermediaire", zone: "marrakech", loanAmount: 41_000_000, trajectory: ["DOUTEUX", "PRE_DOUTEUX", "SENSIBLE"], finalState: "COMMITTEE" },
   { id: "demo_p7", ref: "PI-2026-105", name: "Cèdres Business", promoterId: "dpromo_1", city: "Fès", region: "Fès-Meknès", segment: "bureaux", zone: "fes_oriental", loanAmount: 68_000_000, trajectory: ["SENSIBLE", "SENSIBLE", "SAIN"], finalState: "APPROVED", groupId: "grp_detroit" },
   { id: "demo_p8", ref: "PI-2026-106", name: "Ocean View", promoterId: "dpromo_3", city: "Tanger", region: "Tanger-Tétouan-Al Hoceïma", segment: "moyen_haut", zone: "tanger", loanAmount: 87_000_000, trajectory: ["SAIN", "SAIN", "SENSIBLE"], finalState: "COMMITTEE", saleMode: "VEFA", gfa: { amount: 50_000_000, provider: "CDG Capital" }, groupId: "grp_souss" },
@@ -219,7 +220,8 @@ for (const d of demos) {
   const gfaAmount = d.gfa ? d.gfa.amount : "NULL";
   const gfaProvider = d.gfa ? q(d.gfa.provider) : "NULL";
   const groupId = d.groupId ? q(d.groupId) : "NULL";
-  out.push(`INSERT INTO "RealEstateProject"("id","reference","name","promoterId","rmId","city","region","projectType","segment","zone","groupId","totalUnits","landAreaSqm","builtAreaSqm","totalCost","loanAmount","ownEquity","saleMode","hasGFA","gfaAmount","gfaProvider","status","updatedAt") VALUES (${q(d.id)},${q(d.ref)},${q(d.name)},${q(d.promoterId)},${q(rm)},${q(d.city)},${q(d.region)},${q("Promotion résidentielle")},${q(d.segment)},${q(d.zone)},${groupId},80,5000,8000,${totalCost},${d.loanAmount},${ownEquity},${q(saleMode)}::"SaleMode",${b(hasGfa)},${gfaAmount},${gfaProvider},'EN_ANALYSE',now());`);
+  const assetType = d.assetType ?? "PROMOTION";
+  out.push(`INSERT INTO "RealEstateProject"("id","reference","name","promoterId","rmId","city","region","projectType","segment","zone","groupId","assetType","totalUnits","landAreaSqm","builtAreaSqm","totalCost","loanAmount","ownEquity","saleMode","hasGFA","gfaAmount","gfaProvider","status","updatedAt") VALUES (${q(d.id)},${q(d.ref)},${q(d.name)},${q(d.promoterId)},${q(rm)},${q(d.city)},${q(d.region)},${q("Promotion résidentielle")},${q(d.segment)},${q(d.zone)},${groupId},${q(assetType)}::"AssetType",80,5000,8000,${totalCost},${d.loanAmount},${ownEquity},${q(saleMode)}::"SaleMode",${b(hasGfa)},${gfaAmount},${gfaProvider},'EN_ANALYSE',now());`);
   if (!SLIM) {
     Object.entries(latest).forEach(([k, v], i) => {
       const num = typeof v === "number" ? v : "NULL";

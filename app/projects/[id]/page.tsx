@@ -137,6 +137,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       {actor && (
         <GfaVefaCard
           projectId={p.id}
+          assetType={p.assetType}
           saleMode={p.saleMode}
           hasGFA={p.hasGFA}
           gfaAmount={p.gfaAmount}

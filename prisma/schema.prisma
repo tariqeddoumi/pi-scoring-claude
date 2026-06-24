@@ -125,6 +125,15 @@ enum FacilityStatus {
   DEFAULTED
 }
 
+// Nature de l'actif financé : détermine la pertinence du modèle de scoring.
+//  - PROMOTION    : opération de vente (modèle promotion immobilière)
+//  - EXPLOITATION : actif d'exploitation (hôtel…) — modèle promotion inadapté,
+//    exclu de la note consolidée de programme et signalé.
+enum AssetType {
+  PROMOTION
+  EXPLOITATION
+}
+
 // =====================================================================
 //  RBAC / UTILISATEURS
 // =====================================================================
@@ -213,6 +222,8 @@ model RealEstateProject {
   // Segmentation métier (module α_Seg / β_Zone du modèle V1.0)
   segment       String? // social | intermediaire | moyen_haut | touristique | bureaux | commerces | villas
   zone          String? // casa_centre | casa_peripherie | rabat_centre | ...
+  // Nature de l'actif (promotion vendable vs actif d'exploitation type hôtel)
+  assetType     AssetType @default(PROMOTION)
   totalUnits    Int?
   landAreaSqm   Float?
   builtAreaSqm  Float?

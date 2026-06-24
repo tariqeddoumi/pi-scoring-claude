@@ -132,6 +132,7 @@ export const committeeDecisionSchema = z.object({
 export type CommitteeDecisionForm = z.infer<typeof committeeDecisionSchema>;
 
 export const gfaVefaSchema = z.object({
+  assetType: z.enum(["PROMOTION", "EXPLOITATION"]).default("PROMOTION"),
   saleMode: z.enum(["CLASSIC", "VEFA"]),
   hasGFA: z.coerce.boolean(),
   gfaAmount: z.coerce.number().min(0).optional(),

@@ -28,6 +28,7 @@ export async function updateGfaVefa(projectId: string, raw: Record<string, unkno
   }
 
   const data = {
+    assetType: d.assetType,
     saleMode: d.saleMode,
     hasGFA: d.hasGFA,
     gfaAmount: d.hasGFA ? (d.gfaAmount ?? null) : null,
