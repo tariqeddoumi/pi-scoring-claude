@@ -7,6 +7,7 @@ import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
 import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
+import { GfaVefaCard } from "@/components/GfaVefaCard";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
@@ -130,6 +131,18 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
             })()}
           </CardContent>
         </Card>
+      )}
+
+      {actor && (
+        <GfaVefaCard
+          projectId={p.id}
+          saleMode={p.saleMode}
+          hasGFA={p.hasGFA}
+          gfaAmount={p.gfaAmount}
+          gfaProvider={p.gfaProvider}
+          exposure={p.loanAmount ?? 0}
+          canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
+        />
       )}
 
       {p.workflowSteps.length > 0 && (

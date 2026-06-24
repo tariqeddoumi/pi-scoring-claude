@@ -110,6 +110,14 @@ enum CommitteeOutcome {
   AJOURNE
 }
 
+// Mode de commercialisation du programme immobilier.
+//  - CLASSIC : vente classique (achèvement préalable)
+//  - VEFA    : vente en l'état futur d'achèvement (vente sur plan)
+enum SaleMode {
+  CLASSIC
+  VEFA
+}
+
 // =====================================================================
 //  RBAC / UTILISATEURS
 // =====================================================================
@@ -208,6 +216,12 @@ model RealEstateProject {
   totalCost     Float?  // coût total du projet
   loanAmount    Float?  // montant du crédit demandé/octroyé
   ownEquity     Float?  // fonds propres promoteur
+
+  // Commercialisation & Garantie Financière d'Achèvement (GFA/VEFA)
+  saleMode      SaleMode @default(CLASSIC) // mode de vente (VEFA = sur plan)
+  hasGFA        Boolean  @default(false)   // GFA en place (couvre l'achèvement)
+  gfaAmount     Float?   // montant garanti par la GFA (MAD)
+  gfaProvider   String?  // établissement garant (banque / assurance)
 
   status        String  @default("PROSPECT")
   createdAt     DateTime @default(now())

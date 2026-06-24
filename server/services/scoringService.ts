@@ -12,12 +12,15 @@ import { runScoring } from "@/server/engines/scoringEngine";
 import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { computeEligibleGuarantees } from "@/server/engines/guaranteeEligibilityEngine";
 import { computeProvision } from "@/server/engines/provisioningEngine";
+import { computeGfaRelief } from "@/lib/domain/gfaVefa";
 import {
   loadActiveModelConfig,
   loadActiveRegime,
   loadProjectInputs,
 } from "./modelLoader";
 import type { GuaranteeInput, RegulatoryClassCode } from "@/lib/domain/types";
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
 
 export interface RunScoringOptions {
   projectId: string;
@@ -155,10 +158,36 @@ export async function runFullScoring(opts: RunScoringOptions) {
       classification.resultClass,
     );
 
+    // GFA (Garantie Financière d'Achèvement) : valeur admise en déduction de
+    // l'assiette, pleinement qualifiée en cadre VEFA, abattue sinon.
+    const gfa = computeGfaRelief({
+      saleMode: project.saleMode,
+      hasGFA: project.hasGFA,
+      gfaAmount: project.gfaAmount,
+      exposure: Math.max(0, ead - (opts.reservedAgios ?? 0) - elig.totalEligible),
+    });
+    const eligibleWithGfa = round2(elig.totalEligible + gfa.admittedValue);
+    const breakdown = gfa.applicable
+      ? [
+          ...elig.lines,
+          {
+            typeCode: "GFA",
+            marketValue: project.gfaAmount ?? 0,
+            eligible: true,
+            baseQuotity: gfa.quotity,
+            effectiveQuotity: gfa.quotity,
+            haircut: 0,
+            abatementApplied: false,
+            eligibleValue: gfa.admittedValue,
+            note: gfa.note,
+          },
+        ]
+      : elig.lines;
+
     const provision = computeProvision({
       ead,
       reservedAgios: opts.reservedAgios ?? 0,
-      eligibleGuarantees: elig.totalEligible,
+      eligibleGuarantees: eligibleWithGfa,
       classCode: classification.resultClass,
       rate,
       // Irrégulière (19/G art.4bis) : souffrance mais couverte 100%.
@@ -172,7 +201,7 @@ export async function runFullScoring(opts: RunScoringOptions) {
         ead: provision.ead,
         reservedAgios: provision.reservedAgios,
         eligibleGuarantees: provision.eligibleGuarantees,
-        guaranteeBreakdown: elig.lines as any,
+        guaranteeBreakdown: breakdown as any,
         provisionBase: provision.provisionBase,
         rate: provision.rate,
         provisionAmount: provision.provisionAmount,

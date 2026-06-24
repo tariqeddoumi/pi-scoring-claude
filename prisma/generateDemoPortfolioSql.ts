@@ -81,6 +81,8 @@ interface Demo {
   loanAmount: number;
   trajectory: [RegulatoryClassCode, RegulatoryClassCode, RegulatoryClassCode]; // T0 → T1 → T2
   finalState: FinalState;
+  saleMode?: "CLASSIC" | "VEFA";
+  gfa?: { amount: number; provider: string };
 }
 
 // 4 promoteurs de démo.
@@ -95,12 +97,12 @@ const promoters: [string, string, string, string][] = [
 const DATES = ["2025-06-30", "2025-12-31", "2026-06-15"];
 
 const demos: Demo[] = [
-  { id: "demo_p3", ref: "PI-2026-101", name: "Tranche Verdure", promoterId: "dpromo_1", city: "Casablanca", region: "Casablanca-Settat", segment: "moyen_haut", zone: "casa_centre", loanAmount: 95_000_000, trajectory: ["SAIN", "SAIN", "SAIN"], finalState: "APPROVED" },
-  { id: "demo_p4", ref: "PI-2026-102", name: "Les Oliviers", promoterId: "dpromo_2", city: "Rabat", region: "Rabat-Salé-Kénitra", segment: "intermediaire", zone: "rabat_centre", loanAmount: 52_000_000, trajectory: ["SAIN", "SENSIBLE", "PRE_DOUTEUX"], finalState: "MANAGER_VALIDATION" },
+  { id: "demo_p3", ref: "PI-2026-101", name: "Tranche Verdure", promoterId: "dpromo_1", city: "Casablanca", region: "Casablanca-Settat", segment: "moyen_haut", zone: "casa_centre", loanAmount: 95_000_000, trajectory: ["SAIN", "SAIN", "SAIN"], finalState: "APPROVED", saleMode: "VEFA", gfa: { amount: 60_000_000, provider: "Wafa Assurance" } },
+  { id: "demo_p4", ref: "PI-2026-102", name: "Les Oliviers", promoterId: "dpromo_2", city: "Rabat", region: "Rabat-Salé-Kénitra", segment: "intermediaire", zone: "rabat_centre", loanAmount: 52_000_000, trajectory: ["SAIN", "SENSIBLE", "PRE_DOUTEUX"], finalState: "MANAGER_VALIDATION", saleMode: "CLASSIC", gfa: { amount: 30_000_000, provider: "BMCE Garanties" } },
   { id: "demo_p5", ref: "PI-2026-103", name: "Marina Bleue", promoterId: "dpromo_3", city: "Agadir", region: "Souss-Massa", segment: "touristique", zone: "agadir", loanAmount: 130_000_000, trajectory: ["SAIN", "DOUTEUX", "COMPROMIS"], finalState: "REJECTED" },
   { id: "demo_p6", ref: "PI-2026-104", name: "Riad El Fath", promoterId: "dpromo_4", city: "Marrakech", region: "Marrakech-Safi", segment: "intermediaire", zone: "marrakech", loanAmount: 41_000_000, trajectory: ["DOUTEUX", "PRE_DOUTEUX", "SENSIBLE"], finalState: "COMMITTEE" },
   { id: "demo_p7", ref: "PI-2026-105", name: "Cèdres Business", promoterId: "dpromo_1", city: "Fès", region: "Fès-Meknès", segment: "bureaux", zone: "fes_oriental", loanAmount: 68_000_000, trajectory: ["SENSIBLE", "SENSIBLE", "SAIN"], finalState: "APPROVED" },
-  { id: "demo_p8", ref: "PI-2026-106", name: "Ocean View", promoterId: "dpromo_3", city: "Tanger", region: "Tanger-Tétouan-Al Hoceïma", segment: "moyen_haut", zone: "tanger", loanAmount: 87_000_000, trajectory: ["SAIN", "SAIN", "SENSIBLE"], finalState: "COMMITTEE" },
+  { id: "demo_p8", ref: "PI-2026-106", name: "Ocean View", promoterId: "dpromo_3", city: "Tanger", region: "Tanger-Tétouan-Al Hoceïma", segment: "moyen_haut", zone: "tanger", loanAmount: 87_000_000, trajectory: ["SAIN", "SAIN", "SENSIBLE"], finalState: "COMMITTEE", saleMode: "VEFA", gfa: { amount: 50_000_000, provider: "CDG Capital" } },
   { id: "demo_p9", ref: "PI-2026-107", name: "Atlas Park", promoterId: "dpromo_2", city: "Casablanca", region: "Casablanca-Settat", segment: "commerces", zone: "casa_peripherie", loanAmount: 60_000_000, trajectory: ["SENSIBLE", "PRE_DOUTEUX", "DOUTEUX"], finalState: "COMMITTEE" },
   { id: "demo_p10", ref: "PI-2026-108", name: "Médina Lofts", promoterId: "dpromo_4", city: "Marrakech", region: "Marrakech-Safi", segment: "villas", zone: "marrakech", loanAmount: 33_000_000, trajectory: ["DOUTEUX", "COMPROMIS", "CTX"], finalState: "REJECTED" },
   { id: "demo_p11", ref: "PI-2026-109", name: "Green Valley", promoterId: "dpromo_3", city: "Rabat", region: "Rabat-Salé-Kénitra", segment: "intermediaire", zone: "rabat_peripherie", loanAmount: 47_000_000, trajectory: ["PRE_DOUTEUX", "SENSIBLE", "SAIN"], finalState: "MANAGER_VALIDATION" },
@@ -202,7 +204,11 @@ for (const d of demos) {
   const latest = inputsFor(d, d.trajectory[2]);
   const ownEquity = Math.round(d.loanAmount * 0.35);
   const totalCost = d.loanAmount + ownEquity;
-  out.push(`INSERT INTO "RealEstateProject"("id","reference","name","promoterId","rmId","city","region","projectType","segment","zone","totalUnits","landAreaSqm","builtAreaSqm","totalCost","loanAmount","ownEquity","status","updatedAt") VALUES (${q(d.id)},${q(d.ref)},${q(d.name)},${q(d.promoterId)},${q(rm)},${q(d.city)},${q(d.region)},${q("Promotion résidentielle")},${q(d.segment)},${q(d.zone)},80,5000,8000,${totalCost},${d.loanAmount},${ownEquity},'EN_ANALYSE',now());`);
+  const saleMode = d.saleMode ?? "CLASSIC";
+  const hasGfa = d.gfa ? true : false;
+  const gfaAmount = d.gfa ? d.gfa.amount : "NULL";
+  const gfaProvider = d.gfa ? q(d.gfa.provider) : "NULL";
+  out.push(`INSERT INTO "RealEstateProject"("id","reference","name","promoterId","rmId","city","region","projectType","segment","zone","totalUnits","landAreaSqm","builtAreaSqm","totalCost","loanAmount","ownEquity","saleMode","hasGFA","gfaAmount","gfaProvider","status","updatedAt") VALUES (${q(d.id)},${q(d.ref)},${q(d.name)},${q(d.promoterId)},${q(rm)},${q(d.city)},${q(d.region)},${q("Promotion résidentielle")},${q(d.segment)},${q(d.zone)},80,5000,8000,${totalCost},${d.loanAmount},${ownEquity},${q(saleMode)}::"SaleMode",${b(hasGfa)},${gfaAmount},${gfaProvider},'EN_ANALYSE',now());`);
   if (!SLIM) {
     Object.entries(latest).forEach(([k, v], i) => {
       const num = typeof v === "number" ? v : "NULL";

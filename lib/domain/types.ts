@@ -281,6 +281,28 @@ export interface ProvisionInputExt extends ProvisionInput {
   isIrregular?: boolean;
 }
 
+// --- GFA / VEFA --------------------------------------------------------
+
+export type SaleModeCode = "CLASSIC" | "VEFA";
+
+export interface GfaVefaParams {
+  saleMode: SaleModeCode;
+  hasGFA: boolean;
+  gfaAmount?: number | null;
+  exposure: number; // EAD / assiette à couvrir (MAD)
+  gfaEligible?: boolean; // établissement garant admis (défaut: true)
+  // Abattement prudentiel d'une GFA hors cadre VEFA (défaut 25%).
+  nonVefaHaircut?: number;
+}
+
+export interface GfaVefaResult {
+  applicable: boolean; // une GFA opposable réduit l'assiette
+  admittedValue: number; // valeur admise en déduction (MAD)
+  quotity: number; // quotité retenue (0..1)
+  cappedByExposure: boolean;
+  note: string;
+}
+
 export interface ProvisionInput {
   ead: number; // exposure at default (MAD)
   reservedAgios?: number; // agios réservés (MAD)

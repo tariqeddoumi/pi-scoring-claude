@@ -130,3 +130,12 @@ export const committeeDecisionSchema = z.object({
 });
 
 export type CommitteeDecisionForm = z.infer<typeof committeeDecisionSchema>;
+
+export const gfaVefaSchema = z.object({
+  saleMode: z.enum(["CLASSIC", "VEFA"]),
+  hasGFA: z.coerce.boolean(),
+  gfaAmount: z.coerce.number().min(0).optional(),
+  gfaProvider: z.string().max(200).optional(),
+});
+
+export type GfaVefaFormValues = z.infer<typeof gfaVefaSchema>;
