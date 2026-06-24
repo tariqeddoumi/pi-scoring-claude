@@ -7,6 +7,8 @@ import {
   outcomeToState,
   quorumReached,
   votesConsistent,
+  actionableStatesFor,
+  roleTransitions,
   type WorkflowStateName,
 } from "@/lib/workflow";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -80,5 +82,37 @@ describe("workflow — décision de comité", () => {
   it("vérifie la cohérence des votes (somme ≤ présents)", () => {
     expect(votesConsistent({ presentCount: 5, votesFor: 3, votesAgainst: 1, votesAbstain: 1 })).toBe(true);
     expect(votesConsistent({ presentCount: 3, votesFor: 3, votesAgainst: 1, votesAbstain: 0 })).toBe(false);
+  });
+});
+
+describe("workflow — file d'attente par rôle", () => {
+  it("l'analyste agit sur les états d'instruction, pas en comité", () => {
+    const states = actionableStatesFor("RISK_ANALYST");
+    expect(states).toContain("SUBMITTED");
+    expect(states).toContain("ANALYST_REVIEW");
+    expect(states).not.toContain("COMMITTEE");
+    expect(states).not.toContain("MANAGER_VALIDATION");
+  });
+
+  it("le manager agit sur validation et comité (et l'instruction via scoring.run)", () => {
+    const states = actionableStatesFor("MANAGER");
+    expect(states).toContain("MANAGER_VALIDATION");
+    expect(states).toContain("COMMITTEE");
+  });
+
+  it("seul un rôle avec scoring.validate couvre le stade comité", () => {
+    expect(actionableStatesFor("RELATIONSHIP_MANAGER")).not.toContain("COMMITTEE");
+    expect(actionableStatesFor("MANAGER")).toContain("COMMITTEE");
+  });
+
+  it("l'auditeur (lecture seule) n'a aucun état actionnable", () => {
+    expect(actionableStatesFor("AUDITOR")).toHaveLength(0);
+  });
+
+  it("roleTransitions ne renvoie que les transitions permises au rôle", () => {
+    const mgr = roleTransitions("MANAGER", "MANAGER_VALIDATION").map((t) => t.to);
+    expect(mgr).toEqual(expect.arrayContaining(["COMMITTEE", "APPROVED", "REJECTED"]));
+    // L'analyste n'a pas scoring.validate → aucune transition depuis ce stade.
+    expect(roleTransitions("RISK_ANALYST", "MANAGER_VALIDATION")).toHaveLength(0);
   });
 });

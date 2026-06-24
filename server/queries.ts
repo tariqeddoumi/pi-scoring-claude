@@ -3,6 +3,13 @@
 // =====================================================================
 
 import { prisma } from "@/lib/prisma";
+import {
+  WORKFLOW_LABELS,
+  actionableStatesFor,
+  roleTransitions,
+  type WorkflowStateName,
+} from "@/lib/workflow";
+import type { RoleName } from "@/lib/rbac";
 
 export async function getProjectsWithLatestRun() {
   const projects = await prisma.realEstateProject.findMany({
@@ -161,6 +168,69 @@ export async function getRiskDashboard() {
     topExposures,
     hhi,
   };
+}
+
+// ---------------------------------------------------------------------
+//  File d'attente workflow : dossiers en attente d'une action du rôle.
+//  L'état courant = dernière étape workflow (ou DRAFT par défaut).
+// ---------------------------------------------------------------------
+
+export interface QueueItem {
+  id: string;
+  reference: string;
+  name: string;
+  promoter: string;
+  exposure: number;
+  since: Date;
+  lastActor: string | null;
+  actions: string[];
+}
+
+export interface QueueGroup {
+  state: WorkflowStateName;
+  label: string;
+  items: QueueItem[];
+}
+
+export async function getWorkflowQueue(role: RoleName): Promise<{
+  groups: QueueGroup[];
+  total: number;
+}> {
+  const states = actionableStatesFor(role);
+  if (states.length === 0) return { groups: [], total: 0 };
+
+  const projects = await prisma.realEstateProject.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: {
+      promoter: true,
+      workflowSteps: { orderBy: { createdAt: "desc" }, take: 1, include: { actor: true } },
+    },
+  });
+
+  const groups = new Map<WorkflowStateName, QueueItem[]>();
+  for (const p of projects) {
+    const last = p.workflowSteps[0];
+    const state = (last?.toState ?? "DRAFT") as WorkflowStateName;
+    if (!states.includes(state)) continue;
+    const list = groups.get(state) ?? [];
+    list.push({
+      id: p.id,
+      reference: p.reference,
+      name: p.name,
+      promoter: p.promoter.name,
+      exposure: p.loanAmount ?? 0,
+      since: last?.createdAt ?? p.createdAt,
+      lastActor: last?.actor?.name ?? null,
+      actions: roleTransitions(role, state).map((t) => t.label),
+    });
+    groups.set(state, list);
+  }
+
+  const ordered = states
+    .filter((s) => groups.has(s))
+    .map((s) => ({ state: s, label: WORKFLOW_LABELS[s], items: groups.get(s)! }));
+  const total = ordered.reduce((n, g) => n + g.items.length, 0);
+  return { groups: ordered, total };
 }
 
 export async function getAuditLog(limit = 100) {

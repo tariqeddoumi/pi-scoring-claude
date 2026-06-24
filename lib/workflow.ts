@@ -6,7 +6,7 @@
 //  droits se fait côté serveur (server/actions/workflow.ts).
 // =====================================================================
 
-import { PERMISSIONS, type PermissionCode } from "@/lib/rbac";
+import { PERMISSIONS, hasPermission, type PermissionCode, type RoleName } from "@/lib/rbac";
 
 export type WorkflowStateName =
   | "DRAFT"
@@ -77,6 +77,20 @@ export function findTransition(
 
 export function isTerminal(state: WorkflowStateName): boolean {
   return allowedTransitions(state).length === 0;
+}
+
+// --- File d'attente ("mes dossiers à traiter") -------------------------
+
+/** Transitions qu'un rôle peut déclencher depuis un état donné. */
+export function roleTransitions(role: RoleName, from: WorkflowStateName): TransitionDef[] {
+  return allowedTransitions(from).filter((t) => hasPermission(role, t.permission));
+}
+
+/** États depuis lesquels le rôle dispose d'au moins une action workflow. */
+export function actionableStatesFor(role: RoleName): WorkflowStateName[] {
+  return (Object.keys(WORKFLOW_TRANSITIONS) as WorkflowStateName[]).filter(
+    (s) => roleTransitions(role, s).length > 0,
+  );
 }
 
 // --- Décision de comité ------------------------------------------------
