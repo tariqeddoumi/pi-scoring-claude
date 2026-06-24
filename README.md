@@ -131,7 +131,36 @@ déploiement ; le RBAC et les permissions sont déjà modélisés et seedés.)*
 
 ---
 
-## 7. Avertissement
+## 7. Base Supabase (provisionnée)
+
+La base est **déjà déployée** sur Supabase, dans un **schéma isolé `pi_scoring`** du
+projet `ProjectFinanceScoringV2` (`ykynchqvhxkchnpycntc`, région eu-west-1) — sans
+aucun impact sur le schéma `public` existant.
+
+- **Schéma** : 30 tables + 10 enums (`prisma/schema.pi_scoring.sql`).
+- **Seed appliqué** : RBAC (5 rôles, 12 permissions, 5 users), modèle V1.0
+  (4 domaines, 26 critères, 22 options, 54 barèmes, 9 red flags), régimes BKAM
+  19/G et 1/W (11 classes, 23 triggers, 11 taux, 20 types de garanties), 2 projets
+  démo avec 67 entrées et 3 garanties (`prisma/seed.generated.sql`).
+- **Isolation** : les tables `pi_scoring` ne sont pas exposées via PostgREST ; le
+  linter de sécurité Supabase ne remonte aucune alerte les concernant.
+
+### Connexion
+1. `cp .env.example .env` puis remplacer `[YOUR-DB-PASSWORD]` par le mot de passe DB
+   (Supabase → Project Settings → Database). `DATABASE_URL`/`DIRECT_URL` portent déjà
+   `?schema=pi_scoring`.
+2. `npm run prisma:generate && npm run dev`.
+
+> Re-jouer le schéma/seed ailleurs : `psql "$DIRECT_URL" -f prisma/schema.pi_scoring.sql`
+> puis `psql "$DIRECT_URL" -f prisma/seed.generated.sql` (ou `npm run seed` avec accès DB).
+
+### Authentification
+Le socle Supabase Auth est câblé (`lib/supabase/{client,server}.ts`).
+`getCurrentAppUser()` relie l'email Supabase à la table `User`/`Role` ; à défaut de
+session, l'acteur par défaut (analyste) est utilisé. Reste à brancher les pages de
+connexion et le middleware de refresh de session selon le déploiement.
+
+## 8. Avertissement
 
 Les paramètres réglementaires (taux, seuils, quotités, abattements, déclencheurs)
 reproduisent les **normes minimales** des circulaires 19/G/2002 et 1/W/2025 et sont

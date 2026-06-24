@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { runFullScoring } from "@/server/services/scoringService";
 import { scoringInputsSchema } from "@/lib/validation";
 import { recordAudit } from "@/server/engines/auditService";
-import { getDemoActor } from "@/server/queries";
+import { getCurrentAppUser } from "@/lib/supabase/server";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
 export async function saveProjectInputs(
@@ -16,7 +16,7 @@ export async function saveProjectInputs(
   if (!parsed.success) {
     return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
   }
-  const actor = await getDemoActor();
+  const actor = await getCurrentAppUser();
 
   await prisma.$transaction(async (tx) => {
     for (const [key, value] of Object.entries(parsed.data)) {
@@ -43,7 +43,7 @@ export async function saveProjectInputs(
 
 /** Lance le pipeline complet de scoring/classification/provisionnement. */
 export async function runScoringAction(projectId: string, ead?: number, reservedAgios?: number) {
-  const actor = await getDemoActor();
+  const actor = await getCurrentAppUser();
   if (!actor) return { ok: false as const, error: "Aucun acteur disponible (seed requis)." };
 
   const result = await runFullScoring({
