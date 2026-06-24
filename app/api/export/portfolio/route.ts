@@ -1,13 +1,19 @@
 import { portfolioCsv } from "@/server/export";
-import { currentUserCan } from "@/lib/authz";
+import { authorize, AuthorizationError } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
+import { securityEvent } from "@/lib/securityLog";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!(await currentUserCan(PERMISSIONS.EXPORT_RUN))) {
-    return new Response("Accès refusé", { status: 403 });
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.EXPORT_RUN);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return new Response("Accès refusé", { status: 403 });
+    throw e;
   }
+  securityEvent("export", { actorId: actor.id, role: actor.role.name, resource: "portfolio" });
   try {
     const csv = await portfolioCsv();
     return new Response(csv, {

@@ -7,7 +7,8 @@
 
 import "server-only";
 import { getCurrentAppUser } from "@/lib/supabase/server";
-import { assertPermission, hasPermission, type PermissionCode, type RoleName } from "@/lib/rbac";
+import { hasPermission, type PermissionCode, type RoleName } from "@/lib/rbac";
+import { securityEvent } from "@/lib/securityLog";
 
 /** Erreur d'autorisation distincte des erreurs techniques. */
 export class AuthorizationError extends Error {
@@ -23,8 +24,21 @@ export class AuthorizationError extends Error {
  */
 export async function authorize(permission: PermissionCode) {
   const user = await getCurrentAppUser();
-  if (!user) throw new AuthorizationError("Non authentifié : accès refusé.");
-  assertPermission(user.role.name as RoleName, permission);
+  if (!user) {
+    securityEvent("access_denied", { permission, reason: "unauthenticated" });
+    throw new AuthorizationError("Non authentifié : accès refusé.");
+  }
+  if (!hasPermission(user.role.name as RoleName, permission)) {
+    securityEvent("access_denied", {
+      actorId: user.id,
+      email: user.email,
+      role: user.role.name,
+      permission,
+    });
+    throw new AuthorizationError(
+      `Le rôle ${user.role.name} ne dispose pas de la permission ${permission}.`,
+    );
+  }
   return user;
 }
 

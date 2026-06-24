@@ -3,6 +3,7 @@
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { recordLogin, recordLoginFailure } from "@/server/actions/auth";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
 
 function LoginForm() {
@@ -23,9 +24,11 @@ function LoginForm() {
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
+        await recordLoginFailure(email);
         setError("Identifiants invalides ou compte non autorisé.");
         return;
       }
+      await recordLogin();
       // Rafraîchit les Server Components pour prendre en compte la session.
       router.replace(redirectedFrom);
       router.refresh();
