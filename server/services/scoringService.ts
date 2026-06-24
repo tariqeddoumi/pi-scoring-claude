@@ -12,12 +12,17 @@ import { runScoring } from "@/server/engines/scoringEngine";
 import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { computeEligibleGuarantees } from "@/server/engines/guaranteeEligibilityEngine";
 import { computeProvision } from "@/server/engines/provisioningEngine";
+import { computeGfaRelief } from "@/lib/domain/gfaVefa";
+import { mostSevereClass } from "@/lib/domain/groups";
+import { projectEad } from "@/lib/domain/facility";
 import {
   loadActiveModelConfig,
   loadActiveRegime,
   loadProjectInputs,
 } from "./modelLoader";
 import type { GuaranteeInput, RegulatoryClassCode } from "@/lib/domain/types";
+
+const round2 = (v: number) => Math.round(v * 100) / 100;
 
 export interface RunScoringOptions {
   projectId: string;
@@ -37,7 +42,10 @@ export async function runFullScoring(opts: RunScoringOptions) {
 
     const project = await tx.realEstateProject.findUniqueOrThrow({
       where: { id: projectId },
-      include: { guarantees: { include: { type: true } } },
+      include: {
+        guarantees: { include: { type: true } },
+        facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
+      },
     });
 
     // 1bis. Effet groupe (art.33/50) : classe la plus sévère des entités liées.
@@ -150,15 +158,44 @@ export async function runFullScoring(opts: RunScoringOptions) {
       orderBy: { effectiveFrom: "desc" },
     });
     const rate = rateRow?.rate ?? 0;
-    const ead = opts.ead ?? project.loanAmount ?? 0;
+    // EAD réel : somme des facilités (encours + non-tiré pondéré CCF) ; à défaut,
+    // le montant de prêt autorisé. Un EAD explicite (opts.ead) reste prioritaire.
+    const { ead: realEad } = projectEad(project.facilities, project.loanAmount ?? 0);
+    const ead = opts.ead ?? realEad;
     const isDefault = ["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"].includes(
       classification.resultClass,
     );
 
+    // GFA (Garantie Financière d'Achèvement) : valeur admise en déduction de
+    // l'assiette, pleinement qualifiée en cadre VEFA, abattue sinon.
+    const gfa = computeGfaRelief({
+      saleMode: project.saleMode,
+      hasGFA: project.hasGFA,
+      gfaAmount: project.gfaAmount,
+      exposure: Math.max(0, ead - (opts.reservedAgios ?? 0) - elig.totalEligible),
+    });
+    const eligibleWithGfa = round2(elig.totalEligible + gfa.admittedValue);
+    const breakdown = gfa.applicable
+      ? [
+          ...elig.lines,
+          {
+            typeCode: "GFA",
+            marketValue: project.gfaAmount ?? 0,
+            eligible: true,
+            baseQuotity: gfa.quotity,
+            effectiveQuotity: gfa.quotity,
+            haircut: 0,
+            abatementApplied: false,
+            eligibleValue: gfa.admittedValue,
+            note: gfa.note,
+          },
+        ]
+      : elig.lines;
+
     const provision = computeProvision({
       ead,
       reservedAgios: opts.reservedAgios ?? 0,
-      eligibleGuarantees: elig.totalEligible,
+      eligibleGuarantees: eligibleWithGfa,
       classCode: classification.resultClass,
       rate,
       // Irrégulière (19/G art.4bis) : souffrance mais couverte 100%.
@@ -172,7 +209,7 @@ export async function runFullScoring(opts: RunScoringOptions) {
         ead: provision.ead,
         reservedAgios: provision.reservedAgios,
         eligibleGuarantees: provision.eligibleGuarantees,
-        guaranteeBreakdown: elig.lines as any,
+        guaranteeBreakdown: breakdown as any,
         provisionBase: provision.provisionBase,
         rate: provision.rate,
         provisionAmount: provision.provisionAmount,
@@ -244,17 +281,7 @@ async function mostSevereGroupClass(
       },
     },
   });
-  const order: RegulatoryClassCode[] = ["SAIN", "SENSIBLE", "PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
-  let best: RegulatoryClassCode | undefined;
-  let bestIdx = -1;
-  for (const p of peers) {
-    const cls = p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined;
-    if (!cls) continue;
-    const idx = order.indexOf(cls);
-    if (idx > bestIdx) {
-      bestIdx = idx;
-      best = cls;
-    }
-  }
-  return best;
+  return mostSevereClass(
+    peers.map((p) => p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined),
+  );
 }

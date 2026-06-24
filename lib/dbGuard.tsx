@@ -23,6 +23,21 @@ npm run dev`}
   );
 }
 
+/** Encadré affiché lorsqu'un acteur n'a pas la permission requise. */
+export function AccessDenied({ hint }: { hint?: string }) {
+  return (
+    <Card>
+      <CardContent>
+        <h2 className="font-semibold text-lg">Accès refusé</h2>
+        <p className="text-sm text-muted-foreground mt-2">
+          Votre rôle ne dispose pas des droits nécessaires pour consulter cette page.
+        </p>
+        {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+      </CardContent>
+    </Card>
+  );
+}
+
 /** Exécute une lecture serveur en capturant l'absence de base. */
 export async function safe<T>(fn: () => Promise<T>): Promise<{ ok: true; data: T } | { ok: false; error: unknown }> {
   try {

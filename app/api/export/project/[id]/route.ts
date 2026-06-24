@@ -1,8 +1,23 @@
 import { projectReportHtml } from "@/server/export";
+import { authorize, AuthorizationError } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
+import { securityEvent } from "@/lib/securityLog";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.EXPORT_RUN);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return new Response("Accès refusé", { status: 403 });
+    throw e;
+  }
+  securityEvent("export", {
+    actorId: actor.id,
+    role: actor.role.name,
+    resource: `project:${params.id}`,
+  });
   try {
     const html = await projectReportHtml(params.id);
     if (!html) return new Response("Projet introuvable", { status: 404 });

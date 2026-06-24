@@ -115,3 +115,28 @@ export const importMappingSchema = z.object({
   entity: z.string().min(1),
   mapping: z.record(z.string(), z.string()),
 });
+
+export const committeeDecisionSchema = z.object({
+  outcome: z.enum(["FAVORABLE", "FAVORABLE_CONDITIONS", "DEFAVORABLE", "AJOURNE"]),
+  quorum: z.coerce.number().int().min(0).default(0),
+  presentCount: z.coerce.number().int().min(0).default(0),
+  votesFor: z.coerce.number().int().min(0).default(0),
+  votesAgainst: z.coerce.number().int().min(0).default(0),
+  votesAbstain: z.coerce.number().int().min(0).default(0),
+  approvedAmount: z.coerce.number().min(0).optional(),
+  conditions: z.string().optional(),
+  validUntil: z.string().optional(),
+  minutesRef: z.string().optional(),
+});
+
+export type CommitteeDecisionForm = z.infer<typeof committeeDecisionSchema>;
+
+export const gfaVefaSchema = z.object({
+  assetType: z.enum(["PROMOTION", "EXPLOITATION"]).default("PROMOTION"),
+  saleMode: z.enum(["CLASSIC", "VEFA"]),
+  hasGFA: z.coerce.boolean(),
+  gfaAmount: z.coerce.number().min(0).optional(),
+  gfaProvider: z.string().max(200).optional(),
+});
+
+export type GfaVefaFormValues = z.infer<typeof gfaVefaSchema>;

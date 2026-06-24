@@ -37,7 +37,7 @@ describe("scoringEngine V1.0", () => {
     expect(r.internalClass).toBe("Sain");
   });
 
-  it("produces 5 domain outcomes D1..D5 capped 0..100", () => {
+  it("produces 4 scored domain outcomes D1..D4 capped 0..100 (D5 = couche red-flags)", () => {
     const r = runScoring({ model: M, inputs: strong });
     expect(r.domains.map((d) => d.domainCode)).toEqual(["D1", "D2", "D3", "D4"]);
     r.domains.forEach((d) => {

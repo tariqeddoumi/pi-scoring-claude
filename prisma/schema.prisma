@@ -99,6 +99,39 @@ enum AuditAction {
   EXPORT
   IMPORT
   WORKFLOW_TRANSITION
+  COMMITTEE_DECISION
+}
+
+// Sens de la décision du comité de crédit.
+enum CommitteeOutcome {
+  FAVORABLE
+  FAVORABLE_CONDITIONS
+  DEFAVORABLE
+  AJOURNE
+}
+
+// Mode de commercialisation du programme immobilier.
+//  - CLASSIC : vente classique (achèvement préalable)
+//  - VEFA    : vente en l'état futur d'achèvement (vente sur plan)
+enum SaleMode {
+  CLASSIC
+  VEFA
+}
+
+// Statut d'une facilité de crédit (tranche de financement).
+enum FacilityStatus {
+  ACTIVE
+  CLOSED
+  DEFAULTED
+}
+
+// Nature de l'actif financé : détermine la pertinence du modèle de scoring.
+//  - PROMOTION    : opération de vente (modèle promotion immobilière)
+//  - EXPLOITATION : actif d'exploitation (hôtel…) — modèle promotion inadapté,
+//    exclu de la note consolidée de programme et signalé.
+enum AssetType {
+  PROMOTION
+  EXPLOITATION
 }
 
 // =====================================================================
@@ -148,6 +181,7 @@ model User {
   auditLogs        AuditLog[]
   workflowSteps    WorkflowStep[]
   importBatches    ImportBatch[]
+  committeeDecisionsChaired CommitteeDecision[] @relation("CommitteeChair")
 }
 
 // =====================================================================
@@ -188,22 +222,32 @@ model RealEstateProject {
   // Segmentation métier (module α_Seg / β_Zone du modèle V1.0)
   segment       String? // social | intermediaire | moyen_haut | touristique | bureaux | commerces | villas
   zone          String? // casa_centre | casa_peripherie | rabat_centre | ...
+  // Nature de l'actif (promotion vendable vs actif d'exploitation type hôtel)
+  assetType     AssetType @default(PROMOTION)
   totalUnits    Int?
   landAreaSqm   Float?
   builtAreaSqm  Float?
   // Appartenance à un groupe d'intérêt (effet groupe BKAM art 33/50)
   groupId       String?
+  group         Group?  @relation(fields: [groupId], references: [id])
 
   // Montants (en MAD)
   totalCost     Float?  // coût total du projet
   loanAmount    Float?  // montant du crédit demandé/octroyé
   ownEquity     Float?  // fonds propres promoteur
 
+  // Commercialisation & Garantie Financière d'Achèvement (GFA/VEFA)
+  saleMode      SaleMode @default(CLASSIC) // mode de vente (VEFA = sur plan)
+  hasGFA        Boolean  @default(false)   // GFA en place (couvre l'achèvement)
+  gfaAmount     Float?   // montant garanti par la GFA (MAD)
+  gfaProvider   String?  // établissement garant (banque / assurance)
+
   status        String  @default("PROSPECT")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   inputs            ProjectInput[]
+  facilities        Facility[]
   scoringRuns       ScoringRun[]
   classificationRuns ClassificationRun[]
   provisionRuns     ProvisionRun[]
@@ -211,6 +255,7 @@ model RealEstateProject {
   workflowSteps     WorkflowStep[]
   comments          Comment[]
   attachments       Attachment[]
+  committeeDecisions CommitteeDecision[]
 }
 
 // Valeurs d'entrée saisies pour un projet, clé/valeur typée et historisable.
@@ -598,6 +643,84 @@ model WorkflowStep {
   actor     User     @relation(fields: [actorId], references: [id])
   comment   String?
   createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// Facilité de crédit (tranche de financement) rattachée à un projet.
+// Porte le montant autorisé, l'encours tiré et un échéancier d'impayés, d'où
+// se déduit l'EAD réel (encours + non-tiré pondéré par CCF) servant d'assiette
+// au provisionnement — au lieu du seul montant de prêt autorisé.
+model Facility {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  label            String   // ex. "Tranche 1 — gros œuvre"
+  authorizedAmount Float    // montant autorisé (MAD)
+  drawnAmount      Float    @default(0) // encours tiré (MAD)
+  ccf              Float    @default(1) // credit conversion factor sur le non-tiré (0..1)
+  reservedAgios    Float    @default(0)
+  status           FacilityStatus @default(ACTIVE)
+  startedAt        DateTime? // date de démarrage des travaux financés
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  installments     Installment[]
+
+  @@index([projectId])
+}
+
+// Échéance d'une facilité : montant dû, montant payé et date d'exigibilité.
+// Les échéances échues et non soldées déterminent le retard (DPD) et l'impayé.
+model Installment {
+  id          String   @id @default(cuid())
+  facilityId  String
+  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  seq         Int      // rang dans l'échéancier
+  dueDate     DateTime
+  amountDue   Float
+  amountPaid  Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([facilityId])
+}
+
+// Groupe d'intérêt (contrepartie consolidée) — support de l'effet groupe
+// BKAM (19/G art.33 ; 1/W art.50) : contagion de la classe la plus sévère.
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sector    String?  // secteur d'activité dominant
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects  RealEstateProject[]
+}
+
+// Décision formelle du comité de crédit (quorum, votes, conditions, validité).
+model CommitteeDecision {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outcome       CommitteeOutcome
+  chairId       String
+  chair         User     @relation("CommitteeChair", fields: [chairId], references: [id])
+
+  // Quorum & votes (agrégés)
+  quorum        Int      @default(0) // nombre de membres requis
+  presentCount  Int      @default(0) // membres présents
+  votesFor      Int      @default(0)
+  votesAgainst  Int      @default(0)
+  votesAbstain  Int      @default(0)
+
+  // Termes de la décision
+  approvedAmount Float?  // montant approuvé (MAD), si différent du demandé
+  conditions     String? // conditions / covenants
+  validUntil     DateTime? // date de validité de l'accord
+  minutesRef     String? // référence du PV de comité
+
+  createdAt     DateTime @default(now())
 
   @@index([projectId])
 }

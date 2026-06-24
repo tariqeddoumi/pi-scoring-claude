@@ -1,6 +1,8 @@
 import { getAuditLog } from "@/server/queries";
 import { Card, CardContent, Table, Th, Td, Badge } from "@/components/ui";
-import { DbSetupNotice, safe } from "@/lib/dbGuard";
+import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
+import { currentUserCan } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 import { formatDate } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +16,7 @@ const ACTION_COLORS: Record<string, string> = {
 };
 
 export default async function AuditPage() {
+  if (!(await currentUserCan(PERMISSIONS.AUDIT_READ))) return <AccessDenied />;
   const res = await safe(() => getAuditLog(150));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const logs = res.data;

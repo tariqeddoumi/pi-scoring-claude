@@ -5,7 +5,15 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, B
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
+import { WorkflowPanel } from "@/components/WorkflowPanel";
+import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
+import { GfaVefaCard } from "@/components/GfaVefaCard";
+import { FacilitiesCard } from "@/components/FacilitiesCard";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
+import { getCurrentAppUser } from "@/lib/supabase/server";
+import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
+import { WORKFLOW_LABELS, COMMITTEE_OUTCOME_LABELS } from "@/lib/workflow";
+import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
@@ -16,6 +24,16 @@ const TABS = [
   "Identification", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
   "Financement", "Cash-flow", "Garanties", "Classification BKAM", "Provisionnement", "Scoring", "Audit",
 ];
+
+const WF_STATE_COLORS: Record<WorkflowStateName, string> = {
+  DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
+  SUBMITTED: "bg-blue-100 text-blue-800 border-blue-300",
+  ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
+  COMMITTEE: "bg-amber-100 text-amber-800 border-amber-300",
+  APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  REJECTED: "bg-red-100 text-red-800 border-red-300",
+};
 
 export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
   const res = await safe(() => getProjectDetail(params.id));
@@ -30,6 +48,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const run = p.scoringRuns[0];
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
+
+  const actor = await getCurrentAppUser();
+  const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
 
   const sectionTable = (sectionKey: keyof typeof INPUT_SECTIONS) => {
     const s = INPUT_SECTIONS[sectionKey]!;
@@ -72,6 +93,86 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
       <RunScoringButton projectId={p.id} />
 
+      {actor && (
+        <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
+      )}
+
+      {actor && currentState === "COMMITTEE" && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE) && (
+        <CommitteeDecisionForm projectId={p.id} />
+      )}
+
+      {p.committeeDecisions[0] && (
+        <Card>
+          <CardHeader><CardTitle>Dernière décision de comité</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {(() => {
+              const cd = p.committeeDecisions[0]!;
+              return (
+                <>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge className={cd.outcome.startsWith("FAVORABLE") ? "bg-emerald-100 text-emerald-800 border-emerald-300" : cd.outcome === "DEFAVORABLE" ? "bg-red-100 text-red-800 border-red-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                      {COMMITTEE_OUTCOME_LABELS[cd.outcome as CommitteeOutcomeName]}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      Président : {cd.chair.name} · {formatDate(cd.createdAt)}
+                    </span>
+                  </div>
+                  <div className="grid sm:grid-cols-4 gap-2">
+                    <span>Quorum : {cd.presentCount}/{cd.quorum}</span>
+                    <span>Pour : {cd.votesFor}</span>
+                    <span>Contre : {cd.votesAgainst}</span>
+                    <span>Abst. : {cd.votesAbstain}</span>
+                  </div>
+                  {cd.approvedAmount != null && <p>Montant approuvé : <span className="font-medium">{formatMAD(cd.approvedAmount)}</span></p>}
+                  {cd.conditions && <p>Conditions : {cd.conditions}</p>}
+                  {cd.validUntil && <p>Validité jusqu'au {formatDate(cd.validUntil)}</p>}
+                  {cd.minutesRef && <p className="text-muted-foreground">PV : {cd.minutesRef}</p>}
+                </>
+              );
+            })()}
+          </CardContent>
+        </Card>
+      )}
+
+      {actor && (
+        <GfaVefaCard
+          projectId={p.id}
+          assetType={p.assetType}
+          saleMode={p.saleMode}
+          hasGFA={p.hasGFA}
+          gfaAmount={p.gfaAmount}
+          gfaProvider={p.gfaProvider}
+          exposure={p.loanAmount ?? 0}
+          canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
+        />
+      )}
+
+      <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
+
+      {p.workflowSteps.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Historique du circuit</CardTitle></CardHeader>
+          <CardContent>
+            <ol className="space-y-3">
+              {p.workflowSteps.map((s) => (
+                <li key={s.id} className="flex items-start gap-3 text-sm">
+                  <span className="text-muted-foreground whitespace-nowrap w-32 shrink-0">{formatDate(s.createdAt)}</span>
+                  <span className="flex items-center gap-2 flex-wrap">
+                    <Badge className={WF_STATE_COLORS[s.fromState as WorkflowStateName]}>{WORKFLOW_LABELS[s.fromState as WorkflowStateName]}</Badge>
+                    <span className="text-muted-foreground">→</span>
+                    <Badge className={WF_STATE_COLORS[s.toState as WorkflowStateName]}>{WORKFLOW_LABELS[s.toState as WorkflowStateName]}</Badge>
+                  </span>
+                  <span className="text-muted-foreground">
+                    par {s.actor?.name ?? "—"}
+                    {s.comment ? ` · « ${s.comment} »` : ""}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs defaultValue="Identification">
         <TabsList>
           {TABS.map((t) => <TabsTrigger key={t} value={t}>{t}</TabsTrigger>)}
@@ -85,7 +186,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 <tr><Td className="text-muted-foreground">Type</Td><Td>{p.projectType ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{p.segment ?? "—"} / {p.zone ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{p.city ?? "—"} / {p.region ?? "—"}</Td></tr>
-                <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.groupId ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.group ? <Link href="/groups" className="text-primary hover:underline">{p.group.name}</Link> : "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Unités</Td><Td>{p.totalUnits ?? "—"}</Td></tr>
               </tbody></Table>
             </CardContent></Card>
@@ -217,10 +318,15 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <TabsContent value="Audit">
           <Card><CardHeader><CardTitle>Historique workflow</CardTitle></CardHeader><CardContent className="p-0">
             <Table>
-              <thead><tr><Th>Date</Th><Th>Étape</Th><Th>Acteur</Th></tr></thead>
+              <thead><tr><Th>Date</Th><Th>Transition</Th><Th>Acteur</Th><Th>Commentaire</Th></tr></thead>
               <tbody>
                 {p.workflowSteps.map((w) => (
-                  <tr key={w.id}><Td>{formatDate(w.createdAt)}</Td><Td>{w.toState}</Td><Td>{w.actor.name}</Td></tr>
+                  <tr key={w.id}>
+                    <Td className="whitespace-nowrap">{formatDate(w.createdAt)}</Td>
+                    <Td>{w.fromState ? `${WORKFLOW_LABELS[w.fromState as WorkflowStateName]} → ` : ""}{WORKFLOW_LABELS[w.toState as WorkflowStateName]}</Td>
+                    <Td>{w.actor.name}</Td>
+                    <Td className="text-muted-foreground">{w.comment ?? "—"}</Td>
+                  </tr>
                 ))}
                 {p.workflowSteps.length === 0 && <tr><Td className="text-muted-foreground">Aucune étape enregistrée.</Td></tr>}
               </tbody>

@@ -1,4 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, Table, Th, Td } from "@/components/ui";
+import { AccessDenied } from "@/lib/dbGuard";
+import { currentUserCan } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +16,8 @@ const TEMPLATE_COLUMNS = [
   ["dpd_days / restructured / legal_exposure", "Déclencheurs réglementaires"],
 ];
 
-export default function ImportsPage() {
+export default async function ImportsPage() {
+  if (!(await currentUserCan(PERMISSIONS.IMPORT_RUN))) return <AccessDenied />;
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Import Excel / CSV</h1>

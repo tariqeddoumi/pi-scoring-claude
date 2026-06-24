@@ -59,13 +59,13 @@ export interface RuleExpression {
 export interface OptionConfig {
   value: string;
   label: string;
-  score: number; // 0..10
+  score: number; // 0..scaleScore (échelle du modèle, V1.0 : 0..5)
 }
 
 export interface RangeConfig {
   minIncl: number | null; // null = -infini
   maxExcl: number | null; // null = +infini
-  score: number; // 0..10
+  score: number; // 0..scaleScore (échelle du modèle, V1.0 : 0..5)
   label?: string;
 }
 
@@ -279,6 +279,28 @@ export interface GuaranteeEligibilityResult {
 
 export interface ProvisionInputExt extends ProvisionInput {
   isIrregular?: boolean;
+}
+
+// --- GFA / VEFA --------------------------------------------------------
+
+export type SaleModeCode = "CLASSIC" | "VEFA";
+
+export interface GfaVefaParams {
+  saleMode: SaleModeCode;
+  hasGFA: boolean;
+  gfaAmount?: number | null;
+  exposure: number; // EAD / assiette à couvrir (MAD)
+  gfaEligible?: boolean; // établissement garant admis (défaut: true)
+  // Abattement prudentiel d'une GFA hors cadre VEFA (défaut 25%).
+  nonVefaHaircut?: number;
+}
+
+export interface GfaVefaResult {
+  applicable: boolean; // une GFA opposable réduit l'assiette
+  admittedValue: number; // valeur admise en déduction (MAD)
+  quotity: number; // quotité retenue (0..1)
+  cappedByExposure: boolean;
+  note: string;
 }
 
 export interface ProvisionInput {

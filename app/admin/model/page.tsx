@@ -1,12 +1,15 @@
 import { getActiveModel } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Table, Th, Td } from "@/components/ui";
-import { DbSetupNotice, safe } from "@/lib/dbGuard";
+import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
+import { currentUserCan } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 import { formatPercent } from "@/lib/utils";
 import { SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 
 export const dynamic = "force-dynamic";
 
 export default async function ModelBuilderPage() {
+  if (!(await currentUserCan(PERMISSIONS.MODEL_READ))) return <AccessDenied />;
   const res = await safe(getActiveModel);
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const v = res.data;
