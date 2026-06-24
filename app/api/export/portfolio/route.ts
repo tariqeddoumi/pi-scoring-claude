@@ -1,8 +1,13 @@
 import { portfolioCsv } from "@/server/export";
+import { currentUserCan } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  if (!(await currentUserCan(PERMISSIONS.EXPORT_RUN))) {
+    return new Response("Accès refusé", { status: 403 });
+  }
   try {
     const csv = await portfolioCsv();
     return new Response(csv, {

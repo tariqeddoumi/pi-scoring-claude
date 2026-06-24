@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { runFullScoring } from "@/server/services/scoringService";
 import { scoringInputsSchema } from "@/lib/validation";
 import { recordAudit } from "@/server/engines/auditService";
-import { getCurrentAppUser } from "@/lib/supabase/server";
+import { authorize, AuthorizationError } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
 export async function saveProjectInputs(
@@ -16,9 +17,14 @@ export async function saveProjectInputs(
   if (!parsed.success) {
     return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
   }
-  // Deny‑by‑default : aucune écriture sans acteur authentifié et autorisé.
-  const actor = await getCurrentAppUser();
-  if (!actor) return { ok: false as const, error: "Non authentifié : accès refusé." };
+  // Deny‑by‑default : écriture réservée à la permission project.write.
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.PROJECT_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
 
   await prisma.$transaction(async (tx) => {
     for (const [key, value] of Object.entries(parsed.data)) {
@@ -45,8 +51,14 @@ export async function saveProjectInputs(
 
 /** Lance le pipeline complet de scoring/classification/provisionnement. */
 export async function runScoringAction(projectId: string, ead?: number, reservedAgios?: number) {
-  const actor = await getCurrentAppUser();
-  if (!actor) return { ok: false as const, error: "Aucun acteur disponible (seed requis)." };
+  // Deny‑by‑default : lancement de scoring réservé à la permission scoring.run.
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.SCORING_RUN);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
 
   const result = await runFullScoring({
     projectId,

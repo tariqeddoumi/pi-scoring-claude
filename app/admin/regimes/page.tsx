@@ -1,12 +1,15 @@
 import { getRegimes } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Table, Th, Td } from "@/components/ui";
-import { DbSetupNotice, safe } from "@/lib/dbGuard";
+import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
+import { currentUserCan } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 import { formatPercent, formatMAD, formatDate } from "@/lib/utils";
 import { CLASS_LABELS } from "@/lib/labels";
 
 export const dynamic = "force-dynamic";
 
 export default async function RegimesPage() {
+  if (!(await currentUserCan(PERMISSIONS.REGIME_READ))) return <AccessDenied />;
   const res = await safe(getRegimes);
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const regimes = res.data;
