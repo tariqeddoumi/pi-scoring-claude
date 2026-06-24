@@ -13,6 +13,7 @@ export const metadata: Metadata = {
 
 const NAV: { href: string; label: string; perm: PermissionCode }[] = [
   { href: "/", label: "Tableau de bord", perm: PERMISSIONS.PROJECT_READ },
+  { href: "/risk", label: "Vue risque", perm: PERMISSIONS.PROJECT_READ },
   { href: "/projects", label: "Projets", perm: PERMISSIONS.PROJECT_READ },
   { href: "/admin/model", label: "Modèle (Admin)", perm: PERMISSIONS.MODEL_READ },
   { href: "/admin/regimes", label: "Régimes BKAM", perm: PERMISSIONS.REGIME_READ },
