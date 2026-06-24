@@ -99,6 +99,15 @@ enum AuditAction {
   EXPORT
   IMPORT
   WORKFLOW_TRANSITION
+  COMMITTEE_DECISION
+}
+
+// Sens de la décision du comité de crédit.
+enum CommitteeOutcome {
+  FAVORABLE
+  FAVORABLE_CONDITIONS
+  DEFAVORABLE
+  AJOURNE
 }
 
 // =====================================================================
@@ -148,6 +157,7 @@ model User {
   auditLogs        AuditLog[]
   workflowSteps    WorkflowStep[]
   importBatches    ImportBatch[]
+  committeeDecisionsChaired CommitteeDecision[] @relation("CommitteeChair")
 }
 
 // =====================================================================
@@ -211,6 +221,7 @@ model RealEstateProject {
   workflowSteps     WorkflowStep[]
   comments          Comment[]
   attachments       Attachment[]
+  committeeDecisions CommitteeDecision[]
 }
 
 // Valeurs d'entrée saisies pour un projet, clé/valeur typée et historisable.
@@ -598,6 +609,33 @@ model WorkflowStep {
   actor     User     @relation(fields: [actorId], references: [id])
   comment   String?
   createdAt DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// Décision formelle du comité de crédit (quorum, votes, conditions, validité).
+model CommitteeDecision {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outcome       CommitteeOutcome
+  chairId       String
+  chair         User     @relation("CommitteeChair", fields: [chairId], references: [id])
+
+  // Quorum & votes (agrégés)
+  quorum        Int      @default(0) // nombre de membres requis
+  presentCount  Int      @default(0) // membres présents
+  votesFor      Int      @default(0)
+  votesAgainst  Int      @default(0)
+  votesAbstain  Int      @default(0)
+
+  // Termes de la décision
+  approvedAmount Float?  // montant approuvé (MAD), si différent du demandé
+  conditions     String? // conditions / covenants
+  validUntil     DateTime? // date de validité de l'accord
+  minutesRef     String? // référence du PV de comité
+
+  createdAt     DateTime @default(now())
 
   @@index([projectId])
 }

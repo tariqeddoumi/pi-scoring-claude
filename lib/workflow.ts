@@ -78,3 +78,46 @@ export function findTransition(
 export function isTerminal(state: WorkflowStateName): boolean {
   return allowedTransitions(state).length === 0;
 }
+
+// --- Décision de comité ------------------------------------------------
+
+export type CommitteeOutcomeName =
+  | "FAVORABLE"
+  | "FAVORABLE_CONDITIONS"
+  | "DEFAVORABLE"
+  | "AJOURNE";
+
+export const COMMITTEE_OUTCOME_LABELS: Record<CommitteeOutcomeName, string> = {
+  FAVORABLE: "Favorable",
+  FAVORABLE_CONDITIONS: "Favorable sous conditions",
+  DEFAVORABLE: "Défavorable",
+  AJOURNE: "Ajourné",
+};
+
+/** État cible du dossier selon le sens de la décision (null = reste en comité). */
+export function outcomeToState(outcome: CommitteeOutcomeName): WorkflowStateName | null {
+  switch (outcome) {
+    case "FAVORABLE":
+    case "FAVORABLE_CONDITIONS":
+      return "APPROVED";
+    case "DEFAVORABLE":
+      return "REJECTED";
+    case "AJOURNE":
+      return null;
+  }
+}
+
+/** Le quorum est atteint si suffisamment de membres sont présents. */
+export function quorumReached(quorum: number, presentCount: number): boolean {
+  return presentCount > 0 && presentCount >= quorum;
+}
+
+/** Cohérence des votes : la somme des voix ne dépasse pas les présents. */
+export function votesConsistent(v: {
+  presentCount: number;
+  votesFor: number;
+  votesAgainst: number;
+  votesAbstain: number;
+}): boolean {
+  return v.votesFor + v.votesAgainst + v.votesAbstain <= v.presentCount;
+}

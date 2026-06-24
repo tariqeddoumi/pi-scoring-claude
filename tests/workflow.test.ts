@@ -4,6 +4,9 @@ import {
   allowedTransitions,
   findTransition,
   isTerminal,
+  outcomeToState,
+  quorumReached,
+  votesConsistent,
   type WorkflowStateName,
 } from "@/lib/workflow";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -56,5 +59,26 @@ describe("workflow — machine à états crédit", () => {
         expect(states).toContain(t.to);
       }
     }
+  });
+});
+
+describe("workflow — décision de comité", () => {
+  it("mappe le sens de décision vers l'état cible", () => {
+    expect(outcomeToState("FAVORABLE")).toBe("APPROVED");
+    expect(outcomeToState("FAVORABLE_CONDITIONS")).toBe("APPROVED");
+    expect(outcomeToState("DEFAVORABLE")).toBe("REJECTED");
+    expect(outcomeToState("AJOURNE")).toBeNull();
+  });
+
+  it("valide le quorum (présents ≥ quorum et > 0)", () => {
+    expect(quorumReached(3, 3)).toBe(true);
+    expect(quorumReached(3, 4)).toBe(true);
+    expect(quorumReached(3, 2)).toBe(false);
+    expect(quorumReached(0, 0)).toBe(false);
+  });
+
+  it("vérifie la cohérence des votes (somme ≤ présents)", () => {
+    expect(votesConsistent({ presentCount: 5, votesFor: 3, votesAgainst: 1, votesAbstain: 1 })).toBe(true);
+    expect(votesConsistent({ presentCount: 3, votesFor: 3, votesAgainst: 1, votesAbstain: 0 })).toBe(false);
   });
 });

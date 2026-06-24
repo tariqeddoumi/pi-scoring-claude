@@ -6,11 +6,12 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
 import { WorkflowPanel } from "@/components/WorkflowPanel";
+import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
-import type { WorkflowStateName } from "@/lib/workflow";
-import { WORKFLOW_LABELS } from "@/lib/workflow";
-import type { RoleName } from "@/lib/rbac";
+import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
+import { WORKFLOW_LABELS, COMMITTEE_OUTCOME_LABELS } from "@/lib/workflow";
+import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
@@ -82,6 +83,43 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
       {actor && (
         <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
+      )}
+
+      {actor && currentState === "COMMITTEE" && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE) && (
+        <CommitteeDecisionForm projectId={p.id} />
+      )}
+
+      {p.committeeDecisions[0] && (
+        <Card>
+          <CardHeader><CardTitle>Dernière décision de comité</CardTitle></CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {(() => {
+              const cd = p.committeeDecisions[0]!;
+              return (
+                <>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Badge className={cd.outcome.startsWith("FAVORABLE") ? "bg-emerald-100 text-emerald-800 border-emerald-300" : cd.outcome === "DEFAVORABLE" ? "bg-red-100 text-red-800 border-red-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                      {COMMITTEE_OUTCOME_LABELS[cd.outcome as CommitteeOutcomeName]}
+                    </Badge>
+                    <span className="text-muted-foreground">
+                      Président : {cd.chair.name} · {formatDate(cd.createdAt)}
+                    </span>
+                  </div>
+                  <div className="grid sm:grid-cols-4 gap-2">
+                    <span>Quorum : {cd.presentCount}/{cd.quorum}</span>
+                    <span>Pour : {cd.votesFor}</span>
+                    <span>Contre : {cd.votesAgainst}</span>
+                    <span>Abst. : {cd.votesAbstain}</span>
+                  </div>
+                  {cd.approvedAmount != null && <p>Montant approuvé : <span className="font-medium">{formatMAD(cd.approvedAmount)}</span></p>}
+                  {cd.conditions && <p>Conditions : {cd.conditions}</p>}
+                  {cd.validUntil && <p>Validité jusqu'au {formatDate(cd.validUntil)}</p>}
+                  {cd.minutesRef && <p className="text-muted-foreground">PV : {cd.minutesRef}</p>}
+                </>
+              );
+            })()}
+          </CardContent>
+        </Card>
       )}
 
       <Tabs defaultValue="Identification">
