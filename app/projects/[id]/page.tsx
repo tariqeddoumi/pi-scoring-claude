@@ -5,7 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, B
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
+import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
+import { getCurrentAppUser } from "@/lib/supabase/server";
+import type { WorkflowStateName } from "@/lib/workflow";
+import { WORKFLOW_LABELS } from "@/lib/workflow";
+import type { RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
@@ -30,6 +35,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const run = p.scoringRuns[0];
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
+
+  const actor = await getCurrentAppUser();
+  const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
 
   const sectionTable = (sectionKey: keyof typeof INPUT_SECTIONS) => {
     const s = INPUT_SECTIONS[sectionKey]!;
@@ -71,6 +79,10 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       </div>
 
       <RunScoringButton projectId={p.id} />
+
+      {actor && (
+        <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
+      )}
 
       <Tabs defaultValue="Identification">
         <TabsList>
@@ -217,10 +229,15 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <TabsContent value="Audit">
           <Card><CardHeader><CardTitle>Historique workflow</CardTitle></CardHeader><CardContent className="p-0">
             <Table>
-              <thead><tr><Th>Date</Th><Th>Étape</Th><Th>Acteur</Th></tr></thead>
+              <thead><tr><Th>Date</Th><Th>Transition</Th><Th>Acteur</Th><Th>Commentaire</Th></tr></thead>
               <tbody>
                 {p.workflowSteps.map((w) => (
-                  <tr key={w.id}><Td>{formatDate(w.createdAt)}</Td><Td>{w.toState}</Td><Td>{w.actor.name}</Td></tr>
+                  <tr key={w.id}>
+                    <Td className="whitespace-nowrap">{formatDate(w.createdAt)}</Td>
+                    <Td>{w.fromState ? `${WORKFLOW_LABELS[w.fromState as WorkflowStateName]} → ` : ""}{WORKFLOW_LABELS[w.toState as WorkflowStateName]}</Td>
+                    <Td>{w.actor.name}</Td>
+                    <Td className="text-muted-foreground">{w.comment ?? "—"}</Td>
+                  </tr>
                 ))}
                 {p.workflowSteps.length === 0 && <tr><Td className="text-muted-foreground">Aucune étape enregistrée.</Td></tr>}
               </tbody>
