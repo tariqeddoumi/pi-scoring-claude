@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import "./globals.css";
+import { getCurrentAppUser } from "@/lib/supabase/server";
+import { Button } from "@/components/ui";
 
 export const metadata: Metadata = {
   title: "PI Scoring BKAM — Promotion Immobilière",
@@ -17,7 +19,20 @@ const NAV = [
   { href: "/audit", label: "Audit" },
 ];
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // L'authentification est garantie par le middleware ; on récupère l'acteur
+  // applicatif pour afficher son identité et la déconnexion. Hors session
+  // (page /login), on rend un shell minimal sans navigation.
+  const user = await getCurrentAppUser();
+
+  if (!user) {
+    return (
+      <html lang="fr">
+        <body>{children}</body>
+      </html>
+    );
+  }
+
   return (
     <html lang="fr">
       <body>
@@ -38,8 +53,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </Link>
               ))}
             </nav>
-            <div className="p-4 border-t border-border text-xs text-muted-foreground">
-              Promotion Immobilière
+            <div className="p-4 border-t border-border space-y-2">
+              <div className="text-sm font-medium leading-tight">{user.name}</div>
+              <div className="text-xs text-muted-foreground">
+                {user.email} · {user.role.label}
+              </div>
+              <form action="/auth/signout" method="post">
+                <Button type="submit" variant="outline" className="w-full">
+                  Se déconnecter
+                </Button>
+              </form>
             </div>
           </aside>
           <main className="flex-1 min-w-0">

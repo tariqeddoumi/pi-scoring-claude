@@ -16,7 +16,9 @@ export async function saveProjectInputs(
   if (!parsed.success) {
     return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
   }
+  // Deny‑by‑default : aucune écriture sans acteur authentifié et autorisé.
   const actor = await getCurrentAppUser();
+  if (!actor) return { ok: false as const, error: "Non authentifié : accès refusé." };
 
   await prisma.$transaction(async (tx) => {
     for (const [key, value] of Object.entries(parsed.data)) {

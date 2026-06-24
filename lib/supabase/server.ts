@@ -28,19 +28,31 @@ export function createClient() {
   );
 }
 
-/** Utilisateur applicatif courant : associe l'email Supabase à la table User. */
+/**
+ * Utilisateur applicatif courant (deny‑by‑default).
+ * Associe l'email de la session Supabase à la table User et exige un compte
+ * actif. Retourne `null` si non authentifié, email inconnu, ou compte inactif —
+ * aucun repli sur un acteur de démonstration (sécurité : pas d'identité falsifiée).
+ */
 export async function getCurrentAppUser() {
-  const { prisma } = await import("@/lib/prisma");
   try {
     const supabase = createClient();
     const { data } = await supabase.auth.getUser();
     const email = data.user?.email;
-    if (email) {
-      const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
-      if (user) return user;
-    }
+    if (!email) return null;
+    const { prisma } = await import("@/lib/prisma");
+    const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });
+    if (!user || !user.active) return null;
+    return user;
   } catch {
-    // Auth non configurée : on retombe sur l'acteur par défaut (démo).
+    // Auth ou base non joignable : échec fermé.
+    return null;
   }
-  return prisma.user.findFirst({ where: { role: { name: "RISK_ANALYST" } }, include: { role: true } });
+}
+
+/** Variante stricte : lève si aucun utilisateur applicatif autorisé. */
+export async function requireAppUser() {
+  const user = await getCurrentAppUser();
+  if (!user) throw new Error("Non authentifié : accès refusé.");
+  return user;
 }
