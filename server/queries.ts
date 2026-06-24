@@ -14,6 +14,8 @@ import {
   migrationMatrixFromSequences,
   type MigrationMatrix,
 } from "@/lib/domain/migrationMatrix";
+import { mostSevereClass } from "@/lib/domain/groups";
+import type { RegulatoryClassCode } from "@/lib/domain/types";
 
 export async function getProjectsWithLatestRun() {
   const projects = await prisma.realEstateProject.findMany({
@@ -39,6 +41,7 @@ export async function getProjectDetail(id: string) {
       guarantees: { include: { type: true } },
       comments: { include: { author: true }, orderBy: { createdAt: "desc" } },
       attachments: true,
+      group: true,
       workflowSteps: { include: { actor: true }, orderBy: { createdAt: "desc" } },
       committeeDecisions: { include: { chair: true }, orderBy: { createdAt: "desc" } },
       scoringRuns: {
@@ -264,6 +267,64 @@ export async function getMigrationMatrix(): Promise<{
   const matrix = migrationMatrixFromSequences(sequences);
 
   return { matrix, projectsTracked: byProject.size, projectsWithHistory };
+}
+
+// ---------------------------------------------------------------------
+//  Groupes d'intérêt : membres, exposition consolidée et classe de
+//  contagion (la plus sévère du groupe — référence de l'effet groupe).
+// ---------------------------------------------------------------------
+
+export interface GroupMember {
+  id: string;
+  reference: string;
+  name: string;
+  exposure: number;
+  cls: RegulatoryClassCode | null;
+}
+
+export interface GroupView {
+  id: string;
+  name: string;
+  sector: string | null;
+  members: GroupMember[];
+  exposure: number;
+  severeClass: RegulatoryClassCode | undefined;
+}
+
+export async function getGroups(): Promise<GroupView[]> {
+  const groups = await prisma.group.findMany({
+    orderBy: { name: "asc" },
+    include: {
+      projects: {
+        orderBy: { reference: "asc" },
+        select: {
+          id: true,
+          reference: true,
+          name: true,
+          loanAmount: true,
+          classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultClass: true } },
+        },
+      },
+    },
+  });
+
+  return groups.map((g) => {
+    const members: GroupMember[] = g.projects.map((p) => ({
+      id: p.id,
+      reference: p.reference,
+      name: p.name,
+      exposure: p.loanAmount ?? 0,
+      cls: (p.classificationRuns[0]?.resultClass ?? null) as RegulatoryClassCode | null,
+    }));
+    return {
+      id: g.id,
+      name: g.name,
+      sector: g.sector,
+      members,
+      exposure: members.reduce((s, m) => s + m.exposure, 0),
+      severeClass: mostSevereClass(members.map((m) => m.cls)),
+    };
+  });
 }
 
 export async function getAuditLog(limit = 100) {

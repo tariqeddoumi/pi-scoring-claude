@@ -13,6 +13,7 @@ import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { computeEligibleGuarantees } from "@/server/engines/guaranteeEligibilityEngine";
 import { computeProvision } from "@/server/engines/provisioningEngine";
 import { computeGfaRelief } from "@/lib/domain/gfaVefa";
+import { mostSevereClass } from "@/lib/domain/groups";
 import {
   loadActiveModelConfig,
   loadActiveRegime,
@@ -273,17 +274,7 @@ async function mostSevereGroupClass(
       },
     },
   });
-  const order: RegulatoryClassCode[] = ["SAIN", "SENSIBLE", "PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
-  let best: RegulatoryClassCode | undefined;
-  let bestIdx = -1;
-  for (const p of peers) {
-    const cls = p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined;
-    if (!cls) continue;
-    const idx = order.indexOf(cls);
-    if (idx > bestIdx) {
-      bestIdx = idx;
-      best = cls;
-    }
-  }
-  return best;
+  return mostSevereClass(
+    peers.map((p) => p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined),
+  );
 }

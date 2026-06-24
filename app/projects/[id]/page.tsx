@@ -182,7 +182,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 <tr><Td className="text-muted-foreground">Type</Td><Td>{p.projectType ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{p.segment ?? "—"} / {p.zone ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{p.city ?? "—"} / {p.region ?? "—"}</Td></tr>
-                <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.groupId ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.group ? <Link href="/groups" className="text-primary hover:underline">{p.group.name}</Link> : "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Unités</Td><Td>{p.totalUnits ?? "—"}</Td></tr>
               </tbody></Table>
             </CardContent></Card>

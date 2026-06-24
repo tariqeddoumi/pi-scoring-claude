@@ -211,6 +211,7 @@ model RealEstateProject {
   builtAreaSqm  Float?
   // Appartenance à un groupe d'intérêt (effet groupe BKAM art 33/50)
   groupId       String?
+  group         Group?  @relation(fields: [groupId], references: [id])
 
   // Montants (en MAD)
   totalCost     Float?  // coût total du projet
@@ -625,6 +626,19 @@ model WorkflowStep {
   createdAt DateTime @default(now())
 
   @@index([projectId])
+}
+
+// Groupe d'intérêt (contrepartie consolidée) — support de l'effet groupe
+// BKAM (19/G art.33 ; 1/W art.50) : contagion de la classe la plus sévère.
+model Group {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  sector    String?  // secteur d'activité dominant
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects  RealEstateProject[]
 }
 
 // Décision formelle du comité de crédit (quorum, votes, conditions, validité).
