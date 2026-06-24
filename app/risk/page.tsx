@@ -5,9 +5,18 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatMAD, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS } from "@/lib/labels";
+import { SLOTTING_LABELS } from "@/lib/domain/riskMetrics";
 import type { ConcentrationRow } from "@/server/queries";
 
 export const dynamic = "force-dynamic";
+
+const SLOTTING_COLORS: Record<string, string> = {
+  STRONG: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  GOOD: "bg-lime-100 text-lime-800 border-lime-300",
+  SATISFACTORY: "bg-amber-100 text-amber-800 border-amber-300",
+  WEAK: "bg-orange-100 text-orange-800 border-orange-300",
+  DEFAULT: "bg-red-100 text-red-800 border-red-300",
+};
 
 // Échelle de couleur de la heatmap selon l'intensité (0 = vide).
 function cellClass(n: number, max: number): string {
@@ -73,6 +82,41 @@ export default async function RiskPage() {
         <Stat label="Concentration (HHI)" value={`${hhiPct.toFixed(0)} pts`} hint={`${hhiLabel} · par promoteur`} />
         <Stat label="Promoteurs" value={d.byPromoter.length} />
       </div>
+
+      <Card>
+        <CardHeader><CardTitle>Risque attendu — lecture Bâle / IFRS 9</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat label="Perte attendue (EL)" value={formatMAD(d.totalExpectedLoss)} hint="Σ PD × LGD × EAD" />
+            <Stat label="RWA total" value={formatMAD(d.totalRwa)} hint="actifs pondérés du risque" />
+            <Stat label="EAD total" value={formatMAD(d.totalEad)} hint="exposition au défaut" />
+            <Stat label="Stages IFRS 9" value={`${d.stageDist[1] ?? 0} / ${d.stageDist[2] ?? 0} / ${d.stageDist[3] ?? 0}`} hint="Stage 1 / 2 / 3" />
+          </div>
+          <Table>
+            <thead>
+              <tr><Th>Catégorie (slotting)</Th><Th className="text-center">Dossiers</Th><Th className="text-right">EAD</Th><Th className="text-right">Perte attendue</Th></tr>
+            </thead>
+            <tbody>
+              {d.slottingOrder.map((s) => {
+                const row = d.slotting[s];
+                if (row.count === 0) return null;
+                return (
+                  <tr key={s}>
+                    <Td><Badge className={SLOTTING_COLORS[s]}>{SLOTTING_LABELS[s]}</Badge></Td>
+                    <Td className="text-center">{row.count}</Td>
+                    <Td className="text-right whitespace-nowrap">{formatMAD(row.ead)}</Td>
+                    <Td className="text-right whitespace-nowrap">{formatMAD(row.el)}</Td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </Table>
+          <p className="text-xs text-muted-foreground">
+            Approche slotting supervisée (Bâle, financement spécialisé immobilier) — paramètres
+            PD/LGD/pondérations indicatifs à calibrer sur l'historique de la banque.
+          </p>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle>Heatmap — Classe BKAM × Décision de scoring</CardTitle></CardHeader>

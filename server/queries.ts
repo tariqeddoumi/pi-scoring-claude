@@ -16,7 +16,10 @@ import {
 } from "@/lib/domain/migrationMatrix";
 import { mostSevereClass } from "@/lib/domain/groups";
 import { consolidateProgram, type ProgramConsolidation, type AssetTypeCode } from "@/lib/domain/program";
+import { computeRiskMetrics, type SlottingCategory } from "@/lib/domain/riskMetrics";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
+
+const SLOTTING_ORDER: SlottingCategory[] = ["STRONG", "GOOD", "SATISFACTORY", "WEAK", "DEFAULT"];
 
 export async function getProjectsWithLatestRun() {
   const projects = await prisma.realEstateProject.findMany({
@@ -156,6 +159,32 @@ export async function getRiskDashboard() {
     };
   });
 
+  // Métriques internationales (Bâle/IFRS 9) agrégées au portefeuille.
+  const slotting = Object.fromEntries(
+    SLOTTING_ORDER.map((s) => [s, { count: 0, ead: 0, el: 0 }]),
+  ) as Record<SlottingCategory, { count: number; ead: number; el: number }>;
+  const stageDist: Record<number, number> = { 1: 0, 2: 0, 3: 0 };
+  let totalExpectedLoss = 0;
+  let totalRwa = 0;
+  let totalEad = 0;
+
+  for (const p of projects) {
+    const ead = p.provisionRuns[0]?.ead ?? p.loanAmount ?? 0;
+    const m = computeRiskMetrics({
+      score: p.scoringRuns[0]?.scoreFinal ?? null,
+      cls: (p.classificationRuns[0]?.resultClass ?? null) as RegulatoryClassCode | null,
+      ead,
+      eligibleGuarantees: p.provisionRuns[0]?.eligibleGuarantees ?? 0,
+    });
+    slotting[m.slotting].count += 1;
+    slotting[m.slotting].ead += m.ead;
+    slotting[m.slotting].el += m.expectedLoss;
+    stageDist[m.stage] = (stageDist[m.stage] ?? 0) + 1;
+    totalExpectedLoss += m.expectedLoss;
+    totalRwa += m.rwa;
+    totalEad += m.ead;
+  }
+
   const bySegment = aggregateConcentration(flat.map((f) => ({ key: f.segment, exposure: f.exposure, provision: f.provision })));
   const byZone = aggregateConcentration(flat.map((f) => ({ key: f.zone, exposure: f.exposure, provision: f.provision })));
   const byPromoter = aggregateConcentration(flat.map((f) => ({ key: f.promoter, exposure: f.exposure, provision: f.provision })));
@@ -179,6 +208,12 @@ export async function getRiskDashboard() {
     byPromoter,
     topExposures,
     hhi,
+    slottingOrder: SLOTTING_ORDER,
+    slotting,
+    stageDist,
+    totalExpectedLoss,
+    totalRwa,
+    totalEad,
   };
 }
 

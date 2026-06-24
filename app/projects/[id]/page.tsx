@@ -9,6 +9,8 @@ import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { GfaVefaCard } from "@/components/GfaVefaCard";
 import { FacilitiesCard } from "@/components/FacilitiesCard";
+import { RiskMetricsCard } from "@/components/RiskMetricsCard";
+import { projectEad } from "@/lib/domain/facility";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
@@ -148,6 +150,13 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       )}
 
       <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
+
+      <RiskMetricsCard
+        score={run?.scoreFinal ?? null}
+        cls={cls?.resultClass ?? null}
+        ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
+        eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
+      />
 
       {p.workflowSteps.length > 0 && (
         <Card>
