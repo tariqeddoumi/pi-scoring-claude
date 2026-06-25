@@ -3,16 +3,18 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
-import { WIZARD_STEPS } from "@/lib/wizardFields";
+import { WIZARD_STEPS, type FieldDef } from "@/lib/wizardFields";
 import { INPUT_LABELS } from "@/lib/inputLabels";
 import { saveProjectInputs, runScoringAction } from "@/server/actions/scoring";
 
 export function ScoringWizard({
   projectId,
   initial,
+  steps = WIZARD_STEPS,
 }: {
   projectId: string;
   initial: Record<string, any>;
+  steps?: { id: string; title: string; fields: FieldDef[] }[];
 }) {
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<string, any>>(initial);
@@ -20,7 +22,7 @@ export function ScoringWizard({
   const [msg, setMsg] = useState<string | null>(null);
   const router = useRouter();
 
-  const current = WIZARD_STEPS[step]!;
+  const current = steps[step]!;
   const setVal = (k: string, v: any) => setValues((p) => ({ ...p, [k]: v }));
 
   const save = (then?: "run") =>
@@ -42,11 +44,11 @@ export function ScoringWizard({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Étape {step + 1}/{WIZARD_STEPS.length} — {current.title}</CardTitle>
+        <CardTitle>Étape {step + 1}/{steps.length} — {current.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-1">
-          {WIZARD_STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <button
               key={s.id}
               onClick={() => setStep(i)}
@@ -95,7 +97,7 @@ export function ScoringWizard({
         <div className="flex items-center justify-between pt-2 border-t border-border">
           <div className="flex gap-2">
             <Button variant="outline" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>Précédent</Button>
-            <Button variant="outline" disabled={step === WIZARD_STEPS.length - 1} onClick={() => setStep((s) => s + 1)}>Suivant</Button>
+            <Button variant="outline" disabled={step === steps.length - 1} onClick={() => setStep((s) => s + 1)}>Suivant</Button>
           </div>
           <div className="flex gap-2 items-center">
             {msg && <span className="text-sm text-muted-foreground">{msg}</span>}

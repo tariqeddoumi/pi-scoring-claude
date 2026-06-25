@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -9,6 +9,8 @@ import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { GfaVefaCard } from "@/components/GfaVefaCard";
 import { FacilitiesCard } from "@/components/FacilitiesCard";
+import { RiskMetricsCard } from "@/components/RiskMetricsCard";
+import { projectEad } from "@/lib/domain/facility";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
@@ -48,6 +50,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const run = p.scoringRuns[0];
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
+  const calib = await getActiveCalibration();
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
@@ -86,7 +89,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           {run?.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
           <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
-            <Button variant="outline">Rapport comité (PDF)</Button>
+            <Button variant="outline">Dossier comité (PDF)</Button>
           </a>
         </div>
       </div>
@@ -148,6 +151,15 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
       )}
 
       <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
+
+      <RiskMetricsCard
+        score={run?.scoreFinal ?? null}
+        cls={cls?.resultClass ?? null}
+        ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
+        eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
+        bkamProvision={prov?.provisionAmount ?? null}
+        calib={calib}
+      />
 
       {p.workflowSteps.length > 0 && (
         <Card>

@@ -685,6 +685,25 @@ model Installment {
   @@index([facilityId])
 }
 
+// Paramètres de calibrage du risque (PD par catégorie de slotting, LGD,
+// maturité) éditables par le risk manager — alimentent les métriques
+// Bâle/IFRS 9 sans recompilation. Une seule ligne active à la fois.
+model RiskCalibration {
+  id              String   @id @default(cuid())
+  label           String   @default("Calibrage par défaut")
+  pdStrong        Float    @default(0.005)
+  pdGood          Float    @default(0.015)
+  pdSatisfactory  Float    @default(0.04)
+  pdWeak          Float    @default(0.12)
+  lgdUnsecured    Float    @default(0.45)
+  lgdFloor        Float    @default(0.05)
+  maturityYears   Float    @default(3)
+  active          Boolean  @default(true)
+  updatedByEmail  String?  // auteur de cette version (audit)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
 // Groupe d'intérêt (contrepartie consolidée) — support de l'effet groupe
 // BKAM (19/G art.33 ; 1/W art.50) : contagion de la classe la plus sévère.
 model Group {

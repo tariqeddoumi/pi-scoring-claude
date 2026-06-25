@@ -140,3 +140,38 @@ export const gfaVefaSchema = z.object({
 });
 
 export type GfaVefaFormValues = z.infer<typeof gfaVefaSchema>;
+
+// Entrées du modèle ACTIFS D'EXPLOITATION & DE RAPPORT (hôtels, bureaux,
+// commerces loués).
+export const exploitationInputsSchema = z.object({
+  occupancy_rate: z.coerce.number().min(0).max(100),
+  lease_indexation: z.enum(["none", "partial", "full"]),
+  revenue_stability: z.enum(["volatile", "moderate", "stable"]),
+  seasonality: z.enum(["high", "moderate", "low"]),
+  dscr: z.coerce.number().min(0),
+  debt_yield: z.coerce.number().min(0),
+  interest_coverage: z.coerce.number().min(0),
+  walt_years: z.coerce.number().min(0),
+  tenant_quality: z.enum(["weak", "standard", "strong"]),
+  operator_quality: z.enum(["independent", "regional", "international"]),
+  ltv_stabilized: z.coerce.number().min(0).max(300),
+  asset_quality: z.enum(["poor", "standard", "prime"]),
+  location_demand: z.enum(["weak", "moderate", "strong"]),
+  refinancing_risk: z.enum(["high", "moderate", "low"]),
+  dpd_days: z.coerce.number().int().min(0),
+  restructured: z.enum(["yes", "no"]).optional().default("no"),
+  legal_exposure: z.enum(["litigation", "watch", "clear"]).optional().default("clear"),
+});
+
+export const riskCalibrationSchema = z.object({
+  label: z.string().min(1).max(120),
+  pdStrong: z.coerce.number().min(0).max(1),
+  pdGood: z.coerce.number().min(0).max(1),
+  pdSatisfactory: z.coerce.number().min(0).max(1),
+  pdWeak: z.coerce.number().min(0).max(1),
+  lgdUnsecured: z.coerce.number().min(0).max(1),
+  lgdFloor: z.coerce.number().min(0).max(1),
+  maturityYears: z.coerce.number().min(1).max(15),
+});
+
+export type RiskCalibrationFormValues = z.infer<typeof riskCalibrationSchema>;

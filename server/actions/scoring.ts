@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { runFullScoring } from "@/server/services/scoringService";
-import { scoringInputsSchema } from "@/lib/validation";
+import { scoringInputsSchema, exploitationInputsSchema } from "@/lib/validation";
 import { recordAudit } from "@/server/engines/auditService";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
@@ -13,7 +13,14 @@ export async function saveProjectInputs(
   projectId: string,
   rawInputs: Record<string, unknown>,
 ) {
-  const parsed = scoringInputsSchema.safeParse(rawInputs);
+  // Le jeu d'entrées attendu dépend de la nature de l'actif (promotion vs
+  // exploitation), qui détermine le modèle de scoring applicable.
+  const project = await prisma.realEstateProject.findUnique({
+    where: { id: projectId },
+    select: { assetType: true },
+  });
+  const schema = project?.assetType === "EXPLOITATION" ? exploitationInputsSchema : scoringInputsSchema;
+  const parsed = schema.safeParse(rawInputs);
   if (!parsed.success) {
     return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
   }

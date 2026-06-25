@@ -12,6 +12,52 @@ const sel = (key: string, opts: [string, string][]): FieldDef => ({
   key, type: "select", options: opts.map(([value, label]) => ({ value, label })),
 });
 
+// Étapes du wizard pour les ACTIFS D'EXPLOITATION (hôtels / immobilier de rapport).
+export const EXPLOITATION_WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] = [
+  {
+    id: "exploitation", title: "Performance & occupation",
+    fields: [
+      { key: "occupancy_rate", type: "number" },
+      sel("lease_indexation", [["none", "Non indexés"], ["partial", "Partiellement indexés"], ["full", "Pleinement indexés"]]),
+      sel("revenue_stability", [["volatile", "Volatile"], ["moderate", "Modérée"], ["stable", "Stable"]]),
+      sel("seasonality", [["high", "Forte"], ["moderate", "Modérée"], ["low", "Faible"]]),
+    ],
+  },
+  {
+    id: "dette", title: "Couverture de la dette",
+    fields: [
+      { key: "dscr", type: "number", step: "0.01" },
+      { key: "debt_yield", type: "number", step: "0.1" },
+      { key: "interest_coverage", type: "number", step: "0.1" },
+    ],
+  },
+  {
+    id: "locataires", title: "Locataires & opérateur",
+    fields: [
+      { key: "walt_years", type: "number", step: "0.1" },
+      sel("tenant_quality", [["weak", "Faible"], ["standard", "Standard"], ["strong", "Solide (grands comptes)"]]),
+      sel("operator_quality", [["independent", "Indépendant"], ["regional", "Régional"], ["international", "International"]]),
+    ],
+  },
+  {
+    id: "actif", title: "Actif & marché",
+    fields: [
+      { key: "ltv_stabilized", type: "number", step: "0.1" },
+      sel("asset_quality", [["poor", "Médiocre"], ["standard", "Standard"], ["prime", "Prime"]]),
+      sel("location_demand", [["weak", "Faible"], ["moderate", "Modérée"], ["strong", "Forte"]]),
+      sel("refinancing_risk", [["high", "Élevé"], ["moderate", "Modéré"], ["low", "Faible"]]),
+    ],
+  },
+  {
+    id: "reglementaire", title: "Déclencheurs réglementaires",
+    fields: [
+      { key: "dpd_days", type: "number" },
+      sel("restructured", [["no", "Non"], ["yes", "Oui"]]),
+      sel("legal_exposure", [["clear", "Sain"], ["watch", "Surveillance"], ["litigation", "Contentieux"]]),
+    ],
+  },
+];
+
 export const WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] = [
   {
     id: "promoteur", title: "Promoteur & Gouvernance",

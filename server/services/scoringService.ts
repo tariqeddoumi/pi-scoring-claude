@@ -35,11 +35,6 @@ export async function runFullScoring(opts: RunScoringOptions) {
   const { projectId, actorId } = opts;
 
   return prisma.$transaction(async (tx) => {
-    // 1. Charger la configuration et les entrées
-    const [{ versionId, config: model }, { regimeId, config: regime, guaranteeTypes, hypEvaluationThreshold }] =
-      await Promise.all([loadActiveModelConfig(tx), loadActiveRegime(tx)]);
-    const inputs = await loadProjectInputs(tx, projectId);
-
     const project = await tx.realEstateProject.findUniqueOrThrow({
       where: { id: projectId },
       include: {
@@ -47,6 +42,13 @@ export async function runFullScoring(opts: RunScoringOptions) {
         facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
       },
     });
+
+    // 1. Charger la configuration et les entrées. Le modèle de scoring dépend de
+    //    la nature de l'actif : promotion (vente) vs exploitation (hôtel…).
+    const modelCode = project.assetType === "EXPLOITATION" ? "PI_EXPLOITATION" : "PI_PROMOTION";
+    const [{ versionId, config: model }, { regimeId, config: regime, guaranteeTypes, hypEvaluationThreshold }] =
+      await Promise.all([loadActiveModelConfig(tx, modelCode), loadActiveRegime(tx)]);
+    const inputs = await loadProjectInputs(tx, projectId);
 
     // 1bis. Effet groupe (art.33/50) : classe la plus sévère des entités liées.
     const groupPeerClass = project.groupId
