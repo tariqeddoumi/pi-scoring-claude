@@ -56,6 +56,7 @@ export default async function GroupsPage() {
                 {g.severeClass && (
                   <Badge className={CLASS_COLORS[g.severeClass]}>Contagion : {CLASS_LABELS[g.severeClass]}</Badge>
                 )}
+                <a href={`/api/export/group/${g.id}`} target="_blank" rel="noreferrer" className="text-xs rounded-md border border-border px-2 py-1 hover:bg-muted">Dossier comité (PDF)</a>
               </span>
             </CardTitle>
             {g.consolidation.operationalExposure > 0 && (

@@ -89,7 +89,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           {run?.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
           <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
-            <Button variant="outline">Rapport comité (PDF)</Button>
+            <Button variant="outline">Dossier comité (PDF)</Button>
           </a>
         </div>
       </div>
