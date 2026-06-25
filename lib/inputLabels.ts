@@ -73,21 +73,20 @@ export const INPUT_LABELS: Record<string, string> = {
   judicial_recovery: "Redressement judiciaire",
   debt_equity_ratio: "Dettes financières / FP (x)",
   revenue_drop_pct: "Baisse du CA sur 1 an (%)",
-  // --- Modèle actifs d'exploitation (hôtels / immobilier de rapport) ---
+  // --- Modèle actifs d'exploitation & de rapport (hôtels, bureaux, commerces) ---
   occupancy_rate: "Taux d'occupation (%)",
-  revpar_trend: "Tendance RevPAR / CA",
+  lease_indexation: "Indexation des baux",
   revenue_stability: "Stabilité des revenus",
   seasonality: "Saisonnalité",
   dscr: "DSCR (NOI / service de la dette)",
   debt_yield: "Debt yield (%)",
-  operator_quality: "Qualité de l'opérateur",
-  brand_affiliation: "Affiliation à une enseigne",
-  operator_years: "Ancienneté de gestion (ans)",
+  walt_years: "WALT — durée ferme des baux (ans)",
+  tenant_quality: "Qualité des locataires (covenant)",
+  operator_quality: "Qualité de l'opérateur / gestionnaire",
   ltv_stabilized: "LTV stabilisé (%)",
   asset_quality: "Qualité de l'actif",
   location_demand: "Demande de l'emplacement",
   refinancing_risk: "Risque de refinancement",
-  operator_default: "Défaillance de l'opérateur",
 };
 
 export function fmtInput(v: number | string | boolean | null): string {

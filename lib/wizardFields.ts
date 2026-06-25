@@ -15,10 +15,10 @@ const sel = (key: string, opts: [string, string][]): FieldDef => ({
 // Étapes du wizard pour les ACTIFS D'EXPLOITATION (hôtels / immobilier de rapport).
 export const EXPLOITATION_WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] = [
   {
-    id: "exploitation", title: "Performance d'exploitation",
+    id: "exploitation", title: "Performance & occupation",
     fields: [
       { key: "occupancy_rate", type: "number" },
-      sel("revpar_trend", [["declining", "En baisse"], ["stable", "Stable"], ["growing", "En croissance"]]),
+      sel("lease_indexation", [["none", "Non indexés"], ["partial", "Partiellement indexés"], ["full", "Pleinement indexés"]]),
       sel("revenue_stability", [["volatile", "Volatile"], ["moderate", "Modérée"], ["stable", "Stable"]]),
       sel("seasonality", [["high", "Forte"], ["moderate", "Modérée"], ["low", "Faible"]]),
     ],
@@ -32,11 +32,11 @@ export const EXPLOITATION_WIZARD_STEPS: { id: string; title: string; fields: Fie
     ],
   },
   {
-    id: "operateur", title: "Opérateur & gestion",
+    id: "locataires", title: "Locataires & opérateur",
     fields: [
+      { key: "walt_years", type: "number", step: "0.1" },
+      sel("tenant_quality", [["weak", "Faible"], ["standard", "Standard"], ["strong", "Solide (grands comptes)"]]),
       sel("operator_quality", [["independent", "Indépendant"], ["regional", "Régional"], ["international", "International"]]),
-      sel("brand_affiliation", [["none", "Aucune"], ["soft", "Soft brand"], ["franchise", "Franchise / enseigne globale"]]),
-      { key: "operator_years", type: "number" },
     ],
   },
   {
@@ -54,7 +54,6 @@ export const EXPLOITATION_WIZARD_STEPS: { id: string; title: string; fields: Fie
       { key: "dpd_days", type: "number" },
       sel("restructured", [["no", "Non"], ["yes", "Oui"]]),
       sel("legal_exposure", [["clear", "Sain"], ["watch", "Surveillance"], ["litigation", "Contentieux"]]),
-      { key: "operator_default", type: "bool" },
     ],
   },
 ];
