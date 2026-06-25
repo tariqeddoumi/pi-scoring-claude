@@ -17,6 +17,7 @@ import {
 import { mostSevereClass } from "@/lib/domain/groups";
 import { consolidateProgram, type ProgramConsolidation, type AssetTypeCode } from "@/lib/domain/program";
 import { computeRiskMetrics, type SlottingCategory } from "@/lib/domain/riskMetrics";
+import { computeEcl } from "@/lib/domain/ifrs9";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
 
 const SLOTTING_ORDER: SlottingCategory[] = ["STRONG", "GOOD", "SATISFACTORY", "WEAK", "DEFAULT"];
@@ -167,6 +168,8 @@ export async function getRiskDashboard() {
   let totalExpectedLoss = 0;
   let totalRwa = 0;
   let totalEad = 0;
+  let totalEcl = 0; // ECL IFRS 9
+  let totalProvisionBkam = 0; // provision prudentielle BKAM
 
   for (const p of projects) {
     const ead = p.provisionRuns[0]?.ead ?? p.loanAmount ?? 0;
@@ -176,6 +179,7 @@ export async function getRiskDashboard() {
       ead,
       eligibleGuarantees: p.provisionRuns[0]?.eligibleGuarantees ?? 0,
     });
+    const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead });
     slotting[m.slotting].count += 1;
     slotting[m.slotting].ead += m.ead;
     slotting[m.slotting].el += m.expectedLoss;
@@ -183,6 +187,8 @@ export async function getRiskDashboard() {
     totalExpectedLoss += m.expectedLoss;
     totalRwa += m.rwa;
     totalEad += m.ead;
+    totalEcl += ecl.ecl;
+    totalProvisionBkam += p.provisionRuns[0]?.provisionAmount ?? 0;
   }
 
   const bySegment = aggregateConcentration(flat.map((f) => ({ key: f.segment, exposure: f.exposure, provision: f.provision })));
@@ -214,6 +220,8 @@ export async function getRiskDashboard() {
     totalExpectedLoss,
     totalRwa,
     totalEad,
+    totalEcl,
+    totalProvisionBkam,
   };
 }
 

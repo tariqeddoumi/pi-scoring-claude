@@ -92,6 +92,19 @@ export default async function RiskPage() {
             <Stat label="EAD total" value={formatMAD(d.totalEad)} hint="exposition au défaut" />
             <Stat label="Stages IFRS 9" value={`${d.stageDist[1] ?? 0} / ${d.stageDist[2] ?? 0} / ${d.stageDist[3] ?? 0}`} hint="Stage 1 / 2 / 3" />
           </div>
+
+          <div className="rounded-md border border-border p-4">
+            <div className="text-sm font-medium mb-3">Double cadre de couverture du risque</div>
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+              <Stat label="Provision BKAM" value={formatMAD(d.totalProvisionBkam)} hint="prudentiel — assiette × taux par classe" />
+              <Stat label="ECL IFRS 9" value={formatMAD(d.totalEcl)} hint="comptable — 12 mois / lifetime selon stage" />
+              <Stat
+                label="Écart IFRS 9 − BKAM"
+                value={`${d.totalEcl - d.totalProvisionBkam >= 0 ? "+" : ""}${formatMAD(d.totalEcl - d.totalProvisionBkam)}`}
+                hint={d.totalProvisionBkam > 0 ? `${Math.round((d.totalEcl / d.totalProvisionBkam) * 100)}% du prudentiel` : "—"}
+              />
+            </div>
+          </div>
           <Table>
             <thead>
               <tr><Th>Catégorie (slotting)</Th><Th className="text-center">Dossiers</Th><Th className="text-right">EAD</Th><Th className="text-right">Perte attendue</Th></tr>

@@ -156,6 +156,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         cls={cls?.resultClass ?? null}
         ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
         eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
+        bkamProvision={prov?.provisionAmount ?? null}
       />
 
       {p.workflowSteps.length > 0 && (
