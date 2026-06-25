@@ -141,6 +141,28 @@ export const gfaVefaSchema = z.object({
 
 export type GfaVefaFormValues = z.infer<typeof gfaVefaSchema>;
 
+// Entrées du modèle ACTIFS D'EXPLOITATION (hôtels, immobilier de rapport).
+export const exploitationInputsSchema = z.object({
+  occupancy_rate: z.coerce.number().min(0).max(100),
+  revpar_trend: z.enum(["declining", "stable", "growing"]),
+  revenue_stability: z.enum(["volatile", "moderate", "stable"]),
+  seasonality: z.enum(["high", "moderate", "low"]),
+  dscr: z.coerce.number().min(0),
+  debt_yield: z.coerce.number().min(0),
+  interest_coverage: z.coerce.number().min(0),
+  operator_quality: z.enum(["independent", "regional", "international"]),
+  brand_affiliation: z.enum(["none", "soft", "franchise"]),
+  operator_years: z.coerce.number().min(0),
+  ltv_stabilized: z.coerce.number().min(0).max(300),
+  asset_quality: z.enum(["poor", "standard", "prime"]),
+  location_demand: z.enum(["weak", "moderate", "strong"]),
+  refinancing_risk: z.enum(["high", "moderate", "low"]),
+  dpd_days: z.coerce.number().int().min(0),
+  restructured: z.enum(["yes", "no"]).optional().default("no"),
+  operator_default: bool,
+  legal_exposure: z.enum(["litigation", "watch", "clear"]).optional().default("clear"),
+});
+
 export const riskCalibrationSchema = z.object({
   label: z.string().min(1).max(120),
   pdStrong: z.coerce.number().min(0).max(1),

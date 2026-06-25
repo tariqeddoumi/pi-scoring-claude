@@ -29,6 +29,7 @@ import {
   REGIME_1W_2025,
   REGIME_1W_PROVISION_RATES,
 } from "@/lib/domain/referenceData";
+import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -471,7 +472,7 @@ export async function getStressTest(shock: StressShock) {
     const restructuring = { restructured: inputs.restructured === "yes" };
     const classification = classify({ regime: REGIME_1W_2025, inputs, restructuring });
     const scoring = runScoring({
-      model: PROMOTION_SCORING_MODEL,
+      model: p.assetType === "EXPLOITATION" ? EXPLOITATION_SCORING_MODEL : PROMOTION_SCORING_MODEL,
       inputs,
       segment: p.segment,
       zone: p.zone,
