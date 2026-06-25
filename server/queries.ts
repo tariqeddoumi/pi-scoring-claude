@@ -18,7 +18,18 @@ import { mostSevereClass } from "@/lib/domain/groups";
 import { consolidateProgram, type ProgramConsolidation, type AssetTypeCode } from "@/lib/domain/program";
 import { computeRiskMetrics, DEFAULT_CALIBRATION, type SlottingCategory, type RiskCalibration } from "@/lib/domain/riskMetrics";
 import { computeEcl } from "@/lib/domain/ifrs9";
-import type { RegulatoryClassCode } from "@/lib/domain/types";
+import { classSeverity } from "@/lib/domain/groups";
+import { projectEad } from "@/lib/domain/facility";
+import { applyStress, type StressShock } from "@/lib/domain/stress";
+import { classify } from "@/server/engines/regulatoryClassificationEngine";
+import { runScoring } from "@/server/engines/scoringEngine";
+import { computeProvision } from "@/server/engines/provisioningEngine";
+import {
+  PROMOTION_SCORING_MODEL,
+  REGIME_1W_2025,
+  REGIME_1W_PROVISION_RATES,
+} from "@/lib/domain/referenceData";
+import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Calibrage actif des paramètres de risque (PD/LGD/maturité). */
 export async function getActiveCalibration(): Promise<RiskCalibration & { id: string; label: string }> {
@@ -407,6 +418,99 @@ export async function getGroups(): Promise<GroupView[]> {
       ),
     };
   });
+}
+
+// ---------------------------------------------------------------------
+//  Stress test léger : applique un choc (baisse préventes / hausse DPD) aux
+//  entrées, re-exécute classification + scoring + provisionnement, et compare
+//  les pertes attendues (EL/ECL) et provisions base vs scénario stressé.
+// ---------------------------------------------------------------------
+
+interface StressLeg {
+  cls: RegulatoryClassCode;
+  el: number;
+  ecl: number;
+  provision: number;
+  stage: number;
+}
+export interface StressProjectImpact {
+  id: string;
+  reference: string;
+  name: string;
+  baseClass: RegulatoryClassCode;
+  stressedClass: RegulatoryClassCode;
+  elDelta: number;
+  downgraded: boolean;
+}
+export interface StressLegTotals {
+  totalEl: number;
+  totalEcl: number;
+  totalProvision: number;
+  stageDist: Record<number, number>;
+}
+
+export async function getStressTest(shock: StressShock) {
+  const calib = await getActiveCalibration();
+  const projects = await prisma.realEstateProject.findMany({
+    include: {
+      inputs: true,
+      facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
+      provisionRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { ead: true, eligibleGuarantees: true } },
+    },
+  });
+
+  const evaluate = (p: (typeof projects)[number], inputs: ProjectInputs): StressLeg => {
+    const restructuring = { restructured: inputs.restructured === "yes" };
+    const classification = classify({ regime: REGIME_1W_2025, inputs, restructuring });
+    const scoring = runScoring({
+      model: PROMOTION_SCORING_MODEL,
+      inputs,
+      segment: p.segment,
+      zone: p.zone,
+      regulatoryClass: classification.resultClass,
+      classBlocksGo: classification.blocksGo,
+    });
+    const ead = p.provisionRuns[0]?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead;
+    const eligible = p.provisionRuns[0]?.eligibleGuarantees ?? 0;
+    const rate = REGIME_1W_PROVISION_RATES[classification.resultClass] ?? 0;
+    const provision = computeProvision({
+      ead, reservedAgios: 0, eligibleGuarantees: eligible, classCode: classification.resultClass, rate,
+    });
+    const m = computeRiskMetrics({ score: scoring.scoreFinal ?? null, cls: classification.resultClass, ead, eligibleGuarantees: eligible }, calib);
+    const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
+    return { cls: classification.resultClass, el: m.expectedLoss, ecl: ecl.ecl, provision: provision.provisionAmount, stage: m.stage };
+  };
+
+  const emptyTotals = (): StressLegTotals => ({ totalEl: 0, totalEcl: 0, totalProvision: 0, stageDist: { 1: 0, 2: 0, 3: 0 } });
+  const base = emptyTotals();
+  const stressed = emptyTotals();
+  const impacts: StressProjectImpact[] = [];
+  let downgrades = 0;
+  let newDefaults = 0;
+
+  for (const p of projects) {
+    const inputs: ProjectInputs = {};
+    for (const i of p.inputs) inputs[i.key] = i.valueNum ?? i.valueStr ?? i.valueBool ?? null;
+
+    const b = evaluate(p, inputs);
+    const s = evaluate(p, applyStress(inputs, shock));
+
+    for (const leg of [[b, base], [s, stressed]] as const) {
+      const [r, agg] = leg;
+      agg.totalEl += r.el;
+      agg.totalEcl += r.ecl;
+      agg.totalProvision += r.provision;
+      agg.stageDist[r.stage] = (agg.stageDist[r.stage] ?? 0) + 1;
+    }
+
+    const downgraded = classSeverity(s.cls) > classSeverity(b.cls);
+    if (downgraded) downgrades += 1;
+    if (b.stage < 3 && s.stage === 3) newDefaults += 1;
+    impacts.push({ id: p.id, reference: p.reference, name: p.name, baseClass: b.cls, stressedClass: s.cls, elDelta: Math.round((s.el - b.el) * 100) / 100, downgraded });
+  }
+
+  impacts.sort((a, b) => b.elDelta - a.elDelta);
+  return { shock, base, stressed, downgrades, newDefaults, total: projects.length, impacts: impacts.slice(0, 10) };
 }
 
 export async function getAuditLog(limit = 100) {
