@@ -699,6 +699,7 @@ model RiskCalibration {
   lgdFloor        Float    @default(0.05)
   maturityYears   Float    @default(3)
   active          Boolean  @default(true)
+  updatedByEmail  String?  // auteur de cette version (audit)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 }

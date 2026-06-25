@@ -71,14 +71,14 @@ export async function updateRiskCalibration(raw: Record<string, unknown>) {
   }
 
   await prisma.$transaction(async (tx) => {
-    const active = await tx.riskCalibration.findFirst({ where: { active: true } });
-    if (active) {
-      await tx.riskCalibration.update({ where: { id: active.id }, data: d });
-    } else {
-      await tx.riskCalibration.create({ data: { ...d, active: true } });
-    }
+    // Versionning : on désactive la version courante et on crée une nouvelle
+    // version active (instantané historisé), plutôt qu'une mise à jour en place.
+    await tx.riskCalibration.updateMany({ where: { active: true }, data: { active: false } });
+    const created = await tx.riskCalibration.create({
+      data: { ...d, active: true, updatedByEmail: actor.email },
+    });
     await recordAudit(
-      { actorId: actor.id, action: "UPDATE", entity: "RiskCalibration", entityId: active?.id ?? "new", after: d },
+      { actorId: actor.id, action: "UPDATE", entity: "RiskCalibration", entityId: created.id, after: d },
       tx,
     );
   });

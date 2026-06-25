@@ -31,6 +31,14 @@ import {
 } from "@/lib/domain/referenceData";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
+/** Historique des versions de calibrage (la plus récente d'abord). */
+export async function getCalibrationHistory(limit = 20) {
+  return prisma.riskCalibration.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+  });
+}
+
 /** Calibrage actif des paramètres de risque (PD/LGD/maturité). */
 export async function getActiveCalibration(): Promise<RiskCalibration & { id: string; label: string }> {
   const row = await prisma.riskCalibration.findFirst({
