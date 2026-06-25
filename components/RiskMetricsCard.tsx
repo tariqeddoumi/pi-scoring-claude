@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat } from "@/components/ui";
 import { formatMAD, formatPercent } from "@/lib/utils";
-import { computeRiskMetrics, SLOTTING_LABELS } from "@/lib/domain/riskMetrics";
+import { computeRiskMetrics, SLOTTING_LABELS, DEFAULT_CALIBRATION, type RiskCalibration } from "@/lib/domain/riskMetrics";
 import { computeEcl } from "@/lib/domain/ifrs9";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
 
@@ -23,16 +23,18 @@ export function RiskMetricsCard({
   ead,
   eligibleGuarantees,
   bkamProvision,
+  calib = DEFAULT_CALIBRATION,
 }: {
   score: number | null;
   cls: RegulatoryClassCode | null;
   ead: number;
   eligibleGuarantees: number;
   bkamProvision?: number | null;
+  calib?: RiskCalibration;
 }) {
   if (!score && !cls) return null;
-  const m = computeRiskMetrics({ score, cls, ead, eligibleGuarantees });
-  const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead });
+  const m = computeRiskMetrics({ score, cls, ead, eligibleGuarantees }, calib);
+  const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
 
   return (
     <Card>

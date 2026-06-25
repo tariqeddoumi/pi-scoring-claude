@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { recordAudit } from "@/server/engines/auditService";
-import { gfaVefaSchema } from "@/lib/validation";
+import { gfaVefaSchema, riskCalibrationSchema } from "@/lib/validation";
 import { PERMISSIONS } from "@/lib/rbac";
 
 /**
@@ -44,5 +44,46 @@ export async function updateGfaVefa(projectId: string, raw: Record<string, unkno
   });
 
   revalidatePath(`/projects/${projectId}`);
+  return { ok: true as const };
+}
+
+/**
+ * Met à jour le calibrage actif des paramètres de risque (PD par catégorie de
+ * slotting, LGD, maturité). Réservé à model.write, journalisé. Affecte les
+ * métriques Bâle/IFRS 9 au prochain rendu.
+ */
+export async function updateRiskCalibration(raw: Record<string, unknown>) {
+  const parsed = riskCalibrationSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
+  }
+  const d = parsed.data;
+  if (d.lgdFloor > d.lgdUnsecured) {
+    return { ok: false as const, error: "Le plancher LGD ne peut excéder la LGD non garantie." };
+  }
+
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.MODEL_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    const active = await tx.riskCalibration.findFirst({ where: { active: true } });
+    if (active) {
+      await tx.riskCalibration.update({ where: { id: active.id }, data: d });
+    } else {
+      await tx.riskCalibration.create({ data: { ...d, active: true } });
+    }
+    await recordAudit(
+      { actorId: actor.id, action: "UPDATE", entity: "RiskCalibration", entityId: active?.id ?? "new", after: d },
+      tx,
+    );
+  });
+
+  revalidatePath("/admin/calibration");
+  revalidatePath("/risk");
   return { ok: true as const };
 }

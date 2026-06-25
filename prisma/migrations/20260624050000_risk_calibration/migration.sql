@@ -1,0 +1,18 @@
+-- CreateTable
+CREATE TABLE "RiskCalibration" (
+    "id" TEXT NOT NULL,
+    "label" TEXT NOT NULL DEFAULT 'Calibrage par défaut',
+    "pdStrong" DOUBLE PRECISION NOT NULL DEFAULT 0.005,
+    "pdGood" DOUBLE PRECISION NOT NULL DEFAULT 0.015,
+    "pdSatisfactory" DOUBLE PRECISION NOT NULL DEFAULT 0.04,
+    "pdWeak" DOUBLE PRECISION NOT NULL DEFAULT 0.12,
+    "lgdUnsecured" DOUBLE PRECISION NOT NULL DEFAULT 0.45,
+    "lgdFloor" DOUBLE PRECISION NOT NULL DEFAULT 0.05,
+    "maturityYears" DOUBLE PRECISION NOT NULL DEFAULT 3,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "RiskCalibration_pkey" PRIMARY KEY ("id")
+);
+

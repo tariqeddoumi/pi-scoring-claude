@@ -19,6 +19,7 @@ const NAV: { href: string; label: string; perm: PermissionCode }[] = [
   { href: "/groups", label: "Groupes", perm: PERMISSIONS.PROJECT_READ },
   { href: "/queue", label: "Mes dossiers", perm: PERMISSIONS.PROJECT_READ },
   { href: "/admin/model", label: "Modèle (Admin)", perm: PERMISSIONS.MODEL_READ },
+  { href: "/admin/calibration", label: "Calibrage risque", perm: PERMISSIONS.MODEL_READ },
   { href: "/admin/regimes", label: "Régimes BKAM", perm: PERMISSIONS.REGIME_READ },
   { href: "/imports", label: "Imports", perm: PERMISSIONS.IMPORT_RUN },
   { href: "/audit", label: "Audit", perm: PERMISSIONS.AUDIT_READ },

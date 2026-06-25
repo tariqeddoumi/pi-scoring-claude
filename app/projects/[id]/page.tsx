@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -50,6 +50,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const run = p.scoringRuns[0];
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
+  const calib = await getActiveCalibration();
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
@@ -157,6 +158,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
         eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
         bkamProvision={prov?.provisionAmount ?? null}
+        calib={calib}
       />
 
       {p.workflowSteps.length > 0 && (

@@ -57,6 +57,22 @@ export const SLOTTING_RW: Record<SlottingCategory, number> = {
 export const UNSECURED_LGD = 0.45;
 export const LGD_FLOOR = 0.05;
 
+// Calibrage paramétrable (édité par le risk manager). Les valeurs par défaut
+// reprennent les ancrages Bâle indicatifs ci-dessus.
+export interface RiskCalibration {
+  pd: Record<SlottingCategory, number>;
+  lgdUnsecured: number;
+  lgdFloor: number;
+  maturityYears: number;
+}
+
+export const DEFAULT_CALIBRATION: RiskCalibration = {
+  pd: { ...SLOTTING_PD },
+  lgdUnsecured: UNSECURED_LGD,
+  lgdFloor: LGD_FLOOR,
+  maturityYears: 3,
+};
+
 /** Stage IFRS 9 à partir de la classe BKAM. */
 export function ifrs9Stage(cls: RegulatoryClassCode | null | undefined): IFRS9Stage {
   if (cls && DEFAULT_CLASSES.includes(cls)) return 3;
@@ -78,10 +94,14 @@ export function slottingCategory(
 }
 
 /** LGD = max(plancher, LGD non garantie × (1 − taux de couverture)). */
-export function lgd(ead: number, eligibleGuarantees: number): number {
+export function lgd(
+  ead: number,
+  eligibleGuarantees: number,
+  calib: RiskCalibration = DEFAULT_CALIBRATION,
+): number {
   if (ead <= 0) return 0;
   const coverage = clamp01(Math.max(0, eligibleGuarantees) / ead);
-  return round4(Math.max(LGD_FLOOR, UNSECURED_LGD * (1 - coverage)));
+  return round4(Math.max(calib.lgdFloor, calib.lgdUnsecured * (1 - coverage)));
 }
 
 export interface RiskMetricsInput {
@@ -102,12 +122,16 @@ export interface RiskMetrics {
   rwa: number; // actifs pondérés du risque
 }
 
-/** Métriques Bâle/IFRS 9 à partir des sorties BKAM. */
-export function computeRiskMetrics(i: RiskMetricsInput): RiskMetrics {
+/** Métriques Bâle/IFRS 9 à partir des sorties BKAM et du calibrage actif. */
+export function computeRiskMetrics(
+  i: RiskMetricsInput,
+  calib: RiskCalibration = DEFAULT_CALIBRATION,
+): RiskMetrics {
   const slotting = slottingCategory(i.score, i.cls);
   const ead = Math.max(0, i.ead);
-  const pd = SLOTTING_PD[slotting];
-  const l = lgd(ead, i.eligibleGuarantees);
+  // La catégorie DEFAULT reste à PD = 1 (créance en défaut), non calibrable.
+  const pd = slotting === "DEFAULT" ? 1 : calib.pd[slotting];
+  const l = lgd(ead, i.eligibleGuarantees, calib);
   const riskWeight = SLOTTING_RW[slotting];
   return {
     slotting,

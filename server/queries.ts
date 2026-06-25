@@ -16,9 +16,32 @@ import {
 } from "@/lib/domain/migrationMatrix";
 import { mostSevereClass } from "@/lib/domain/groups";
 import { consolidateProgram, type ProgramConsolidation, type AssetTypeCode } from "@/lib/domain/program";
-import { computeRiskMetrics, type SlottingCategory } from "@/lib/domain/riskMetrics";
+import { computeRiskMetrics, DEFAULT_CALIBRATION, type SlottingCategory, type RiskCalibration } from "@/lib/domain/riskMetrics";
 import { computeEcl } from "@/lib/domain/ifrs9";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
+
+/** Calibrage actif des paramètres de risque (PD/LGD/maturité). */
+export async function getActiveCalibration(): Promise<RiskCalibration & { id: string; label: string }> {
+  const row = await prisma.riskCalibration.findFirst({
+    where: { active: true },
+    orderBy: { updatedAt: "desc" },
+  });
+  if (!row) return { id: "default", label: "Calibrage par défaut", ...DEFAULT_CALIBRATION };
+  return {
+    id: row.id,
+    label: row.label,
+    pd: {
+      STRONG: row.pdStrong,
+      GOOD: row.pdGood,
+      SATISFACTORY: row.pdSatisfactory,
+      WEAK: row.pdWeak,
+      DEFAULT: 1,
+    },
+    lgdUnsecured: row.lgdUnsecured,
+    lgdFloor: row.lgdFloor,
+    maturityYears: row.maturityYears,
+  };
+}
 
 const SLOTTING_ORDER: SlottingCategory[] = ["STRONG", "GOOD", "SATISFACTORY", "WEAK", "DEFAULT"];
 
@@ -127,6 +150,7 @@ function aggregateConcentration(
 
 export async function getRiskDashboard() {
   const projects = await getProjectsWithLatestRun();
+  const calib = await getActiveCalibration();
 
   // Heatmap classe (lignes) × décision (colonnes).
   const heatmap: Record<string, Record<string, number>> = {};
@@ -178,8 +202,8 @@ export async function getRiskDashboard() {
       cls: (p.classificationRuns[0]?.resultClass ?? null) as RegulatoryClassCode | null,
       ead,
       eligibleGuarantees: p.provisionRuns[0]?.eligibleGuarantees ?? 0,
-    });
-    const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead });
+    }, calib);
+    const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
     slotting[m.slotting].count += 1;
     slotting[m.slotting].ead += m.ead;
     slotting[m.slotting].el += m.expectedLoss;

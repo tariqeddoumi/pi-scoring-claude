@@ -140,3 +140,16 @@ export const gfaVefaSchema = z.object({
 });
 
 export type GfaVefaFormValues = z.infer<typeof gfaVefaSchema>;
+
+export const riskCalibrationSchema = z.object({
+  label: z.string().min(1).max(120),
+  pdStrong: z.coerce.number().min(0).max(1),
+  pdGood: z.coerce.number().min(0).max(1),
+  pdSatisfactory: z.coerce.number().min(0).max(1),
+  pdWeak: z.coerce.number().min(0).max(1),
+  lgdUnsecured: z.coerce.number().min(0).max(1),
+  lgdFloor: z.coerce.number().min(0).max(1),
+  maturityYears: z.coerce.number().min(1).max(15),
+});
+
+export type RiskCalibrationFormValues = z.infer<typeof riskCalibrationSchema>;

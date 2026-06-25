@@ -5,6 +5,8 @@ import {
   ifrs9Stage,
   lgd,
   SLOTTING_PD,
+  DEFAULT_CALIBRATION,
+  type RiskCalibration,
 } from "@/lib/domain/riskMetrics";
 
 describe("riskMetrics — slotting Bâle", () => {
@@ -66,5 +68,22 @@ describe("riskMetrics — Expected Loss", () => {
     // couverture 20% → LGD 0.45×0.8 = 0.36 ; EL = 1×0.36×50M = 18M
     expect(m.lgd).toBe(0.36);
     expect(m.expectedLoss).toBe(18_000_000);
+  });
+
+  it("un calibrage personnalisé modifie PD et LGD", () => {
+    const calib: RiskCalibration = {
+      pd: { STRONG: 0.01, GOOD: 0.02, SATISFACTORY: 0.05, WEAK: 0.2, DEFAULT: 1 },
+      lgdUnsecured: 0.6,
+      lgdFloor: 0.1,
+      maturityYears: 5,
+    };
+    const m = computeRiskMetrics({ score: 80, cls: "SAIN", ead: 100_000_000, eligibleGuarantees: 0 }, calib);
+    expect(m.pd).toBe(0.01); // au lieu de 0.005 par défaut
+    expect(m.lgd).toBe(0.6); // au lieu de 0.45
+    expect(m.expectedLoss).toBe(600_000); // 0.01×0.6×100M
+    // La catégorie DEFAULT reste à PD=1 même calibrée.
+    const def = computeRiskMetrics({ score: 10, cls: "DOUTEUX", ead: 10_000_000, eligibleGuarantees: 0 }, calib);
+    expect(def.pd).toBe(1);
+    expect(def.lgd).toBe(0.6);
   });
 });
