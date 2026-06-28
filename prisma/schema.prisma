@@ -220,6 +220,7 @@ model User {
   workflowSteps    WorkflowStep[]
   importBatches    ImportBatch[]
   committeeDecisionsChaired CommitteeDecision[] @relation("CommitteeChair")
+  visitReports     VisitReport[] @relation("VisitReportAuthor")
 }
 
 // =====================================================================
@@ -295,6 +296,7 @@ model RealEstateProject {
   attachments       Attachment[]
   committeeDecisions CommitteeDecision[]
   tranches          Tranche[]
+  visitReports      VisitReport[]
 }
 
 // Tranche (phase de construction / commercialisation) d'un programme.
@@ -355,6 +357,50 @@ model Unit {
   updatedAt        DateTime @updatedAt
 
   @@index([trancheId])
+}
+
+// Statut d'un rapport de visite de chantier.
+enum VisitReportStatus {
+  DRAFT
+  FINALIZED
+}
+
+// Rapport de visite de chantier — suivi terrain d'un projet de promotion.
+// Contient des observations structurées (analysées en amont) et le texte
+// source (scan/collé) avec ses champs extraits automatiquement (candidats à
+// valider). Sert de base à l'analyse de tendance d'avancement et au repérage
+// des anomalies/risques.
+model VisitReport {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId      String?
+  author        User?    @relation("VisitReportAuthor", fields: [authorId], references: [id])
+  visitDate     DateTime
+  inspectorName String?  // rédacteur / contrôleur (interne ou externe)
+  trancheCode   String?  // tranche concernée (optionnel)
+  status        VisitReportStatus @default(DRAFT)
+
+  // Observations structurées (analyse en amont)
+  observedProgressPct Float?   // avancement physique constaté sur site (0..100)
+  workforceCount      Int?     // effectif présent
+  weatherImpact       Boolean  @default(false) // intempéries impactant le planning
+  qualityIssue        Boolean  @default(false) // non-conformité / malfaçon
+  safetyIssue         Boolean  @default(false) // sécurité / HSE
+  delayRisk           Boolean  @default(false) // risque de retard signalé
+
+  summary         String?  // synthèse
+  observations    String?  // corps du rapport
+  recommendations String?
+
+  // Brique d'extraction : texte source + champs extraits (candidats)
+  rawText       String?  // texte source (scan OCR / collé) avant extraction
+  extracted     Json?    // champs extraits automatiquement, à valider
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
 }
 
 // Valeurs d'entrée saisies pour un projet, clé/valeur typée et historisable.

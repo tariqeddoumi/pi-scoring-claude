@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { recordAudit } from "@/server/engines/auditService";
-import { gfaVefaSchema, riskCalibrationSchema } from "@/lib/validation";
+import { gfaVefaSchema, riskCalibrationSchema, visitReportSchema } from "@/lib/validation";
 import { PERMISSIONS } from "@/lib/rbac";
+import { extractReportFields } from "@/lib/domain/visitReportExtraction";
 
 /**
  * Met à jour le mode de vente (VEFA/classique) et la Garantie Financière
@@ -85,5 +87,63 @@ export async function updateRiskCalibration(raw: Record<string, unknown>) {
 
   revalidatePath("/admin/calibration");
   revalidatePath("/risk");
+  return { ok: true as const };
+}
+
+/**
+ * Enregistre un rapport de visite de chantier. Réservé à project.write,
+ * journalisé. Si un texte source (collé / OCR) est fourni, on en extrait des
+ * champs candidats stockés dans `extracted` (à valider ultérieurement).
+ */
+export async function createVisitReport(raw: Record<string, unknown>) {
+  const parsed = visitReportSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
+  }
+  const d = parsed.data;
+
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.PROJECT_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+
+  const rawText = d.rawText?.trim() || null;
+  const extracted = rawText
+    ? (extractReportFields(rawText) as unknown as Prisma.InputJsonValue)
+    : undefined;
+
+  const data = {
+    projectId: d.projectId,
+    authorId: actor.id,
+    visitDate: new Date(d.visitDate),
+    inspectorName: d.inspectorName?.trim() || null,
+    trancheCode: d.trancheCode?.trim() || null,
+    status: d.status,
+    observedProgressPct: d.observedProgressPct ?? null,
+    workforceCount: d.workforceCount ?? null,
+    weatherImpact: d.weatherImpact,
+    qualityIssue: d.qualityIssue,
+    safetyIssue: d.safetyIssue,
+    delayRisk: d.delayRisk,
+    summary: d.summary?.trim() || null,
+    observations: d.observations?.trim() || null,
+    recommendations: d.recommendations?.trim() || null,
+    rawText,
+    extracted,
+  };
+
+  let created;
+  await prisma.$transaction(async (tx) => {
+    created = await tx.visitReport.create({ data });
+    await recordAudit(
+      { actorId: actor.id, action: "CREATE", entity: "VisitReport", entityId: created.id, after: { ...data, extracted: undefined }, metadata: { projectId: d.projectId } },
+      tx,
+    );
+  });
+
+  revalidatePath(`/projects/${d.projectId}/suivi`);
   return { ok: true as const };
 }

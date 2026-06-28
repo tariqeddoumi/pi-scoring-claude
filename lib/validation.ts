@@ -175,3 +175,24 @@ export const riskCalibrationSchema = z.object({
 });
 
 export type RiskCalibrationFormValues = z.infer<typeof riskCalibrationSchema>;
+
+// Rapport de visite de chantier (suivi de promotion).
+export const visitReportSchema = z.object({
+  projectId: z.string().min(1, "Projet requis"),
+  visitDate: z.string().min(1, "Date de visite requise"),
+  inspectorName: z.string().optional(),
+  trancheCode: z.string().optional(),
+  status: z.enum(["DRAFT", "FINALIZED"]).default("DRAFT"),
+  observedProgressPct: z.coerce.number().min(0).max(100).optional().nullable(),
+  workforceCount: z.coerce.number().int().min(0).optional().nullable(),
+  weatherImpact: z.coerce.boolean().optional().default(false),
+  qualityIssue: z.coerce.boolean().optional().default(false),
+  safetyIssue: z.coerce.boolean().optional().default(false),
+  delayRisk: z.coerce.boolean().optional().default(false),
+  summary: z.string().optional(),
+  observations: z.string().optional(),
+  recommendations: z.string().optional(),
+  rawText: z.string().optional(),
+});
+
+export type VisitReportFormValues = z.infer<typeof visitReportSchema>;

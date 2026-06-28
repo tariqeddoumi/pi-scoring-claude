@@ -31,6 +31,7 @@ import {
 } from "@/lib/domain/referenceData";
 import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
 import { summarizeCommercialisation, type UnitView } from "@/lib/domain/commercialisation";
+import { analyzeVisitReports, type VisitReportView } from "@/lib/domain/visitReports";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -149,10 +150,42 @@ export async function getProjectMonitoring(id: string) {
     })),
   );
 
+  // Rapports de visite (récents d'abord) + analyse en amont.
+  const reports = await prisma.visitReport.findMany({
+    where: { projectId: id },
+    orderBy: { visitDate: "desc" },
+    include: { author: true },
+  });
+
+  // Avancement officiel de référence : moyenne des tranches pondérée par budget
+  // (sinon moyenne simple), pour situer l'avancement constaté sur site.
+  const budgetSum = tranches.reduce((s, t) => s + (t.budget ?? 0), 0);
+  const plannedProgressPct =
+    tranches.length === 0
+      ? null
+      : budgetSum > 0
+        ? tranches.reduce((s, t) => s + t.progressPct * (t.budget ?? 0), 0) / budgetSum
+        : tranches.reduce((s, t) => s + t.progressPct, 0) / tranches.length;
+
+  const reportViews: VisitReportView[] = reports.map((r) => ({
+    id: r.id,
+    visitDate: r.visitDate,
+    trancheCode: r.trancheCode,
+    observedProgressPct: r.observedProgressPct,
+    workforceCount: r.workforceCount,
+    weatherImpact: r.weatherImpact,
+    qualityIssue: r.qualityIssue,
+    safetyIssue: r.safetyIssue,
+    delayRisk: r.delayRisk,
+    status: r.status as VisitReportView["status"],
+  }));
+
   return {
     project,
     tranches,
     summary: summarizeCommercialisation(units),
+    reports,
+    visitAnalysis: analyzeVisitReports(reportViews, { plannedProgressPct }),
   };
 }
 

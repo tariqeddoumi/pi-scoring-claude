@@ -5,8 +5,19 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td } 
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { standingLabel, type StandingCode } from "@/lib/domain/commercialisation";
+import type { RiskLevel } from "@/lib/domain/visitReports";
+import { VisitReportForm } from "@/components/VisitReportForm";
+import { getCurrentAppUser } from "@/lib/supabase/server";
+import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
+
+const RISK_LABELS: Record<RiskLevel, string> = { FAIBLE: "Risque faible", MODERE: "Risque modéré", ELEVE: "Risque élevé" };
+const RISK_COLORS: Record<RiskLevel, string> = {
+  FAIBLE: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  MODERE: "bg-amber-100 text-amber-800 border-amber-300",
+  ELEVE: "bg-red-100 text-red-800 border-red-300",
+};
 
 const TRANCHE_STATUS_LABELS: Record<string, string> = {
   PLANIFIEE: "Planifiée",
@@ -63,17 +74,84 @@ export default async function ProjectMonitoringPage({ params }: { params: { id: 
   const data = res.data;
   if (!data) return notFound();
 
-  const { project, tranches, summary } = data;
+  const { project, tranches, summary, reports, visitAnalysis } = data;
   const { sales, revenue, byTranche, byStanding, byType, businessPlan, standingChanges, mainlevees } = summary;
   const hasUnits = sales.totalUnits > 0 || sales.withdrawn > 0;
+
+  const actor = await getCurrentAppUser();
+  const canWrite = actor ? hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) : false;
 
   return (
     <div className="space-y-6">
       <div>
         <Link href={`/projects/${project.id}`} className="text-sm text-muted-foreground hover:underline">← {project.name}</Link>
-        <h1 className="text-2xl font-bold">Suivi de commercialisation</h1>
-        <p className="text-muted-foreground text-sm">{project.reference} · {tranches.length} tranche(s) · {sales.totalUnits} lot(s) actif(s)</p>
+        <h1 className="text-2xl font-bold">Suivi de projet</h1>
+        <p className="text-muted-foreground text-sm">{project.reference} · {tranches.length} tranche(s) · {sales.totalUnits} lot(s) actif(s) · {reports.length} rapport(s) de visite</p>
       </div>
+
+      {/* ===================== Rapports de visite & avancement chantier ===================== */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <CardTitle>Suivi de chantier — analyse des rapports de visite</CardTitle>
+            <Badge className={RISK_COLORS[visitAnalysis.riskLevel]}>{RISK_LABELS[visitAnalysis.riskLevel]}</Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat label="Avancement constaté" value={visitAnalysis.trend.latestProgressPct != null ? formatPercent(visitAnalysis.trend.latestProgressPct, 0) : "—"} hint={visitAnalysis.trend.deltaPct != null ? `${visitAnalysis.trend.deltaPct >= 0 ? "+" : ""}${visitAnalysis.trend.deltaPct} pts vs visite préc.` : undefined} />
+            <Stat label="Écart au plan" value={visitAnalysis.planGapPct != null ? `${visitAnalysis.planGapPct} pts` : "—"} hint={visitAnalysis.planGapPct != null ? (visitAnalysis.planGapPct > 0 ? "en retard" : "en avance") : "avancement officiel"} />
+            <Stat label="Vitesse" value={visitAnalysis.trend.velocityPctPerMonth != null ? `${visitAnalysis.trend.velocityPctPerMonth} pts/mois` : "—"} />
+            <Stat label="Dernière visite" value={visitAnalysis.latestVisitDate ? formatDate(visitAnalysis.latestVisitDate) : "—"} hint={visitAnalysis.daysSinceLastVisit != null ? `il y a ${visitAnalysis.daysSinceLastVisit} j` : undefined} />
+          </div>
+
+          {visitAnalysis.findings.length > 0 && (
+            <div>
+              <p className="text-sm font-medium mb-1">Informations pertinentes</p>
+              <ul className="text-sm list-disc pl-5 space-y-0.5">
+                {visitAnalysis.findings.map((f, i) => <li key={i}>{f}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {visitAnalysis.anomalies.openIssues.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-medium">Anomalies ouvertes :</span>
+              {visitAnalysis.anomalies.openIssues.includes("weather") && <Badge className="bg-sky-100 text-sky-800 border-sky-300">Intempéries</Badge>}
+              {visitAnalysis.anomalies.openIssues.includes("quality") && <Badge className="bg-orange-100 text-orange-800 border-orange-300">Qualité</Badge>}
+              {visitAnalysis.anomalies.openIssues.includes("safety") && <Badge className="bg-red-100 text-red-800 border-red-300">Sécurité</Badge>}
+              {visitAnalysis.anomalies.openIssues.includes("delay") && <Badge className="bg-amber-100 text-amber-800 border-amber-300">Retard</Badge>}
+            </div>
+          )}
+
+          {reports.length > 0 && (
+            <Table>
+              <thead><tr><Th>Date</Th><Th>Tranche</Th><Th>Avanc.</Th><Th>Effectif</Th><Th>Anomalies</Th><Th>Statut</Th><Th>Contrôleur</Th></tr></thead>
+              <tbody>
+                {reports.map((r) => (
+                  <tr key={r.id}>
+                    <Td className="whitespace-nowrap font-medium">{formatDate(r.visitDate)}</Td>
+                    <Td>{r.trancheCode ?? "—"}</Td>
+                    <Td>{r.observedProgressPct != null ? formatPercent(r.observedProgressPct, 0) : "—"}</Td>
+                    <Td>{r.workforceCount ?? "—"}</Td>
+                    <Td className="space-x-1">
+                      {r.weatherImpact && <span title="Intempéries">🌧️</span>}
+                      {r.qualityIssue && <span title="Qualité">⚠️</span>}
+                      {r.safetyIssue && <span title="Sécurité">🦺</span>}
+                      {r.delayRisk && <span title="Retard">⏱️</span>}
+                      {!r.weatherImpact && !r.qualityIssue && !r.safetyIssue && !r.delayRisk && <span className="text-muted-foreground">—</span>}
+                    </Td>
+                    <Td>{r.status === "FINALIZED" ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Finalisé</Badge> : <Badge className="bg-slate-100 text-slate-700 border-slate-300">Brouillon</Badge>}</Td>
+                    <Td className="text-muted-foreground">{r.inspectorName ?? r.author?.name ?? "—"}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          )}
+
+          {canWrite && <VisitReportForm projectId={project.id} />}
+        </CardContent>
+      </Card>
 
       {!hasUnits ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
