@@ -32,6 +32,26 @@ export interface ReportExtractor {
   extract(rawText: string): ExtractedReportFields;
 }
 
+/** Une pièce jointe à extraire (rapport scanné : image ou PDF). */
+export interface ReportDocument {
+  /** Données encodées en base64 (sans préfixe data:). */
+  base64: string;
+  /** Type MIME, ex. "image/png", "image/jpeg", "application/pdf". */
+  mediaType: string;
+}
+
+/**
+ * Extracteur asynchrone : même contrat que `ReportExtractor` mais capable de
+ * lire des documents scannés (images/PDF) en plus du texte, et de s'appuyer
+ * sur un service externe (ex. Claude). C'est le point d'insertion de
+ * l'extraction IA — l'implémentation vit côté serveur (server/services) pour
+ * garder ce module pur et utilisable côté client.
+ */
+export interface AsyncReportExtractor {
+  readonly name: string;
+  extract(input: { rawText?: string; documents?: ReportDocument[] }): Promise<ExtractedReportFields>;
+}
+
 const EMPTY = (): ExtractedReportFields => ({
   visitDate: null,
   observedProgressPct: null,

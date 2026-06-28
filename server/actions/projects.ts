@@ -7,7 +7,8 @@ import { authorize, AuthorizationError } from "@/lib/authz";
 import { recordAudit } from "@/server/engines/auditService";
 import { gfaVefaSchema, riskCalibrationSchema, visitReportSchema } from "@/lib/validation";
 import { PERMISSIONS } from "@/lib/rbac";
-import { extractReportFields } from "@/lib/domain/visitReportExtraction";
+import { extractReportFields, type ExtractedReportFields, type ReportDocument } from "@/lib/domain/visitReportExtraction";
+import { claudeReportExtractor } from "@/server/services/claudeReportExtractor";
 
 /**
  * Met à jour le mode de vente (VEFA/classique) et la Garantie Financière
@@ -146,4 +147,29 @@ export async function createVisitReport(raw: Record<string, unknown>) {
 
   revalidatePath(`/projects/${d.projectId}/suivi`);
   return { ok: true as const };
+}
+
+/**
+ * Extraction assistée par l'IA (Claude) d'un rapport de visite à partir d'un
+ * texte collé et/ou de documents scannés (images, PDF). Réservé à
+ * project.write. Renvoie des champs CANDIDATS à valider — aucune écriture en
+ * base. Repli automatique sur l'heuristique si la clé API est absente.
+ */
+export async function extractVisitReportWithAI(input: {
+  rawText?: string;
+  documents?: ReportDocument[];
+}): Promise<{ ok: true; fields: ExtractedReportFields } | { ok: false; error: string }> {
+  try {
+    await authorize(PERMISSIONS.PROJECT_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+
+  const docs = (input.documents ?? []).slice(0, 5); // borne raisonnable
+  const hasContent = (input.rawText?.trim()?.length ?? 0) > 0 || docs.length > 0;
+  if (!hasContent) return { ok: false as const, error: "Fournir un texte ou un document à analyser." };
+
+  const fields = await claudeReportExtractor.extract({ rawText: input.rawText, documents: docs });
+  return { ok: true as const, fields };
 }
