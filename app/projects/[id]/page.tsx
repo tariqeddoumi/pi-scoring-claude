@@ -87,6 +87,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <div className="flex items-center gap-2">
           {cls && <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>}
           {run?.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
+          {p.assetType === "PROMOTION" && (
+            <Link href={`/projects/${p.id}/suivi`}><Button variant="outline">Suivi de commercialisation</Button></Link>
+          )}
           <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline">Dossier comité (PDF)</Button>

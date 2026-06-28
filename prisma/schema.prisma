@@ -134,6 +134,44 @@ enum AssetType {
   EXPLOITATION
 }
 
+// --- Suivi de projet de promotion (tranches, unités, commercialisation) ---
+
+enum TrancheStatus {
+  PLANIFIEE
+  EN_TRAVAUX
+  LIVREE
+  CLOTUREE
+}
+
+enum UnitType {
+  APPARTEMENT
+  VILLA
+  COMMERCE
+  BUREAU
+  TERRAIN
+  AUTRE
+}
+
+// Cycle de vie commercial d'une unité.
+enum UnitStatus {
+  DISPONIBLE
+  RESERVE
+  COMPROMIS
+  VENDU
+  LIVRE
+  DESISTE
+}
+
+// Niveau de positionnement (standing), du plus haut au plus bas.
+enum Standing {
+  TRES_HAUT
+  HAUT
+  MOYEN_HAUT
+  MOYEN
+  ECONOMIQUE
+  SOCIAL
+}
+
 // =====================================================================
 //  RBAC / UTILISATEURS
 // =====================================================================
@@ -256,6 +294,67 @@ model RealEstateProject {
   comments          Comment[]
   attachments       Attachment[]
   committeeDecisions CommitteeDecision[]
+  tranches          Tranche[]
+}
+
+// Tranche (phase de construction / commercialisation) d'un programme.
+model Tranche {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code            String   // ex. "T1"
+  name            String?
+  orderIndex      Int      @default(0)
+  status          TrancheStatus @default(PLANIFIEE)
+  plannedStart    DateTime?
+  plannedDelivery DateTime?
+  actualDelivery  DateTime?
+  progressPct     Float    @default(0) // avancement physique 0..100
+  budget          Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  units           Unit[]
+
+  @@index([projectId])
+}
+
+// Unité commercialisable (lot) : appartement, villa, commerce… Double vue
+// business plan (planned*) vs réel, support du suivi des ventes, du décalage
+// au business plan, du déclassement de standing et de la mainlevée.
+model Unit {
+  id               String   @id @default(cuid())
+  trancheId        String
+  tranche          Tranche  @relation(fields: [trancheId], references: [id], onDelete: Cascade)
+  reference        String   // ex. "A-12", "Villa 3"
+  type             UnitType
+  surfaceSqm       Float?
+  rooms            Int?
+
+  // Business plan (référence)
+  plannedStanding  Standing
+  plannedPrice     Float?
+  plannedSaleDate  DateTime?
+
+  // Réel
+  standing         Standing
+  listPrice        Float?
+  status           UnitStatus @default(DISPONIBLE)
+  reservedAt       DateTime?
+  soldAt           DateTime?
+  soldPrice        Float?
+  buyerName        String?
+  deliveredAt      DateTime?
+
+  // Mainlevée hypothécaire partielle
+  mortgageReleased   Boolean  @default(false)
+  mortgageReleasedAt DateTime?
+  releasedAmount     Float?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([trancheId])
 }
 
 // Valeurs d'entrée saisies pour un projet, clé/valeur typée et historisable.

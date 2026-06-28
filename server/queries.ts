@@ -30,6 +30,7 @@ import {
   REGIME_1W_PROVISION_RATES,
 } from "@/lib/domain/referenceData";
 import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
+import { summarizeCommercialisation, type UnitView } from "@/lib/domain/commercialisation";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -108,6 +109,51 @@ export async function getProjectDetail(id: string) {
       provisionRuns: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
+}
+
+// ---------------------------------------------------------------------
+//  Suivi de projet de promotion : commercialisation par tranche / lot.
+//  Lit les tranches + lots et calcule la synthèse (ventes, CA, décalage
+//  business plan, déclassements de standing, mainlevées) via la logique
+//  pure de lib/domain/commercialisation.
+// ---------------------------------------------------------------------
+
+export async function getProjectMonitoring(id: string) {
+  const project = await prisma.realEstateProject.findUnique({
+    where: { id },
+    select: { id: true, reference: true, name: true, assetType: true },
+  });
+  if (!project) return null;
+
+  const tranches = await prisma.tranche.findMany({
+    where: { projectId: id },
+    orderBy: { orderIndex: "asc" },
+    include: { units: { orderBy: { reference: "asc" } } },
+  });
+
+  const units: UnitView[] = tranches.flatMap((t) =>
+    t.units.map((unit) => ({
+      reference: unit.reference,
+      trancheCode: t.code,
+      type: unit.type as UnitView["type"],
+      status: unit.status as UnitView["status"],
+      plannedStanding: unit.plannedStanding as UnitView["plannedStanding"],
+      standing: unit.standing as UnitView["standing"],
+      plannedPrice: unit.plannedPrice,
+      listPrice: unit.listPrice,
+      soldPrice: unit.soldPrice,
+      plannedSaleDate: unit.plannedSaleDate,
+      soldAt: unit.soldAt,
+      mortgageReleased: unit.mortgageReleased,
+      releasedAmount: unit.releasedAmount,
+    })),
+  );
+
+  return {
+    project,
+    tranches,
+    summary: summarizeCommercialisation(units),
+  };
 }
 
 export async function getPortfolioStats() {
