@@ -689,6 +689,19 @@ export async function getActiveModel() {
   });
 }
 
+/** Brouillon éditable du modèle (status DRAFT), arbre complet, ou null. */
+export async function getModelDraft(modelCode = "PI_PROMOTION") {
+  return prisma.scoringModelVersion.findFirst({
+    where: { status: "DRAFT", model: { code: modelCode } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      model: true,
+      domains: { orderBy: { orderIndex: "asc" }, include: { criteria: { orderBy: { orderIndex: "asc" }, include: { options: { orderBy: { orderIndex: "asc" } }, ranges: { orderBy: { orderIndex: "asc" } } } } } },
+      redFlags: { orderBy: { code: "asc" } },
+    },
+  });
+}
+
 export async function getRegimes() {
   return prisma.regulatoryRegime.findMany({
     orderBy: { effectiveFrom: "desc" },

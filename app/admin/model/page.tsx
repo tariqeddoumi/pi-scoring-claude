@@ -6,6 +6,10 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { formatPercent } from "@/lib/utils";
 import { SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { ModelTuningForm } from "@/components/ModelTuningForm";
+import { getModelDraft } from "@/server/queries";
+import Link from "next/link";
+import { Button } from "@/components/ui";
+import { CreateDraftButton } from "@/components/CreateDraftButton";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +23,8 @@ export default async function ModelBuilderPage() {
   if (!v) return <p className="text-muted-foreground">Aucun modèle publié.</p>;
 
   const canEdit = await currentUserCan(PERMISSIONS.MODEL_WRITE);
+  const draftRes = canEdit ? await safe(() => getModelDraft()) : null;
+  const draft = draftRes && draftRes.ok ? draftRes.data : null;
   const thresholds = { ...DEFAULT_THRESHOLDS, ...((v.decisionThresholds as Record<string, number> | null) ?? {}) };
   const segmentAdjustments = (v.segmentAdjustments as Record<string, number> | null) ?? {};
   const zoneAdjustments = (v.zoneAdjustments as Record<string, number> | null) ?? {};
@@ -29,6 +35,18 @@ export default async function ModelBuilderPage() {
         <h1 className="text-2xl font-bold">Model Builder — {v.model.name}</h1>
         <p className="text-sm text-muted-foreground">Version {v.version} · {v.status} · échelle KPI 0..{v.scoreScale}</p>
       </div>
+
+      {canEdit && (
+        <Card>
+          <CardHeader><CardTitle>Édition structurelle du modèle</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">Ajouter / modifier / supprimer domaines, critères, modalités, barèmes et red flags se fait sur un brouillon, publié ensuite.</p>
+            {draft
+              ? <Link href="/admin/model/draft"><Button>Ouvrir le brouillon en cours</Button></Link>
+              : <CreateDraftButton />}
+          </CardContent>
+        </Card>
+      )}
 
       {canEdit && (
         <ModelTuningForm
