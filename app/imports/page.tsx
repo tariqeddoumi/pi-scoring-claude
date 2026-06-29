@@ -4,6 +4,7 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { getImportBatches } from "@/server/queries";
 import { formatDate } from "@/lib/utils";
+import { ImportForm } from "@/components/ImportForm";
 
 export const dynamic = "force-dynamic";
 
@@ -55,14 +56,12 @@ export default async function ImportsPage() {
 
       <Card>
         <CardHeader><CardTitle>Téléverser un fichier</CardTitle></CardHeader>
-        <CardContent>
-          <div className="border-2 border-dashed border-border rounded-lg p-8 text-center text-muted-foreground">
-            <p className="text-sm">Glissez-déposez un fichier .xlsx / .csv</p>
-            <p className="text-xs mt-1">
-              Le pipeline d'import (parsing → mapping → validation Zod → rapport) est exposé côté serveur
-              via <code className="bg-muted px-1 rounded">ImportBatch</code>. Brancher un parseur (ex. SheetJS) selon l'environnement.
-            </p>
-          </div>
+        <CardContent className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Formats .xlsx / .xls / .csv. La 1re ligne contient les en-têtes ; les colonnes inconnues sont ignorées.
+            Les projets existants (même référence) sont mis à jour. Le rapport est journalisé ci-dessous.
+          </p>
+          <ImportForm />
         </CardContent>
       </Card>
 
