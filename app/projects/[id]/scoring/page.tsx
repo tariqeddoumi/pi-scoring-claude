@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail } from "@/server/queries";
+import { getProjectDetail, getScoringHistory } from "@/server/queries";
 import { ScoringWizard } from "@/components/ScoringWizard";
+import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS } from "@/lib/wizardFields";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 
@@ -21,6 +22,9 @@ export default async function ScoringWizardPage({ params }: { params: { id: stri
   const isExploitation = p.assetType === "EXPLOITATION";
   const steps = isExploitation ? EXPLOITATION_WIZARD_STEPS : WIZARD_STEPS;
 
+  const historyRes = await safe(() => getScoringHistory(p.id));
+  const history = historyRes.ok ? historyRes.data : [];
+
   return (
     <div className="space-y-4">
       <div>
@@ -33,6 +37,7 @@ export default async function ScoringWizardPage({ params }: { params: { id: stri
         </p>
       </div>
       <ScoringWizard projectId={p.id} initial={initial} steps={steps} />
+      <ScoreTimeline runs={history} />
     </div>
   );
 }

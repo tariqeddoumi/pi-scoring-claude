@@ -186,7 +186,18 @@ export async function getProjectMonitoring(id: string) {
     summary: summarizeCommercialisation(units),
     reports,
     visitAnalysis: analyzeVisitReports(reportViews, { plannedProgressPct }),
+    plannedProgressPct,
   };
+}
+
+/** Historique des scores d'un projet (du plus ancien au plus récent). */
+export async function getScoringHistory(projectId: string) {
+  const runs = await prisma.scoringRun.findMany({
+    where: { projectId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, createdAt: true, scoreFinal: true, decision: true },
+  });
+  return runs;
 }
 
 /** Options pour le formulaire projet : promoteurs + chargés d'affaires. */

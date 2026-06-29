@@ -228,6 +228,12 @@ export interface BusinessPlanDeviation {
   caDeltaPct: number;
   /** Écart de prix moyen pondéré sur les lots vendus (%). */
   avgPriceDeviationPct: number;
+  /** Lots dont la vente était planifiée à la date d'observation. */
+  plannedUnitsToDate: number;
+  /** Lots effectivement vendus fermes (cumul). */
+  firmUnits: number;
+  /** Ventes réelles vs planifiées à date (%), null si rien de planifié encore. */
+  salesVsPlanPct: number | null;
 }
 
 /**
@@ -244,10 +250,14 @@ export function computeBusinessPlanDeviation(
   const priceDeviations: PriceDeviation[] = [];
   let weightedDevSum = 0;
   let weightedDevBase = 0;
+  let plannedUnitsToDate = 0;
+  let firmUnits = 0;
 
   for (const u of units) {
     if (!isActive(u.status)) continue;
     const planned = toDate(u.plannedSaleDate);
+    if (planned && asOf.getTime() >= planned.getTime()) plannedUnitsToDate += 1;
+    if (isFirm(u.status)) firmUnits += 1;
     if (planned && !isFirm(u.status) && asOf.getTime() > planned.getTime()) {
       const daysLate = Math.floor((asOf.getTime() - planned.getTime()) / 86_400_000);
       scheduleSlips.push({ reference: u.reference, trancheCode: u.trancheCode, plannedSaleDate: planned, daysLate });
@@ -281,6 +291,9 @@ export function computeBusinessPlanDeviation(
     caDeltaAmount,
     caDeltaPct: pct(rev.caRealise, rev.caPrevu) - 100,
     avgPriceDeviationPct: weightedDevBase > 0 ? round2((weightedDevSum / weightedDevBase) * 100) : 0,
+    plannedUnitsToDate,
+    firmUnits,
+    salesVsPlanPct: plannedUnitsToDate > 0 ? round2((firmUnits / plannedUnitsToDate) * 100) : null,
   };
 }
 

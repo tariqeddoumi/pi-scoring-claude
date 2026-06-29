@@ -8,6 +8,7 @@ import { standingLabel, type StandingCode } from "@/lib/domain/commercialisation
 import { TRANCHE_STATUSES, UNIT_STATUSES, UNIT_TYPES } from "@/lib/domain/referentiels";
 import type { RiskLevel } from "@/lib/domain/visitReports";
 import { VisitReportForm } from "@/components/VisitReportForm";
+import { SyncToScoringButton } from "@/components/SyncToScoringButton";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 
@@ -132,6 +133,15 @@ export default async function ProjectMonitoringPage({ params }: { params: { id: 
           {canWrite && <VisitReportForm projectId={project.id} />}
         </CardContent>
       </Card>
+
+      {canWrite && hasUnits && (
+        <Card>
+          <CardHeader><CardTitle>Alimenter le scoring depuis le suivi</CardTitle></CardHeader>
+          <CardContent>
+            <SyncToScoringButton projectId={project.id} />
+          </CardContent>
+        </Card>
+      )}
 
       {!hasUnits ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
