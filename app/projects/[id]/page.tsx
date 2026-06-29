@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory } from "@/server/queries";
+import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -52,6 +53,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
   const calib = await getActiveCalibration();
+  const scoreHistory = await getScoringHistory(p.id);
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
@@ -330,6 +332,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 ))}
                 {(run.triggeredRedFlags as any[] ?? []).length === 0 && <p className="text-sm text-muted-foreground">Aucun red flag.</p>}
               </CardContent></Card>
+              <div className="lg:col-span-3"><ScoreTimeline runs={scoreHistory} /></div>
             </div>
           ) : <p className="text-muted-foreground text-sm">Aucun run de scoring. Cliquez sur « Lancer le scoring ».</p>}
         </TabsContent>
