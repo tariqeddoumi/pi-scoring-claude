@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { recordAudit } from "@/server/engines/auditService";
-import { gfaVefaSchema, riskCalibrationSchema, visitReportSchema, projectUpsertSchema } from "@/lib/validation";
+import { gfaVefaSchema, riskCalibrationSchema, visitReportSchema, projectUpsertSchema, bpRevisionSchema } from "@/lib/validation";
 import { redirect } from "next/navigation";
 import { PERMISSIONS } from "@/lib/rbac";
 import { extractReportFields, type ExtractedReportFields, type ReportDocument } from "@/lib/domain/visitReportExtraction";
@@ -239,4 +239,109 @@ export async function upsertProject(raw: Record<string, unknown>) {
   revalidatePath("/projects");
   if (d.id) revalidatePath(`/projects/${d.id}`);
   redirect(`/projects/${projectId}`);
+}
+
+/**
+ * Révise le business plan d'un projet (changement de standing, de prix cible
+ * ou de calendrier sur un ou plusieurs lots). Bonne pratique : le BP d'origine
+ * (v0) est figé sur chaque lot la première fois qu'il est touché (champs
+ * original*), la baseline courante est mise à jour, et la révision est tracée
+ * comme un événement de gouvernance (version, motif, auteur, détail). Réservé à
+ * project.write, journalisé.
+ */
+export async function reviseBusinessPlan(raw: Record<string, unknown>) {
+  const parsed = bpRevisionSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
+  }
+  const d = parsed.data;
+
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.PROJECT_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+
+  const unitIds = d.changes.map((c) => c.unitId);
+  const units = await prisma.unit.findMany({
+    where: { id: { in: unitIds }, tranche: { projectId: d.projectId } },
+    select: {
+      id: true, reference: true,
+      plannedStanding: true, plannedPrice: true, plannedSaleDate: true,
+      originalStanding: true, originalPrice: true, originalSaleDate: true,
+    },
+  });
+  const byId = new Map(units.map((u) => [u.id, u]));
+  if (units.length !== new Set(unitIds).size) {
+    return { ok: false as const, error: "Certains lots sont introuvables pour ce projet." };
+  }
+
+  const changeLog: { reference: string; field: string; before: string; after: string }[] = [];
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      const last = await tx.businessPlanRevision.findFirst({
+        where: { projectId: d.projectId },
+        orderBy: { version: "desc" },
+        select: { version: true },
+      });
+      const version = (last?.version ?? 0) + 1;
+
+      for (const ch of d.changes) {
+        const u = byId.get(ch.unitId)!;
+        const data: Record<string, unknown> = {};
+        // Fige la baseline d'origine (une seule fois par lot).
+        if (u.originalStanding == null) data.originalStanding = u.plannedStanding;
+        if (u.originalPrice == null) data.originalPrice = u.plannedPrice;
+        if (u.originalSaleDate == null) data.originalSaleDate = u.plannedSaleDate;
+
+        if (ch.newStanding && ch.newStanding !== u.plannedStanding) {
+          changeLog.push({ reference: u.reference, field: "standing", before: u.plannedStanding, after: ch.newStanding });
+          data.plannedStanding = ch.newStanding;
+        }
+        if (ch.newPrice != null && ch.newPrice !== u.plannedPrice) {
+          changeLog.push({ reference: u.reference, field: "price", before: String(u.plannedPrice ?? ""), after: String(ch.newPrice) });
+          data.plannedPrice = ch.newPrice;
+        }
+        if (ch.newSaleDate) {
+          const nd = new Date(ch.newSaleDate);
+          if (!isNaN(nd.getTime()) && nd.getTime() !== u.plannedSaleDate?.getTime()) {
+            changeLog.push({ reference: u.reference, field: "saleDate", before: u.plannedSaleDate?.toISOString().slice(0, 10) ?? "", after: ch.newSaleDate });
+            data.plannedSaleDate = nd;
+          }
+        }
+        if (Object.keys(data).length > 0) {
+          await tx.unit.update({ where: { id: u.id }, data });
+        }
+      }
+
+      if (changeLog.length === 0) throw new Error("NO_CHANGE");
+
+      const created = await tx.businessPlanRevision.create({
+        data: {
+          projectId: d.projectId,
+          version,
+          reason: d.reason.trim(),
+          status: "APPROVED",
+          requestedByEmail: actor.email,
+          requestedByName: actor.name,
+          changes: changeLog as unknown as Prisma.InputJsonValue,
+        },
+      });
+      await recordAudit(
+        { actorId: actor.id, action: "UPDATE", entity: "BusinessPlanRevision", entityId: created.id, after: { version, reason: d.reason, changes: changeLog }, metadata: { projectId: d.projectId } },
+        tx,
+      );
+    });
+  } catch (e) {
+    if (e instanceof Error && e.message === "NO_CHANGE") {
+      return { ok: false as const, error: "Aucun changement effectif (valeurs identiques aux valeurs courantes)." };
+    }
+    throw e;
+  }
+
+  revalidatePath(`/projects/${d.projectId}/suivi`);
+  return { ok: true as const, applied: changeLog.length };
 }

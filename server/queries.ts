@@ -32,6 +32,7 @@ import {
 import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
 import { summarizeCommercialisation, type UnitView } from "@/lib/domain/commercialisation";
 import { analyzeVisitReports, type VisitReportView } from "@/lib/domain/visitReports";
+import { computeBusinessPlanDrift, type UnitBaselineView } from "@/lib/domain/businessPlan";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -180,6 +181,37 @@ export async function getProjectMonitoring(id: string) {
     status: r.status as VisitReportView["status"],
   }));
 
+  // Dérive du business plan vs origine (v0) + historique des révisions.
+  const baselines: UnitBaselineView[] = tranches.flatMap((t) =>
+    t.units.map((unit) => ({
+      reference: unit.reference,
+      trancheCode: t.code,
+      originalStanding: unit.originalStanding as UnitBaselineView["originalStanding"],
+      originalPrice: unit.originalPrice,
+      originalSaleDate: unit.originalSaleDate,
+      plannedStanding: unit.plannedStanding as UnitBaselineView["plannedStanding"],
+      plannedPrice: unit.plannedPrice,
+      plannedSaleDate: unit.plannedSaleDate,
+    })),
+  );
+  const bpDrift = computeBusinessPlanDrift(baselines);
+  const bpRevisions = await prisma.businessPlanRevision.findMany({
+    where: { projectId: id },
+    orderBy: { version: "desc" },
+  });
+
+  // Lots (avec id) pour le formulaire de révision du BP.
+  const unitsForRevision = tranches.flatMap((t) =>
+    t.units.map((unit) => ({
+      id: unit.id,
+      reference: unit.reference,
+      trancheCode: t.code,
+      plannedStanding: unit.plannedStanding as string,
+      plannedPrice: unit.plannedPrice,
+      plannedSaleDate: unit.plannedSaleDate,
+    })),
+  );
+
   return {
     project,
     tranches,
@@ -187,6 +219,9 @@ export async function getProjectMonitoring(id: string) {
     reports,
     visitAnalysis: analyzeVisitReports(reportViews, { plannedProgressPct }),
     plannedProgressPct,
+    bpDrift,
+    bpRevisions,
+    unitsForRevision,
   };
 }
 

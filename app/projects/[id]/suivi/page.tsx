@@ -9,6 +9,7 @@ import { TRANCHE_STATUSES, UNIT_STATUSES, UNIT_TYPES } from "@/lib/domain/refere
 import type { RiskLevel } from "@/lib/domain/visitReports";
 import { VisitReportForm } from "@/components/VisitReportForm";
 import { SyncToScoringButton } from "@/components/SyncToScoringButton";
+import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 
@@ -55,7 +56,7 @@ export default async function ProjectMonitoringPage({ params }: { params: { id: 
   const data = res.data;
   if (!data) return notFound();
 
-  const { project, tranches, summary, reports, visitAnalysis } = data;
+  const { project, tranches, summary, reports, visitAnalysis, bpDrift, bpRevisions, unitsForRevision } = data;
   const { sales, revenue, byTranche, byStanding, byType, businessPlan, standingChanges, mainlevees } = summary;
   const hasUnits = sales.totalUnits > 0 || sales.withdrawn > 0;
 
@@ -237,6 +238,68 @@ export default async function ProjectMonitoringPage({ params }: { params: { id: 
               </CardContent>
             </Card>
           )}
+
+          {/* Révision & dérive du business plan */}
+          <Card>
+            <CardHeader><CardTitle>Business plan — révision & dérive vs origine</CardTitle></CardHeader>
+            <CardContent className="space-y-4">
+              {bpDrift.hasOriginalBaseline ? (
+                <>
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Stat label="Lots re-standingés" value={String(bpDrift.restandinged)} hint={`${bpDrift.downgraded} déclassés`} />
+                    <Stat label="Prix cibles révisés" value={String(bpDrift.priceRevised)} />
+                    <Stat label="Calendriers décalés" value={String(bpDrift.scheduleShifted)} />
+                    <Stat label="CA cible vs origine" value={formatMAD(bpDrift.targetCaDeltaAmount)} hint={formatPercent(bpDrift.targetCaDeltaPct, 1)} />
+                  </div>
+                  {bpDrift.items.length > 0 && (
+                    <Table>
+                      <thead><tr><Th>Lot</Th><Th>Tranche</Th><Th>Élément</Th><Th>Origine</Th><Th>Courant</Th><Th>Écart</Th></tr></thead>
+                      <tbody>
+                        {bpDrift.items.map((it, i) => (
+                          <tr key={i}>
+                            <Td className="font-medium">{it.reference}</Td>
+                            <Td>{it.trancheCode}</Td>
+                            <Td>{it.field === "standing" ? "Standing" : it.field === "price" ? "Prix cible" : "Date de vente"}</Td>
+                            <Td>{it.field === "standing" ? it.beforeLabel : it.field === "price" ? formatMAD(Number(it.beforeLabel)) : it.beforeLabel}</Td>
+                            <Td>{it.field === "standing" ? it.afterLabel : it.field === "price" ? formatMAD(Number(it.afterLabel)) : it.afterLabel}</Td>
+                            <Td className={it.direction === "DOWNGRADE" || (it.deltaPct != null && it.deltaPct < 0) || (it.daysShift != null && it.daysShift > 0) ? "text-red-600" : "text-muted-foreground"}>
+                              {it.field === "standing" ? (it.direction === "DOWNGRADE" ? `Déclassement (−${it.rankDelta})` : `Montée (+${-(it.rankDelta ?? 0)})`)
+                                : it.field === "price" ? formatPercent(it.deltaPct ?? 0, 1)
+                                : `${(it.daysShift ?? 0) > 0 ? "+" : ""}${it.daysShift} j`}
+                            </Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                  )}
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">Business plan initial intact (aucune révision enregistrée).</p>
+              )}
+
+              {bpRevisions.length > 0 && (
+                <div>
+                  <p className="text-sm font-medium mb-1">Historique des révisions</p>
+                  <Table>
+                    <thead><tr><Th>Version</Th><Th>Date</Th><Th>Motif</Th><Th>Changements</Th><Th>Auteur</Th></tr></thead>
+                    <tbody>
+                      {bpRevisions.map((r) => (
+                        <tr key={r.id}>
+                          <Td className="font-medium">v{r.version}</Td>
+                          <Td className="whitespace-nowrap">{formatDate(r.createdAt)}</Td>
+                          <Td>{r.reason}</Td>
+                          <Td>{Array.isArray(r.changes) ? (r.changes as unknown[]).length : 0}</Td>
+                          <Td className="text-muted-foreground">{r.requestedByName ?? "—"}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+              )}
+
+              {canWrite && <BusinessPlanRevisionForm projectId={project.id} units={unitsForRevision} />}
+            </CardContent>
+          </Card>
 
           {/* Mainlevées */}
           <Card>

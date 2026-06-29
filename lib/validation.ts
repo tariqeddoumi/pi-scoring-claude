@@ -219,3 +219,17 @@ export const projectUpsertSchema = z.object({
 });
 
 export type ProjectUpsertValues = z.infer<typeof projectUpsertSchema>;
+
+// Révision du business plan (changement de standing / prix cible / calendrier).
+export const bpRevisionSchema = z.object({
+  projectId: z.string().min(1),
+  reason: z.string().min(3, "Motif requis"),
+  changes: z.array(z.object({
+    unitId: z.string().min(1),
+    newStanding: z.enum(["TRES_HAUT", "HAUT", "MOYEN_HAUT", "MOYEN", "ECONOMIQUE", "SOCIAL"]).optional(),
+    newPrice: z.coerce.number().min(0).optional().nullable(),
+    newSaleDate: z.string().optional(),
+  })).min(1, "Au moins un changement requis"),
+});
+
+export type BpRevisionValues = z.infer<typeof bpRevisionSchema>;

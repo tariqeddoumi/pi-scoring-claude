@@ -297,6 +297,7 @@ model RealEstateProject {
   committeeDecisions CommitteeDecision[]
   tranches          Tranche[]
   visitReports      VisitReport[]
+  bpRevisions       BusinessPlanRevision[]
 }
 
 // Tranche (phase de construction / commercialisation) d'un programme.
@@ -333,10 +334,15 @@ model Unit {
   surfaceSqm       Float?
   rooms            Int?
 
-  // Business plan (référence)
+  // Business plan COURANT (baseline approuvée, révisable)
   plannedStanding  Standing
   plannedPrice     Float?
   plannedSaleDate  DateTime?
+
+  // Business plan D'ORIGINE (v0 figé pour audit ; renseigné à la 1re révision)
+  originalStanding Standing?
+  originalPrice    Float?
+  originalSaleDate DateTime?
 
   // Réel
   standing         Standing
@@ -357,6 +363,32 @@ model Unit {
   updatedAt        DateTime @updatedAt
 
   @@index([trancheId])
+}
+
+// Statut d'une révision de business plan.
+enum BpRevisionStatus {
+  DRAFT
+  APPROVED
+}
+
+// Révision du business plan d'un projet (événement de gouvernance) — ex.
+// changement de standing ou de calendrier acté. Conserve la trace de chaque
+// révision (motif, qui, quand) et le détail des changements appliqués aux lots,
+// le business plan d'origine restant figé sur chaque lot (champs original*).
+model BusinessPlanRevision {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version          Int      // incrément par projet (1, 2, …)
+  reason           String
+  status           BpRevisionStatus @default(APPROVED)
+  requestedByEmail String?
+  requestedByName  String?
+  // Détail des changements par lot : [{ reference, field, before, after }]
+  changes          Json
+  createdAt        DateTime @default(now())
+
+  @@index([projectId])
 }
 
 // Statut d'un rapport de visite de chantier.
