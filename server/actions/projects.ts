@@ -5,7 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { recordAudit } from "@/server/engines/auditService";
-import { gfaVefaSchema, riskCalibrationSchema, visitReportSchema } from "@/lib/validation";
+import { gfaVefaSchema, riskCalibrationSchema, visitReportSchema, projectUpsertSchema } from "@/lib/validation";
+import { redirect } from "next/navigation";
 import { PERMISSIONS } from "@/lib/rbac";
 import { extractReportFields, type ExtractedReportFields, type ReportDocument } from "@/lib/domain/visitReportExtraction";
 import { claudeReportExtractor } from "@/server/services/claudeReportExtractor";
@@ -172,4 +173,70 @@ export async function extractVisitReportWithAI(input: {
 
   const fields = await claudeReportExtractor.extract({ rawText: input.rawText, documents: docs });
   return { ok: true as const, fields };
+}
+
+/**
+ * Crée ou met à jour un projet de promotion depuis le formulaire à listes
+ * déroulantes. Réservé à project.write, journalisé. Sur création, redirige vers
+ * la fiche du projet ; sur édition, revalide les écrans concernés.
+ */
+export async function upsertProject(raw: Record<string, unknown>) {
+  const parsed = projectUpsertSchema.safeParse(raw);
+  if (!parsed.success) {
+    return { ok: false as const, errors: parsed.error.flatten().fieldErrors };
+  }
+  const d = parsed.data;
+
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.PROJECT_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+
+  const data = {
+    reference: d.reference.trim(),
+    name: d.name.trim(),
+    promoterId: d.promoterId,
+    rmId: d.rmId || null,
+    assetType: d.assetType,
+    city: d.city?.trim() || null,
+    region: d.region?.trim() || null,
+    projectType: d.projectType || null,
+    segment: d.segment || null,
+    zone: d.zone || null,
+    status: d.status || "PROSPECT",
+    saleMode: d.saleMode,
+    totalUnits: d.totalUnits ?? null,
+    totalCost: d.totalCost ?? null,
+    loanAmount: d.loanAmount ?? null,
+    ownEquity: d.ownEquity ?? null,
+  };
+
+  let projectId = d.id;
+  try {
+    if (d.id) {
+      await prisma.$transaction(async (tx) => {
+        await tx.realEstateProject.update({ where: { id: d.id }, data });
+        await recordAudit({ actorId: actor.id, action: "UPDATE", entity: "RealEstateProject", entityId: d.id!, after: data }, tx);
+      });
+    } else {
+      await prisma.$transaction(async (tx) => {
+        const created = await tx.realEstateProject.create({ data });
+        projectId = created.id;
+        await recordAudit({ actorId: actor.id, action: "CREATE", entity: "RealEstateProject", entityId: created.id, after: data }, tx);
+      });
+    }
+  } catch (e) {
+    // Conflit de référence unique le plus souvent.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+      return { ok: false as const, error: "Cette référence de projet existe déjà." };
+    }
+    throw e;
+  }
+
+  revalidatePath("/projects");
+  if (d.id) revalidatePath(`/projects/${d.id}`);
+  redirect(`/projects/${projectId}`);
 }

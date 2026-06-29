@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { getProjectsWithLatestRun } from "@/server/queries";
-import { Card, CardContent, Table, Th, Td, Badge } from "@/components/ui";
+import { Card, CardContent, Table, Th, Td, Badge, Button } from "@/components/ui";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
+import { currentUserCan } from "@/lib/authz";
+import { PERMISSIONS } from "@/lib/rbac";
 import { formatMAD } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
+import { SEGMENTS } from "@/lib/domain/referentiels";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +14,14 @@ export default async function ProjectsPage() {
   const res = await safe(getProjectsWithLatestRun);
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const projects = res.data;
+  const canWrite = await currentUserCan(PERMISSIONS.PROJECT_WRITE);
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">Projets de promotion immobilière</h1>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">Projets de promotion immobilière</h1>
+        {canWrite && <Link href="/projects/new"><Button>+ Nouveau projet</Button></Link>}
+      </div>
       <Card>
         <CardContent className="p-0">
           <Table>
@@ -34,7 +41,7 @@ export default async function ProjectsPage() {
                     <Td>{p.name}</Td>
                     <Td>{p.promoter.name}</Td>
                     <Td>{p.city ?? "—"}</Td>
-                    <Td>{p.segment ?? "—"}</Td>
+                    <Td>{SEGMENTS.labelOf(p.segment)}</Td>
                     <Td>{formatMAD(p.loanAmount)}</Td>
                     <Td>{run?.scoreFinal != null ? run.scoreFinal.toFixed(0) : "—"}</Td>
                     <Td>{cls ? <Badge className={CLASS_COLORS[cls]}>{CLASS_LABELS[cls]}</Badge> : "—"}</Td>

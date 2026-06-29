@@ -19,6 +19,7 @@ import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
+import { SEGMENTS, ZONES, PROJECT_STATUSES } from "@/lib/domain/referentiels";
 
 export const dynamic = "force-dynamic";
 
@@ -87,6 +88,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <div className="flex items-center gap-2">
           {cls && <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>}
           {run?.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
+          {actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) && (
+            <Link href={`/projects/${p.id}/edit`}><Button variant="outline">Éditer</Button></Link>
+          )}
           {p.assetType === "PROMOTION" && (
             <Link href={`/projects/${p.id}/suivi`}><Button variant="outline">Suivi de commercialisation</Button></Link>
           )}
@@ -199,7 +203,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
               <Table><tbody>
                 <tr><Td className="text-muted-foreground">Référence</Td><Td className="font-medium">{p.reference}</Td></tr>
                 <tr><Td className="text-muted-foreground">Type</Td><Td>{p.projectType ?? "—"}</Td></tr>
-                <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{p.segment ?? "—"} / {p.zone ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{SEGMENTS.labelOf(p.segment)} / {ZONES.labelOf(p.zone)}</Td></tr>
                 <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{p.city ?? "—"} / {p.region ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.group ? <Link href="/groups" className="text-primary hover:underline">{p.group.name}</Link> : "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Unités</Td><Td>{p.totalUnits ?? "—"}</Td></tr>

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td } 
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { standingLabel, type StandingCode } from "@/lib/domain/commercialisation";
+import { TRANCHE_STATUSES, UNIT_STATUSES, UNIT_TYPES } from "@/lib/domain/referentiels";
 import type { RiskLevel } from "@/lib/domain/visitReports";
 import { VisitReportForm } from "@/components/VisitReportForm";
 import { getCurrentAppUser } from "@/lib/supabase/server";
@@ -19,25 +20,12 @@ const RISK_COLORS: Record<RiskLevel, string> = {
   ELEVE: "bg-red-100 text-red-800 border-red-300",
 };
 
-const TRANCHE_STATUS_LABELS: Record<string, string> = {
-  PLANIFIEE: "Planifiée",
-  EN_TRAVAUX: "En travaux",
-  LIVREE: "Livrée",
-  CLOTUREE: "Clôturée",
-};
+// Libellés : source unique = référentiels. Couleurs : spécifiques à cet écran.
 const TRANCHE_STATUS_COLORS: Record<string, string> = {
   PLANIFIEE: "bg-slate-100 text-slate-700 border-slate-300",
   EN_TRAVAUX: "bg-blue-100 text-blue-800 border-blue-300",
   LIVREE: "bg-emerald-100 text-emerald-800 border-emerald-300",
   CLOTUREE: "bg-violet-100 text-violet-800 border-violet-300",
-};
-const UNIT_STATUS_LABELS: Record<string, string> = {
-  DISPONIBLE: "Disponible",
-  RESERVE: "Réservé",
-  COMPROMIS: "Compromis",
-  VENDU: "Vendu",
-  LIVRE: "Livré",
-  DESISTE: "Désisté",
 };
 const UNIT_STATUS_COLORS: Record<string, string> = {
   DISPONIBLE: "bg-slate-100 text-slate-700 border-slate-300",
@@ -46,14 +34,6 @@ const UNIT_STATUS_COLORS: Record<string, string> = {
   VENDU: "bg-emerald-100 text-emerald-800 border-emerald-300",
   LIVRE: "bg-emerald-200 text-emerald-900 border-emerald-400",
   DESISTE: "bg-red-100 text-red-800 border-red-300",
-};
-const UNIT_TYPE_LABELS: Record<string, string> = {
-  APPARTEMENT: "Appartement",
-  VILLA: "Villa",
-  COMMERCE: "Commerce",
-  BUREAU: "Bureau",
-  TERRAIN: "Terrain",
-  AUTRE: "Autre",
 };
 
 function ProgressBar({ value }: { value: number }) {
@@ -291,7 +271,7 @@ export default async function ProjectMonitoringPage({ params }: { params: { id: 
                       return (
                         <tr key={t.id}>
                           <Td className="font-medium">{t.code}{t.name ? ` — ${t.name}` : ""}</Td>
-                          <Td><Badge className={TRANCHE_STATUS_COLORS[t.status]}>{TRANCHE_STATUS_LABELS[t.status]}</Badge></Td>
+                          <Td><Badge className={TRANCHE_STATUS_COLORS[t.status]}>{TRANCHE_STATUSES.labelOf(t.status)}</Badge></Td>
                           <Td><ProgressBar value={t.progressPct} /></Td>
                           <Td>{bt ? `${bt.firmUnits}/${bt.totalUnits} (${formatPercent(bt.firmSaleRatePct, 0)})` : "—"}</Td>
                         </tr>
@@ -336,12 +316,12 @@ export default async function ProjectMonitoringPage({ params }: { params: { id: 
                         <tr key={unit.id}>
                           <Td className="font-medium">{unit.reference}</Td>
                           <Td>{t.code}</Td>
-                          <Td>{UNIT_TYPE_LABELS[unit.type] ?? unit.type}</Td>
+                          <Td>{UNIT_TYPES.labelOf(unit.type)}</Td>
                           <Td>
                             {standingLabel(unit.standing as StandingCode)}
                             {downgrade && <span className="text-red-600 text-xs"> (prévu : {standingLabel(unit.plannedStanding as StandingCode)})</span>}
                           </Td>
-                          <Td><Badge className={UNIT_STATUS_COLORS[unit.status]}>{UNIT_STATUS_LABELS[unit.status]}</Badge></Td>
+                          <Td><Badge className={UNIT_STATUS_COLORS[unit.status]}>{UNIT_STATUSES.labelOf(unit.status)}</Badge></Td>
                           <Td>{formatMAD(unit.plannedPrice)}</Td>
                           <Td>{unit.soldPrice != null ? formatMAD(unit.soldPrice) : "—"}</Td>
                           <Td>{["VENDU", "LIVRE"].includes(unit.status) ? (unit.mortgageReleased ? "✓ Levée" : "En attente") : "—"}</Td>

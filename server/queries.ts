@@ -189,6 +189,28 @@ export async function getProjectMonitoring(id: string) {
   };
 }
 
+/** Options pour le formulaire projet : promoteurs + chargés d'affaires. */
+export async function getProjectFormOptions() {
+  const [promoters, managers] = await Promise.all([
+    prisma.promoter.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
+  return { promoters, managers };
+}
+
+/** Projet pour pré-remplir le formulaire d'édition. */
+export async function getProjectForEdit(id: string) {
+  return prisma.realEstateProject.findUnique({
+    where: { id },
+    select: {
+      id: true, reference: true, name: true, promoterId: true, rmId: true,
+      assetType: true, city: true, region: true, projectType: true, segment: true,
+      zone: true, status: true, saleMode: true, totalUnits: true, totalCost: true,
+      loanAmount: true, ownEquity: true,
+    },
+  });
+}
+
 export async function getPortfolioStats() {
   const projects = await getProjectsWithLatestRun();
   const total = projects.length;

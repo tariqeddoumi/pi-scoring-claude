@@ -196,3 +196,26 @@ export const visitReportSchema = z.object({
 });
 
 export type VisitReportFormValues = z.infer<typeof visitReportSchema>;
+
+// Création / édition d'un projet de promotion (formulaire à listes déroulantes).
+export const projectUpsertSchema = z.object({
+  id: z.string().optional(),
+  reference: z.string().min(1, "Référence requise"),
+  name: z.string().min(2, "Nom du projet requis"),
+  promoterId: z.string().min(1, "Promoteur requis"),
+  rmId: z.string().optional().nullable(),
+  assetType: z.enum(["PROMOTION", "EXPLOITATION"]).default("PROMOTION"),
+  city: z.string().optional(),
+  region: z.string().optional(),
+  projectType: z.string().optional(),
+  segment: z.string().optional(),
+  zone: z.string().optional(),
+  status: z.string().optional(),
+  saleMode: z.enum(["CLASSIC", "VEFA"]).default("CLASSIC"),
+  totalUnits: z.coerce.number().int().min(0).optional().nullable(),
+  totalCost: z.coerce.number().min(0).optional().nullable(),
+  loanAmount: z.coerce.number().min(0).optional().nullable(),
+  ownEquity: z.coerce.number().min(0).optional().nullable(),
+});
+
+export type ProjectUpsertValues = z.infer<typeof projectUpsertSchema>;
