@@ -2,7 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { runFullScoring } from "@/server/services/scoringService";
+import {
+  runFullScoring,
+  runClassification,
+  runEconomicScoring,
+  runProvisioning,
+} from "@/server/services/scoringService";
 import { scoringInputsSchema, exploitationInputsSchema } from "@/lib/validation";
 import { recordAudit } from "@/server/engines/auditService";
 import { authorize, AuthorizationError } from "@/lib/authz";
@@ -86,6 +91,55 @@ export async function runScoringAction(projectId: string, ead?: number, reserved
     resultClass: result.classification.resultClass,
     provisionAmount: result.provision.provisionAmount,
   };
+}
+
+/** Lance la CLASSIFICATION réglementaire seule (moteur découplé). */
+export async function runClassificationAction(projectId: string) {
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.SCORING_RUN);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+  const { classification } = await runClassification(projectId, actor.id);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/scoring`);
+  return { ok: true as const, resultClass: classification.resultClass, isWatchList: classification.isWatchList };
+}
+
+/** Lance le SCORING économique seul (consomme la dernière classe connue). */
+export async function runEconomicScoringAction(projectId: string) {
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.SCORING_RUN);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+  const { scoring } = await runEconomicScoring(projectId, actor.id);
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/scoring`);
+  return { ok: true as const, scoreFinal: scoring.scoreFinal, decision: scoring.decision };
+}
+
+/** Lance le PROVISIONNEMENT seul (consomme la dernière classification). */
+export async function runProvisioningAction(projectId: string, ead?: number, reservedAgios?: number) {
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.SCORING_RUN);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+  try {
+    const { provision } = await runProvisioning(projectId, actor.id, { ead, reservedAgios });
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/projects/${projectId}/scoring`);
+    return { ok: true as const, provisionAmount: provision.provisionAmount, classCode: provision.classCode };
+  } catch (e) {
+    return { ok: false as const, error: (e as Error).message };
+  }
 }
 
 /**
