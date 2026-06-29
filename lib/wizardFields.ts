@@ -78,7 +78,7 @@ export const WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] =
       sel("technical_complexity", [["elevee", "Élevée"], ["moyenne", "Moyenne"], ["standard", "Standard"]]),
       { key: "progress_vs_plan", type: "number" },
       sel("sav_litigation", [["eleve", "Élevé"], ["moyen", "Moyen"], ["faible", "Faible"]]),
-      sel("macro_sensitivity", [["elevee", "Élevée"], ["faible", "Faible"]]),
+      sel("macro_sensitivity", [["elevee", "Élevée"], ["moyenne", "Moyenne"], ["faible", "Faible"]]),
       { key: "land_cost_ratio", type: "number" },
     ],
   },
