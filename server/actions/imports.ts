@@ -4,17 +4,21 @@ import { revalidatePath } from "next/cache";
 import * as XLSX from "xlsx";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { authorize, AuthorizationError } from "@/lib/authz";
+import { authorize, AuthorizationError, currentUserCan } from "@/lib/authz";
 import { recordAudit } from "@/server/engines/auditService";
 import { PERMISSIONS } from "@/lib/rbac";
 import { mapImportRows, type ImportError } from "@/lib/domain/importMapping";
 import { INPUT_LABELS } from "@/lib/inputLabels";
+import { runFullScoring } from "@/server/services/scoringService";
 
 // Clés d'entrée booléennes (coercition oui/non) — le reste est numérique/texte.
 const BOOL_INPUT_KEYS = [
   "funding_gap_persistent", "equity_negative", "commercialization_below_50_1y",
   "construction_delay_over_1y", "project_stopped_over_1y", "finished_2y_no_sales",
   "judicial_recovery", "admin_problems_over_1y", "bp_significant_gap",
+  // Déclencheurs réglementaires 1/W + contexte de restructuration (art.5/17-31).
+  "seizure_notice", "financials_late_7m", "negative_credit_bureau", "financials_unavailable",
+  "restructuring_viable", "second_restructuring_in_observation",
 ];
 
 export interface ImportSummary {
@@ -22,6 +26,10 @@ export interface ImportSummary {
   success: number;
   failed: number;
   errors: ImportError[];
+  /** Projets scorés automatiquement après import (si demandé). */
+  scored?: number;
+  /** Projets dont le scoring post-import a échoué (données incomplètes, etc.). */
+  scoreFailed?: number;
 }
 
 /**
@@ -63,10 +71,15 @@ export async function runImport(formData: FormData): Promise<{ ok: true; summary
 
   const { rows, errors } = mapImportRows(rawRows, Object.keys(INPUT_LABELS), BOOL_INPUT_KEYS);
 
+  // Demande optionnelle de scoring automatique après import (case à cocher).
+  const autoScore = formData.get("autoScore") === "1";
+
   let success = 0;
+  // Projets importés éligibles au scoring post-import (promotion uniquement).
+  const importedForScoring: { id: string; rowIndex: number; reference: string }[] = [];
   for (const row of rows) {
     try {
-      await prisma.$transaction(async (tx) => {
+      const project = await prisma.$transaction(async (tx) => {
         let promoter = await tx.promoter.findFirst({ where: { name: { equals: row.promoterName, mode: "insensitive" } }, select: { id: true } });
         if (!promoter) promoter = await tx.promoter.create({ data: { name: row.promoterName }, select: { id: true } });
 
@@ -76,11 +89,11 @@ export async function runImport(formData: FormData): Promise<{ ok: true; summary
           segment: row.segment, zone: row.zone,
           loanAmount: row.loanAmount, totalCost: row.totalCost, ownEquity: row.ownEquity,
         };
-        const project = await tx.realEstateProject.upsert({
+        const proj = await tx.realEstateProject.upsert({
           where: { reference: row.reference },
           update: data,
           create: { reference: row.reference, ...data },
-          select: { id: true },
+          select: { id: true, assetType: true },
         });
 
         for (const [key, value] of Object.entries(row.inputs)) {
@@ -90,13 +103,17 @@ export async function runImport(formData: FormData): Promise<{ ok: true; summary
             valueBool: typeof value === "boolean" ? value : null,
           };
           await tx.projectInput.upsert({
-            where: { projectId_key: { projectId: project.id, key } },
-            create: { projectId: project.id, key, ...v },
+            where: { projectId_key: { projectId: proj.id, key } },
+            create: { projectId: proj.id, key, ...v },
             update: v,
           });
         }
+        return proj;
       });
       success += 1;
+      if (project.assetType !== "EXPLOITATION") {
+        importedForScoring.push({ id: project.id, rowIndex: row.rowIndex, reference: row.reference });
+      }
     } catch (e) {
       const msg = e instanceof Prisma.PrismaClientKnownRequestError ? `Erreur base (${e.code}).` : "Erreur d'enregistrement.";
       errors.push({ rowIndex: row.rowIndex, message: `${row.reference} : ${msg}` });
@@ -119,7 +136,30 @@ export async function runImport(formData: FormData): Promise<{ ok: true; summary
     await recordAudit({ actorId: actor.id, action: "IMPORT", entity: "ImportBatch", entityId: batch.id, after: { fileName: file.name, total, success, failed, status } }, tx);
   });
 
+  // Scoring automatique post-import (étape découplée et optionnelle) : lance le
+  // pipeline complet pour chaque projet de promotion importé, sous réserve du
+  // droit scoring.run. Chaque run est isolé : un échec (données incomplètes,
+  // gate bloquant interne) n'affecte ni les autres ni le succès de l'import.
+  let scored: number | undefined;
+  let scoreFailed: number | undefined;
+  if (autoScore && importedForScoring.length > 0 && (await currentUserCan(PERMISSIONS.SCORING_RUN))) {
+    scored = 0;
+    scoreFailed = 0;
+    for (const p of importedForScoring) {
+      try {
+        await runFullScoring({ projectId: p.id, actorId: actor.id });
+        scored += 1;
+      } catch {
+        scoreFailed += 1;
+        errors.push({ rowIndex: p.rowIndex, message: `${p.reference} : scoring non lancé (données incomplètes).` });
+      }
+    }
+    revalidatePath("/");
+  }
+
   revalidatePath("/imports");
   revalidatePath("/projects");
-  return { ok: true as const, summary: { total, success, failed, errors } };
+  // `failed` = échecs d'import (hors scoring) ; les notes de scoring restent
+  // visibles dans `errors` et comptabilisées par `scoreFailed`.
+  return { ok: true as const, summary: { total, success, failed, errors, scored, scoreFailed } };
 }
