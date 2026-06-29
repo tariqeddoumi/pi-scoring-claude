@@ -702,6 +702,15 @@ export async function getModelDraft(modelCode = "PI_PROMOTION") {
   });
 }
 
+/** Historique des lots d'import (les plus récents d'abord). */
+export async function getImportBatches(limit = 20) {
+  return prisma.importBatch.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: { importedBy: { select: { name: true } } },
+  });
+}
+
 export async function getRegimes() {
   return prisma.regulatoryRegime.findMany({
     orderBy: { effectiveFrom: "desc" },

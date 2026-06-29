@@ -161,6 +161,27 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
       <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
 
+      {p.attachments.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Pièces jointes</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <thead><tr><Th>Document</Th><Th>Section</Th><Th>Taille</Th><Th>Ajouté le</Th></tr></thead>
+              <tbody>
+                {p.attachments.map((a) => (
+                  <tr key={a.id}>
+                    <Td><a href={a.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{a.fileName}</a></Td>
+                    <Td>{a.section ?? "—"}</Td>
+                    <Td>{a.sizeBytes != null ? `${Math.round(a.sizeBytes / 1024)} Ko` : "—"}</Td>
+                    <Td className="whitespace-nowrap">{formatDate(a.createdAt)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <RiskMetricsCard
         score={run?.scoreFinal ?? null}
         cls={cls?.resultClass ?? null}
