@@ -233,3 +233,17 @@ export const bpRevisionSchema = z.object({
 });
 
 export type BpRevisionValues = z.infer<typeof bpRevisionSchema>;
+
+// Paramétrage (tuning) du modèle de scoring actif : seuils de décision,
+// ajustements segment/zone et malus des red flags.
+export const modelTuningSchema = z.object({
+  versionId: z.string().min(1),
+  go: z.coerce.number().min(0).max(100),
+  goWithConditions: z.coerce.number().min(0).max(100),
+  watchList: z.coerce.number().min(0).max(100),
+  segmentAdjustments: z.record(z.coerce.number().min(-1).max(1)),
+  zoneAdjustments: z.record(z.coerce.number().min(-1).max(1)),
+  redFlagMalus: z.record(z.coerce.number().min(0).max(100)),
+});
+
+export type ModelTuningValues = z.infer<typeof modelTuningSchema>;
