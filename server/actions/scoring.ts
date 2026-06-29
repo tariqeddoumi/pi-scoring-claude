@@ -7,6 +7,8 @@ import { scoringInputsSchema, exploitationInputsSchema } from "@/lib/validation"
 import { recordAudit } from "@/server/engines/auditService";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
+import { getProjectMonitoring } from "@/server/queries";
+import { deriveScoringInputs, type MonitoringSignals } from "@/lib/domain/scoringSignals";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
 export async function saveProjectInputs(
@@ -84,4 +86,62 @@ export async function runScoringAction(projectId: string, ead?: number, reserved
     resultClass: result.classification.resultClass,
     provisionAmount: result.provision.provisionAmount,
   };
+}
+
+/**
+ * Synchronise les inputs de scoring dérivés du SUIVI réel (commercialisation +
+ * avancement chantier) vers ProjectInput : prévente, ventes vs plan, avancement
+ * vs plan, décalage business plan. Réservé à project.write, journalisé. Permet
+ * de re-scorer « à mesure de l'avancement » sans ressaisie. Renvoie les valeurs
+ * appliquées (pour affichage). Ne lance pas le scoring (étape suivante au choix).
+ */
+export async function syncMonitoringToInputs(projectId: string) {
+  let actor;
+  try {
+    actor = await authorize(PERMISSIONS.PROJECT_WRITE);
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { ok: false as const, error: e.message };
+    throw e;
+  }
+
+  const mon = await getProjectMonitoring(projectId);
+  if (!mon) return { ok: false as const, error: "Projet introuvable." };
+  if (mon.summary.sales.totalUnits === 0) {
+    return { ok: false as const, error: "Aucun lot enregistré : renseignez d'abord le suivi (tranches/lots)." };
+  }
+
+  const signals: MonitoringSignals = {
+    preSaleRatePct: mon.summary.sales.preSaleRatePct,
+    salesVsPlanPct: mon.summary.businessPlan.salesVsPlanPct,
+    caDeltaPct: mon.summary.businessPlan.caDeltaPct,
+    unitsLate: mon.summary.businessPlan.unitsLate,
+    totalUnits: mon.summary.sales.totalUnits,
+    observedProgressPct: mon.visitAnalysis.trend.latestProgressPct,
+    plannedProgressPct: mon.plannedProgressPct,
+  };
+  const derived = deriveScoringInputs(signals);
+
+  await prisma.$transaction(async (tx) => {
+    for (const [key, value] of Object.entries(derived.values)) {
+      const data = {
+        valueNum: typeof value === "number" ? value : null,
+        valueStr: null,
+        valueBool: typeof value === "boolean" ? value : null,
+      };
+      await tx.projectInput.upsert({
+        where: { projectId_key: { projectId, key } },
+        create: { projectId, key, ...data },
+        update: data,
+      });
+    }
+    await recordAudit(
+      { actorId: actor.id, action: "UPDATE", entity: "ProjectInput", entityId: projectId, after: derived.values, metadata: { source: "monitoring_sync" } },
+      tx,
+    );
+  });
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/scoring`);
+  revalidatePath(`/projects/${projectId}/suivi`);
+  return { ok: true as const, notes: derived.notes };
 }

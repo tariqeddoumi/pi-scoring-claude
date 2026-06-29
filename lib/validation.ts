@@ -175,3 +175,75 @@ export const riskCalibrationSchema = z.object({
 });
 
 export type RiskCalibrationFormValues = z.infer<typeof riskCalibrationSchema>;
+
+// Rapport de visite de chantier (suivi de promotion).
+export const visitReportSchema = z.object({
+  projectId: z.string().min(1, "Projet requis"),
+  visitDate: z.string().min(1, "Date de visite requise"),
+  inspectorName: z.string().optional(),
+  trancheCode: z.string().optional(),
+  status: z.enum(["DRAFT", "FINALIZED"]).default("DRAFT"),
+  observedProgressPct: z.coerce.number().min(0).max(100).optional().nullable(),
+  workforceCount: z.coerce.number().int().min(0).optional().nullable(),
+  weatherImpact: z.coerce.boolean().optional().default(false),
+  qualityIssue: z.coerce.boolean().optional().default(false),
+  safetyIssue: z.coerce.boolean().optional().default(false),
+  delayRisk: z.coerce.boolean().optional().default(false),
+  summary: z.string().optional(),
+  observations: z.string().optional(),
+  recommendations: z.string().optional(),
+  rawText: z.string().optional(),
+});
+
+export type VisitReportFormValues = z.infer<typeof visitReportSchema>;
+
+// Création / édition d'un projet de promotion (formulaire à listes déroulantes).
+export const projectUpsertSchema = z.object({
+  id: z.string().optional(),
+  reference: z.string().min(1, "Référence requise"),
+  name: z.string().min(2, "Nom du projet requis"),
+  promoterId: z.string().min(1, "Promoteur requis"),
+  rmId: z.string().optional().nullable(),
+  assetType: z.enum(["PROMOTION", "EXPLOITATION"]).default("PROMOTION"),
+  city: z.string().optional(),
+  region: z.string().optional(),
+  projectType: z.string().optional(),
+  segment: z.string().optional(),
+  zone: z.string().optional(),
+  status: z.string().optional(),
+  saleMode: z.enum(["CLASSIC", "VEFA"]).default("CLASSIC"),
+  totalUnits: z.coerce.number().int().min(0).optional().nullable(),
+  totalCost: z.coerce.number().min(0).optional().nullable(),
+  loanAmount: z.coerce.number().min(0).optional().nullable(),
+  ownEquity: z.coerce.number().min(0).optional().nullable(),
+});
+
+export type ProjectUpsertValues = z.infer<typeof projectUpsertSchema>;
+
+// Révision du business plan (changement de standing / prix cible / calendrier).
+export const bpRevisionSchema = z.object({
+  projectId: z.string().min(1),
+  reason: z.string().min(3, "Motif requis"),
+  changes: z.array(z.object({
+    unitId: z.string().min(1),
+    newStanding: z.enum(["TRES_HAUT", "HAUT", "MOYEN_HAUT", "MOYEN", "ECONOMIQUE", "SOCIAL"]).optional(),
+    newPrice: z.coerce.number().min(0).optional().nullable(),
+    newSaleDate: z.string().optional(),
+  })).min(1, "Au moins un changement requis"),
+});
+
+export type BpRevisionValues = z.infer<typeof bpRevisionSchema>;
+
+// Paramétrage (tuning) du modèle de scoring actif : seuils de décision,
+// ajustements segment/zone et malus des red flags.
+export const modelTuningSchema = z.object({
+  versionId: z.string().min(1),
+  go: z.coerce.number().min(0).max(100),
+  goWithConditions: z.coerce.number().min(0).max(100),
+  watchList: z.coerce.number().min(0).max(100),
+  segmentAdjustments: z.record(z.coerce.number().min(-1).max(1)),
+  zoneAdjustments: z.record(z.coerce.number().min(-1).max(1)),
+  redFlagMalus: z.record(z.coerce.number().min(0).max(100)),
+});
+
+export type ModelTuningValues = z.infer<typeof modelTuningSchema>;

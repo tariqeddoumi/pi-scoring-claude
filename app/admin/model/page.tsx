@@ -5,8 +5,15 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatPercent } from "@/lib/utils";
 import { SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
+import { ModelTuningForm } from "@/components/ModelTuningForm";
+import { getModelDraft } from "@/server/queries";
+import Link from "next/link";
+import { Button } from "@/components/ui";
+import { CreateDraftButton } from "@/components/CreateDraftButton";
 
 export const dynamic = "force-dynamic";
+
+const DEFAULT_THRESHOLDS = { go: 75, goWithConditions: 65, watchList: 50 };
 
 export default async function ModelBuilderPage() {
   if (!(await currentUserCan(PERMISSIONS.MODEL_READ))) return <AccessDenied />;
@@ -15,12 +22,43 @@ export default async function ModelBuilderPage() {
   const v = res.data;
   if (!v) return <p className="text-muted-foreground">Aucun modèle publié.</p>;
 
+  const canEdit = await currentUserCan(PERMISSIONS.MODEL_WRITE);
+  const draftRes = canEdit ? await safe(() => getModelDraft()) : null;
+  const draft = draftRes && draftRes.ok ? draftRes.data : null;
+  const thresholds = { ...DEFAULT_THRESHOLDS, ...((v.decisionThresholds as Record<string, number> | null) ?? {}) };
+  const segmentAdjustments = (v.segmentAdjustments as Record<string, number> | null) ?? {};
+  const zoneAdjustments = (v.zoneAdjustments as Record<string, number> | null) ?? {};
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Model Builder — {v.model.name}</h1>
         <p className="text-sm text-muted-foreground">Version {v.version} · {v.status} · échelle KPI 0..{v.scoreScale}</p>
       </div>
+
+      {canEdit && (
+        <Card>
+          <CardHeader><CardTitle>Édition structurelle du modèle</CardTitle></CardHeader>
+          <CardContent className="space-y-2">
+            <p className="text-sm text-muted-foreground">Ajouter / modifier / supprimer domaines, critères, modalités, barèmes et red flags se fait sur un brouillon, publié ensuite.</p>
+            {draft
+              ? <Link href="/admin/model/draft"><Button>Ouvrir le brouillon en cours</Button></Link>
+              : <CreateDraftButton />}
+          </CardContent>
+        </Card>
+      )}
+
+      {canEdit && (
+        <ModelTuningForm
+          initial={{
+            versionId: v.id,
+            thresholds: { go: thresholds.go, goWithConditions: thresholds.goWithConditions, watchList: thresholds.watchList },
+            segmentAdjustments,
+            zoneAdjustments,
+            redFlags: v.redFlags.map((r) => ({ id: r.id, code: r.code, name: r.name, malus: r.malus })),
+          }}
+        />
+      )}
 
       {v.domains.map((d) => (
         <Card key={d.id}>

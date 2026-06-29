@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory } from "@/server/queries";
+import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
@@ -19,6 +20,7 @@ import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
+import { SEGMENTS, ZONES, PROJECT_STATUSES } from "@/lib/domain/referentiels";
 
 export const dynamic = "force-dynamic";
 
@@ -51,6 +53,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
   const calib = await getActiveCalibration();
+  const scoreHistory = await getScoringHistory(p.id);
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
@@ -87,6 +90,12 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         <div className="flex items-center gap-2">
           {cls && <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>}
           {run?.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
+          {actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) && (
+            <Link href={`/projects/${p.id}/edit`}><Button variant="outline">Éditer</Button></Link>
+          )}
+          {p.assetType === "PROMOTION" && (
+            <Link href={`/projects/${p.id}/suivi`}><Button variant="outline">Suivi de commercialisation</Button></Link>
+          )}
           <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline">Dossier comité (PDF)</Button>
@@ -152,6 +161,27 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
 
       <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
 
+      {p.attachments.length > 0 && (
+        <Card>
+          <CardHeader><CardTitle>Pièces jointes</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <thead><tr><Th>Document</Th><Th>Section</Th><Th>Taille</Th><Th>Ajouté le</Th></tr></thead>
+              <tbody>
+                {p.attachments.map((a) => (
+                  <tr key={a.id}>
+                    <Td><a href={a.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{a.fileName}</a></Td>
+                    <Td>{a.section ?? "—"}</Td>
+                    <Td>{a.sizeBytes != null ? `${Math.round(a.sizeBytes / 1024)} Ko` : "—"}</Td>
+                    <Td className="whitespace-nowrap">{formatDate(a.createdAt)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <RiskMetricsCard
         score={run?.scoreFinal ?? null}
         cls={cls?.resultClass ?? null}
@@ -196,7 +226,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
               <Table><tbody>
                 <tr><Td className="text-muted-foreground">Référence</Td><Td className="font-medium">{p.reference}</Td></tr>
                 <tr><Td className="text-muted-foreground">Type</Td><Td>{p.projectType ?? "—"}</Td></tr>
-                <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{p.segment ?? "—"} / {p.zone ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{SEGMENTS.labelOf(p.segment)} / {ZONES.labelOf(p.zone)}</Td></tr>
                 <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{p.city ?? "—"} / {p.region ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.group ? <Link href="/groups" className="text-primary hover:underline">{p.group.name}</Link> : "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Unités</Td><Td>{p.totalUnits ?? "—"}</Td></tr>
@@ -323,6 +353,7 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 ))}
                 {(run.triggeredRedFlags as any[] ?? []).length === 0 && <p className="text-sm text-muted-foreground">Aucun red flag.</p>}
               </CardContent></Card>
+              <div className="lg:col-span-3"><ScoreTimeline runs={scoreHistory} /></div>
             </div>
           ) : <p className="text-muted-foreground text-sm">Aucun run de scoring. Cliquez sur « Lancer le scoring ».</p>}
         </TabsContent>

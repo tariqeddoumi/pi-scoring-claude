@@ -134,6 +134,44 @@ enum AssetType {
   EXPLOITATION
 }
 
+// --- Suivi de projet de promotion (tranches, unités, commercialisation) ---
+
+enum TrancheStatus {
+  PLANIFIEE
+  EN_TRAVAUX
+  LIVREE
+  CLOTUREE
+}
+
+enum UnitType {
+  APPARTEMENT
+  VILLA
+  COMMERCE
+  BUREAU
+  TERRAIN
+  AUTRE
+}
+
+// Cycle de vie commercial d'une unité.
+enum UnitStatus {
+  DISPONIBLE
+  RESERVE
+  COMPROMIS
+  VENDU
+  LIVRE
+  DESISTE
+}
+
+// Niveau de positionnement (standing), du plus haut au plus bas.
+enum Standing {
+  TRES_HAUT
+  HAUT
+  MOYEN_HAUT
+  MOYEN
+  ECONOMIQUE
+  SOCIAL
+}
+
 // =====================================================================
 //  RBAC / UTILISATEURS
 // =====================================================================
@@ -182,6 +220,7 @@ model User {
   workflowSteps    WorkflowStep[]
   importBatches    ImportBatch[]
   committeeDecisionsChaired CommitteeDecision[] @relation("CommitteeChair")
+  visitReports     VisitReport[] @relation("VisitReportAuthor")
 }
 
 // =====================================================================
@@ -256,6 +295,144 @@ model RealEstateProject {
   comments          Comment[]
   attachments       Attachment[]
   committeeDecisions CommitteeDecision[]
+  tranches          Tranche[]
+  visitReports      VisitReport[]
+  bpRevisions       BusinessPlanRevision[]
+}
+
+// Tranche (phase de construction / commercialisation) d'un programme.
+model Tranche {
+  id              String   @id @default(cuid())
+  projectId       String
+  project         RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code            String   // ex. "T1"
+  name            String?
+  orderIndex      Int      @default(0)
+  status          TrancheStatus @default(PLANIFIEE)
+  plannedStart    DateTime?
+  plannedDelivery DateTime?
+  actualDelivery  DateTime?
+  progressPct     Float    @default(0) // avancement physique 0..100
+  budget          Float?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  units           Unit[]
+
+  @@index([projectId])
+}
+
+// Unité commercialisable (lot) : appartement, villa, commerce… Double vue
+// business plan (planned*) vs réel, support du suivi des ventes, du décalage
+// au business plan, du déclassement de standing et de la mainlevée.
+model Unit {
+  id               String   @id @default(cuid())
+  trancheId        String
+  tranche          Tranche  @relation(fields: [trancheId], references: [id], onDelete: Cascade)
+  reference        String   // ex. "A-12", "Villa 3"
+  type             UnitType
+  surfaceSqm       Float?
+  rooms            Int?
+
+  // Business plan COURANT (baseline approuvée, révisable)
+  plannedStanding  Standing
+  plannedPrice     Float?
+  plannedSaleDate  DateTime?
+
+  // Business plan D'ORIGINE (v0 figé pour audit ; renseigné à la 1re révision)
+  originalStanding Standing?
+  originalPrice    Float?
+  originalSaleDate DateTime?
+
+  // Réel
+  standing         Standing
+  listPrice        Float?
+  status           UnitStatus @default(DISPONIBLE)
+  reservedAt       DateTime?
+  soldAt           DateTime?
+  soldPrice        Float?
+  buyerName        String?
+  deliveredAt      DateTime?
+
+  // Mainlevée hypothécaire partielle
+  mortgageReleased   Boolean  @default(false)
+  mortgageReleasedAt DateTime?
+  releasedAmount     Float?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([trancheId])
+}
+
+// Statut d'une révision de business plan.
+enum BpRevisionStatus {
+  DRAFT
+  APPROVED
+}
+
+// Révision du business plan d'un projet (événement de gouvernance) — ex.
+// changement de standing ou de calendrier acté. Conserve la trace de chaque
+// révision (motif, qui, quand) et le détail des changements appliqués aux lots,
+// le business plan d'origine restant figé sur chaque lot (champs original*).
+model BusinessPlanRevision {
+  id               String   @id @default(cuid())
+  projectId        String
+  project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version          Int      // incrément par projet (1, 2, …)
+  reason           String
+  status           BpRevisionStatus @default(APPROVED)
+  requestedByEmail String?
+  requestedByName  String?
+  // Détail des changements par lot : [{ reference, field, before, after }]
+  changes          Json
+  createdAt        DateTime @default(now())
+
+  @@index([projectId])
+}
+
+// Statut d'un rapport de visite de chantier.
+enum VisitReportStatus {
+  DRAFT
+  FINALIZED
+}
+
+// Rapport de visite de chantier — suivi terrain d'un projet de promotion.
+// Contient des observations structurées (analysées en amont) et le texte
+// source (scan/collé) avec ses champs extraits automatiquement (candidats à
+// valider). Sert de base à l'analyse de tendance d'avancement et au repérage
+// des anomalies/risques.
+model VisitReport {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId      String?
+  author        User?    @relation("VisitReportAuthor", fields: [authorId], references: [id])
+  visitDate     DateTime
+  inspectorName String?  // rédacteur / contrôleur (interne ou externe)
+  trancheCode   String?  // tranche concernée (optionnel)
+  status        VisitReportStatus @default(DRAFT)
+
+  // Observations structurées (analyse en amont)
+  observedProgressPct Float?   // avancement physique constaté sur site (0..100)
+  workforceCount      Int?     // effectif présent
+  weatherImpact       Boolean  @default(false) // intempéries impactant le planning
+  qualityIssue        Boolean  @default(false) // non-conformité / malfaçon
+  safetyIssue         Boolean  @default(false) // sécurité / HSE
+  delayRisk           Boolean  @default(false) // risque de retard signalé
+
+  summary         String?  // synthèse
+  observations    String?  // corps du rapport
+  recommendations String?
+
+  // Brique d'extraction : texte source + champs extraits (candidats)
+  rawText       String?  // texte source (scan OCR / collé) avant extraction
+  extracted     Json?    // champs extraits automatiquement, à valider
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([projectId])
 }
 
 // Valeurs d'entrée saisies pour un projet, clé/valeur typée et historisable.

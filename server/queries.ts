@@ -30,6 +30,9 @@ import {
   REGIME_1W_PROVISION_RATES,
 } from "@/lib/domain/referenceData";
 import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
+import { summarizeCommercialisation, type UnitView } from "@/lib/domain/commercialisation";
+import { analyzeVisitReports, type VisitReportView } from "@/lib/domain/visitReports";
+import { computeBusinessPlanDrift, type UnitBaselineView } from "@/lib/domain/businessPlan";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -106,6 +109,150 @@ export async function getProjectDetail(id: string) {
       },
       classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, include: { regime: true } },
       provisionRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+}
+
+// ---------------------------------------------------------------------
+//  Suivi de projet de promotion : commercialisation par tranche / lot.
+//  Lit les tranches + lots et calcule la synthèse (ventes, CA, décalage
+//  business plan, déclassements de standing, mainlevées) via la logique
+//  pure de lib/domain/commercialisation.
+// ---------------------------------------------------------------------
+
+export async function getProjectMonitoring(id: string) {
+  const project = await prisma.realEstateProject.findUnique({
+    where: { id },
+    select: { id: true, reference: true, name: true, assetType: true },
+  });
+  if (!project) return null;
+
+  const tranches = await prisma.tranche.findMany({
+    where: { projectId: id },
+    orderBy: { orderIndex: "asc" },
+    include: { units: { orderBy: { reference: "asc" } } },
+  });
+
+  const units: UnitView[] = tranches.flatMap((t) =>
+    t.units.map((unit) => ({
+      reference: unit.reference,
+      trancheCode: t.code,
+      type: unit.type as UnitView["type"],
+      status: unit.status as UnitView["status"],
+      plannedStanding: unit.plannedStanding as UnitView["plannedStanding"],
+      standing: unit.standing as UnitView["standing"],
+      plannedPrice: unit.plannedPrice,
+      listPrice: unit.listPrice,
+      soldPrice: unit.soldPrice,
+      plannedSaleDate: unit.plannedSaleDate,
+      soldAt: unit.soldAt,
+      mortgageReleased: unit.mortgageReleased,
+      releasedAmount: unit.releasedAmount,
+    })),
+  );
+
+  // Rapports de visite (récents d'abord) + analyse en amont.
+  const reports = await prisma.visitReport.findMany({
+    where: { projectId: id },
+    orderBy: { visitDate: "desc" },
+    include: { author: true },
+  });
+
+  // Avancement officiel de référence : moyenne des tranches pondérée par budget
+  // (sinon moyenne simple), pour situer l'avancement constaté sur site.
+  const budgetSum = tranches.reduce((s, t) => s + (t.budget ?? 0), 0);
+  const plannedProgressPct =
+    tranches.length === 0
+      ? null
+      : budgetSum > 0
+        ? tranches.reduce((s, t) => s + t.progressPct * (t.budget ?? 0), 0) / budgetSum
+        : tranches.reduce((s, t) => s + t.progressPct, 0) / tranches.length;
+
+  const reportViews: VisitReportView[] = reports.map((r) => ({
+    id: r.id,
+    visitDate: r.visitDate,
+    trancheCode: r.trancheCode,
+    observedProgressPct: r.observedProgressPct,
+    workforceCount: r.workforceCount,
+    weatherImpact: r.weatherImpact,
+    qualityIssue: r.qualityIssue,
+    safetyIssue: r.safetyIssue,
+    delayRisk: r.delayRisk,
+    status: r.status as VisitReportView["status"],
+  }));
+
+  // Dérive du business plan vs origine (v0) + historique des révisions.
+  const baselines: UnitBaselineView[] = tranches.flatMap((t) =>
+    t.units.map((unit) => ({
+      reference: unit.reference,
+      trancheCode: t.code,
+      originalStanding: unit.originalStanding as UnitBaselineView["originalStanding"],
+      originalPrice: unit.originalPrice,
+      originalSaleDate: unit.originalSaleDate,
+      plannedStanding: unit.plannedStanding as UnitBaselineView["plannedStanding"],
+      plannedPrice: unit.plannedPrice,
+      plannedSaleDate: unit.plannedSaleDate,
+    })),
+  );
+  const bpDrift = computeBusinessPlanDrift(baselines);
+  const bpRevisions = await prisma.businessPlanRevision.findMany({
+    where: { projectId: id },
+    orderBy: { version: "desc" },
+  });
+
+  // Lots (avec id) pour le formulaire de révision du BP.
+  const unitsForRevision = tranches.flatMap((t) =>
+    t.units.map((unit) => ({
+      id: unit.id,
+      reference: unit.reference,
+      trancheCode: t.code,
+      plannedStanding: unit.plannedStanding as string,
+      plannedPrice: unit.plannedPrice,
+      plannedSaleDate: unit.plannedSaleDate,
+    })),
+  );
+
+  return {
+    project,
+    tranches,
+    summary: summarizeCommercialisation(units),
+    reports,
+    visitAnalysis: analyzeVisitReports(reportViews, { plannedProgressPct }),
+    plannedProgressPct,
+    bpDrift,
+    bpRevisions,
+    unitsForRevision,
+  };
+}
+
+/** Historique des scores d'un projet (du plus ancien au plus récent). */
+export async function getScoringHistory(projectId: string) {
+  const runs = await prisma.scoringRun.findMany({
+    where: { projectId },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, createdAt: true, scoreFinal: true, decision: true },
+  });
+  return runs;
+}
+
+/** Options pour le formulaire projet : promoteurs + chargés d'affaires. */
+export async function getProjectFormOptions() {
+  const [promoters, managers] = await Promise.all([
+    prisma.promoter.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+  ]);
+  return { promoters, managers };
+}
+
+/** Projet pour pré-remplir le formulaire d'édition. */
+export async function getProjectForEdit(id: string) {
+  return prisma.realEstateProject.findUnique({
+    where: { id },
+    select: {
+      id: true, reference: true, name: true, promoterId: true, rmId: true,
+      assetType: true, city: true, region: true, projectType: true, segment: true,
+      zone: true, status: true, saleMode: true, totalUnits: true, totalCost: true,
+      loanAmount: true, ownEquity: true,
     },
   });
 }
@@ -539,6 +686,28 @@ export async function getActiveModel() {
       domains: { orderBy: { orderIndex: "asc" }, include: { criteria: { orderBy: { orderIndex: "asc" }, include: { options: true, ranges: true } } } },
       redFlags: true,
     },
+  });
+}
+
+/** Brouillon éditable du modèle (status DRAFT), arbre complet, ou null. */
+export async function getModelDraft(modelCode = "PI_PROMOTION") {
+  return prisma.scoringModelVersion.findFirst({
+    where: { status: "DRAFT", model: { code: modelCode } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      model: true,
+      domains: { orderBy: { orderIndex: "asc" }, include: { criteria: { orderBy: { orderIndex: "asc" }, include: { options: { orderBy: { orderIndex: "asc" } }, ranges: { orderBy: { orderIndex: "asc" } } } } } },
+      redFlags: { orderBy: { code: "asc" } },
+    },
+  });
+}
+
+/** Historique des lots d'import (les plus récents d'abord). */
+export async function getImportBatches(limit = 20) {
+  return prisma.importBatch.findMany({
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: { importedBy: { select: { name: true } } },
   });
 }
 
