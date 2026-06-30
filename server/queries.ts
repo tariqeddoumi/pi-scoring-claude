@@ -20,7 +20,7 @@ import { computeRiskMetrics, DEFAULT_CALIBRATION, type SlottingCategory, type Ri
 import { computeEcl } from "@/lib/domain/ifrs9";
 import { classSeverity } from "@/lib/domain/groups";
 import { projectEad } from "@/lib/domain/facility";
-import { applyStress, type StressShock } from "@/lib/domain/stress";
+import { applyStress, STRESS_SCENARIOS, type StressShock } from "@/lib/domain/stress";
 import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { runScoring } from "@/server/engines/scoringEngine";
 import { computeProvision } from "@/server/engines/provisioningEngine";
@@ -701,6 +701,30 @@ export async function getStressTest(shock: StressShock) {
 
   impacts.sort((a, b) => b.elDelta - a.elDelta);
   return { shock, base, stressed, downgrades, newDefaults, total: projects.length, impacts: impacts.slice(0, 10) };
+}
+
+/**
+ * Batterie de stress (diagnostic §9.1) : exécute chaque scénario standard sur
+ * tout le portefeuille et renvoie, par scénario, l'impact agrégé (pertes,
+ * provisions, dégradations, nouveaux défauts). La base est identique d'un
+ * scénario à l'autre (mêmes entrées) : renvoyée une fois séparément.
+ */
+export async function getStressBattery() {
+  const runs = await Promise.all(STRESS_SCENARIOS.map((sc) => getStressTest(sc.shock)));
+  const base = runs[0]?.base ?? { totalEl: 0, totalEcl: 0, totalProvision: 0, stageDist: { 1: 0, 2: 0, 3: 0 } };
+  const total = runs[0]?.total ?? 0;
+  const scenarios = STRESS_SCENARIOS.map((sc, i) => {
+    const r = runs[i]!;
+    return {
+      key: sc.key, label: sc.label,
+      downgrades: r.downgrades, newDefaults: r.newDefaults,
+      totalEl: r.stressed.totalEl, totalProvision: r.stressed.totalProvision,
+      elDelta: Math.round((r.stressed.totalEl - base.totalEl) * 100) / 100,
+      provDelta: Math.round((r.stressed.totalProvision - base.totalProvision) * 100) / 100,
+      stage3: r.stressed.stageDist[3] ?? 0,
+    };
+  });
+  return { base, total, scenarios };
 }
 
 export async function getAuditLog(limit = 100) {
