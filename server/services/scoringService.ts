@@ -71,6 +71,27 @@ async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): P
 
   const classification = classify({ regime, inputs, restructuring, groupPeerClass });
 
+  // Dérogation comité (1/W §6.2) : une dérogation APPROVED et active force la
+  // classe. La classe calculée par le moteur est conservée (engineClass) et la
+  // dérogation propagée au scoring/provision via l'objet renvoyé.
+  const override = await tx.regulatoryOverride.findFirst({
+    where: { projectId, status: "APPROVED", active: true },
+    orderBy: { createdAt: "desc" },
+    select: { id: true, forcedClass: true, justification: true },
+  });
+
+  let engineClass: RegulatoryClassCode | null = null;
+  let overrideNote: string | null = null;
+  if (override) {
+    engineClass = classification.resultClass;
+    overrideNote = `Dérogation comité : classe forcée ${override.forcedClass} (moteur : ${engineClass}). ${override.justification}`;
+    const forcedDef = regime.classes.find((c) => c.code === override.forcedClass);
+    classification.resultClass = override.forcedClass;
+    classification.isWatchList = forcedDef?.isWatchList ?? classification.isWatchList;
+    classification.blocksGo = forcedDef?.blocksGo ?? classification.blocksGo;
+    classification.triggeredBy.push({ kind: "QUALITATIVE", targetClass: override.forcedClass, reason: overrideNote });
+  }
+
   const classRun = await tx.classificationRun.create({
     data: {
       projectId,
@@ -81,6 +102,8 @@ async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): P
       restructuringNote: classification.restructuringNote ?? null,
       dataQualityStatus: classification.dataQuality.status,
       missingCriticalData: classification.dataQuality.missingCriticalData as any,
+      engineClass,
+      overrideNote,
       triggeredBy: classification.triggeredBy as any,
       inputSnapshot: inputs as any,
     },
@@ -93,7 +116,7 @@ async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): P
       action: "CLASSIFY",
       entity: "ClassificationRun",
       entityId: classRun.id,
-      after: { resultClass: classification.resultClass, regime: regime.code },
+      after: { resultClass: classification.resultClass, regime: regime.code, override: override?.id ?? null },
       metadata: { projectId },
     },
     tx,

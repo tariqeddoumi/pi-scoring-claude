@@ -109,6 +109,7 @@ export async function getProjectDetail(id: string) {
       },
       classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, include: { regime: true } },
       provisionRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+      regulatoryOverrides: { include: { requestedBy: true, decidedBy: true }, orderBy: { createdAt: "desc" } },
     },
   });
 }

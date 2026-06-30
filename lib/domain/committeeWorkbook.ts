@@ -25,6 +25,7 @@ export interface CommitteeData {
     regimeName: string;
     isWatchList: boolean;
     restructuringNote: string | null;
+    overrideNote: string | null;
     dataQualityStatus: string | null;
     missingCriticalData: string[];
     triggers: { kind: string; targetClass: string; reason: string }[];
@@ -126,6 +127,7 @@ export function buildCommitteeWorkbook(d: CommitteeData): WorkbookSheet[] {
     ["Régime", d.regulatory.regimeName],
     ["Watch List", yesno(d.regulatory.isWatchList)],
     ["Restructuration", d.regulatory.restructuringNote ?? "—"],
+    ["Dérogation comité", d.regulatory.overrideNote ?? "—"],
     ["Qualité des données", d.regulatory.dataQualityStatus ?? "—"],
     ["Données manquantes", d.regulatory.missingCriticalData.join(", ") || "—"],
     [],

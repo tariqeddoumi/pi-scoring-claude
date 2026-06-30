@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, B
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
+import { OverridePanel, type OverrideRow } from "@/components/OverridePanel";
 import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { GfaVefaCard } from "@/components/GfaVefaCard";
@@ -58,6 +59,13 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
+  const canValidate = !!actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE);
+  const overrideRows: OverrideRow[] = p.regulatoryOverrides.map((o) => ({
+    id: o.id, forcedClass: o.forcedClass, engineClass: o.engineClass,
+    justification: o.justification, status: o.status, active: o.active,
+    requestedBy: o.requestedBy?.name ?? "—", decidedBy: o.decidedBy?.name ?? null,
+    createdAt: o.createdAt.toISOString(),
+  }));
 
   const sectionTable = (sectionKey: keyof typeof INPUT_SECTIONS) => {
     const s = INPUT_SECTIONS[sectionKey]!;
@@ -273,6 +281,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </TabsContent>
 
         <TabsContent value="Classification BKAM">
+         <div className="space-y-4">
           {cls ? (
             <Card><CardHeader><CardTitle>Classification — {cls.regime.name}</CardTitle></CardHeader><CardContent className="space-y-3">
               <div className="flex items-center gap-3">
@@ -289,6 +298,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <p className="text-xs text-muted-foreground">Manquant : {(cls.missingCriticalData as string[]).join(", ")}</p>
               )}
               {cls.restructuringNote && <p className="text-sm"><span className="font-medium">Restructuration : </span>{cls.restructuringNote}</p>}
+              {cls.overrideNote && <p className="text-sm text-purple-700"><span className="font-medium">Dérogation : </span>{cls.overrideNote}</p>}
               <div>
                 <p className="text-sm font-medium mb-1">Déclencheurs</p>
                 <ul className="text-sm list-disc pl-5 space-y-0.5">
@@ -300,6 +310,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </div>
             </CardContent></Card>
           ) : <p className="text-muted-foreground text-sm">Lancez un scoring pour classifier.</p>}
+          <Card><CardHeader><CardTitle>Dérogations comité (1/W)</CardTitle></CardHeader><CardContent>
+            <OverridePanel projectId={p.id} overrides={overrideRows} canValidate={canValidate} />
+          </CardContent></Card>
+         </div>
         </TabsContent>
 
         <TabsContent value="Provisionnement">

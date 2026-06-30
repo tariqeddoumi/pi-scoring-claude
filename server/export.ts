@@ -262,6 +262,7 @@ export async function committeeWorkbookSheets(projectId: string): Promise<Workbo
       regimeName: cls?.regime.name ?? "—",
       isWatchList: cls?.isWatchList ?? false,
       restructuringNote: cls?.restructuringNote ?? null,
+      overrideNote: cls?.overrideNote ?? null,
       dataQualityStatus: cls?.dataQualityStatus ?? null,
       missingCriticalData: Array.isArray(cls?.missingCriticalData) ? (cls!.missingCriticalData as string[]) : [],
       triggers: ((cls?.triggeredBy as any[]) ?? []).map((t) => ({ kind: String(t.kind ?? ""), targetClass: String(t.targetClass ?? ""), reason: String(t.reason ?? "") })),

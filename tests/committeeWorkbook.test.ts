@@ -6,7 +6,7 @@ const sample: CommitteeData = {
   score: 82, decision: "Favorable (GO)",
   regulatory: {
     className: "Créance saine", regimeName: "1/W/2025", isWatchList: false,
-    restructuringNote: null, dataQualityStatus: "COMPLETE", missingCriticalData: [],
+    restructuringNote: null, overrideNote: null, dataQualityStatus: "COMPLETE", missingCriticalData: [],
     triggers: [{ kind: "DPD", targetClass: "PRE_DOUTEUX", reason: "Retard 110j" }],
   },
   metrics: { ead: 120_000_000, slotting: "Strong", stage: 1, pd: 0.02, lgd: 0.45, expectedLoss: 1_080_000, ecl: 900_000, rwa: 84_000_000, riskWeight: 0.7 },
