@@ -6,6 +6,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Cibles binaires : poste local + runtime Linux CI/serverless (Vercel/Debian).
+  // Évite l'échec « engine not found » quand la génération et l'exécution
+  // tournent sur des OS différents.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
