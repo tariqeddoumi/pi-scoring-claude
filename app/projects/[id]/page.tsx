@@ -355,6 +355,27 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   </tbody>
                 </Table>
               </CardContent></Card>
+              <Card className="lg:col-span-3"><CardHeader><CardTitle>Détail par critère (explicabilité)</CardTitle></CardHeader><CardContent className="p-0">
+                <Table>
+                  <thead><tr><Th>Domaine</Th><Th>Critère</Th><Th>Valeur source</Th><Th>Note /10</Th><Th>Poids</Th><Th>Contribution</Th><Th>Règle retenue</Th></tr></thead>
+                  <tbody>
+                    {[...run.criterionResults]
+                      .sort((a, b) => (a.criterion.domain.code + a.criterion.code).localeCompare(b.criterion.domain.code + b.criterion.code))
+                      .map((c) => (
+                        <tr key={c.id} className={c.gateBlocked ? "bg-red-50" : undefined}>
+                          <Td className="text-muted-foreground">{c.criterion.domain.code}</Td>
+                          <Td>{c.criterion.name}{c.gateBlocked ? <span className="ml-1 text-red-600 text-xs font-medium">(gate)</span> : null}</Td>
+                          <Td className="font-mono text-xs">{c.rawValue ?? "—"}</Td>
+                          <Td className="font-medium">{c.score}</Td>
+                          <Td>{formatPercent(c.criterion.weight * 100, 0)}</Td>
+                          <Td>{c.weighted.toFixed(2)}</Td>
+                          <Td className="text-xs text-muted-foreground">{c.matchedRef ?? "—"}</Td>
+                        </tr>
+                      ))}
+                    {run.criterionResults.length === 0 && <tr><Td className="text-muted-foreground">Aucun détail de critère.</Td></tr>}
+                  </tbody>
+                </Table>
+              </CardContent></Card>
               <Card className="lg:col-span-3"><CardHeader><CardTitle>Red flags D5 déclenchés</CardTitle></CardHeader><CardContent className="space-y-1">
                 {(run.triggeredRedFlags as any[] ?? []).map((f, i) => (
                   <div key={i} className="flex items-center gap-2 text-sm">
