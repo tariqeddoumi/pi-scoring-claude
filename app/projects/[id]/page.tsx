@@ -101,6 +101,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline">Dossier comité (PDF)</Button>
           </a>
+          <a href={`/api/export/project/${p.id}/xlsx`}>
+            <Button variant="outline">Dossier comité (Excel)</Button>
+          </a>
         </div>
       </div>
 
