@@ -6,6 +6,10 @@
 
 generator client {
   provider = "prisma-client-js"
+  // Cibles binaires : poste local + runtime Linux CI/serverless (Vercel/Debian).
+  // Évite l'échec « engine not found » quand la génération et l'exécution
+  // tournent sur des OS différents.
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {
@@ -86,6 +90,13 @@ enum ImportStatus {
   COMPLETED
   FAILED
   PARTIAL
+}
+
+// Statut d'une dérogation de classification (override comité — 1/W §6.2 #10).
+enum OverrideStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 enum AuditAction {
@@ -221,6 +232,8 @@ model User {
   importBatches    ImportBatch[]
   committeeDecisionsChaired CommitteeDecision[] @relation("CommitteeChair")
   visitReports     VisitReport[] @relation("VisitReportAuthor")
+  overridesRequested RegulatoryOverride[] @relation("OverrideRequester")
+  overridesDecided   RegulatoryOverride[] @relation("OverrideDecider")
 }
 
 // =====================================================================
@@ -290,6 +303,7 @@ model RealEstateProject {
   scoringRuns       ScoringRun[]
   classificationRuns ClassificationRun[]
   provisionRuns     ProvisionRun[]
+  regulatoryOverrides RegulatoryOverride[]
   guarantees        Guarantee[]
   workflowSteps     WorkflowStep[]
   comments          Comment[]
@@ -773,11 +787,43 @@ model ClassificationRun {
   groupContagionClass RegulatoryClassCode?
   // Détail restructuration ayant impacté la classe (art.17-31).
   restructuringNote String?
+  // Qualité des données (1/W §6.2) : COMPLETE | INCOMPLETE | INCOMPLETE_BLOCKING
+  dataQualityStatus String?
+  missingCriticalData Json?  // clés critiques/importantes manquantes
+  // Dérogation comité appliquée : classe calculée par le moteur (avant override)
+  // et note de dérogation. resultClass porte alors la classe forcée.
+  engineClass RegulatoryClassCode?
+  overrideNote String?
   triggeredBy Json     // triggers déclenchés + détails
   inputSnapshot Json
   createdAt   DateTime @default(now())
 
   provisionRuns ProvisionRun[]
+
+  @@index([projectId])
+}
+
+// Dérogation de classification réglementaire validée en comité (1/W §6.2 #10) :
+// force une classe différente de celle calculée par le moteur, avec
+// justification, demandeur, décideur et piste d'audit. Une seule peut être
+// active (APPROVED) à la fois par projet ; elle s'applique aux runs suivants.
+model RegulatoryOverride {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // Classe forcée par le comité et classe calculée par le moteur (snapshot).
+  forcedClass   RegulatoryClassCode
+  engineClass   RegulatoryClassCode?
+  justification String
+  status        OverrideStatus @default(PENDING)
+  active        Boolean  @default(false) // true si APPROVED et en vigueur
+  requestedById String
+  requestedBy   User     @relation("OverrideRequester", fields: [requestedById], references: [id])
+  decidedById   String?
+  decidedBy     User?    @relation("OverrideDecider", fields: [decidedById], references: [id])
+  decidedAt     DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   @@index([projectId])
 }

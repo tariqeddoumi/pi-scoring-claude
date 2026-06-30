@@ -55,7 +55,7 @@ for (const [email, name, role] of users) {
 
 // --- Modèle de scoring ---
 const cfg = PROMOTION_SCORING_MODEL;
-out.push(`INSERT INTO "ScoringModel"("id","code","name","description") VALUES (${q("model_PI")},${q(cfg.modelCode)},${q("Scoring Promotion Immobilière")},${q("Modèle D1..D5 (V1.0)")});`);
+out.push(`INSERT INTO "ScoringModel"("id","code","name","description") VALUES (${q("model_PI")},${q(cfg.modelCode)},${q("Scoring Promotion Immobilière")},${q("Modèle D1..D4 scorés + D5 alertes — échelle critère 1..10 (V2.0)")});`);
 out.push(`INSERT INTO "ScoringModelVersion"("id","modelId","version","status","scoreScale","bamCoefficients","decisionThresholds","segmentAdjustments","zoneAdjustments","publishedAt") VALUES (${q("ver_1")},${q("model_PI")},${q(cfg.version)},'PUBLISHED',${cfg.scoreScale},${j(cfg.bamCoefficients)},${j(cfg.decisionThresholds)},${j(cfg.segmentAdjustments)},${j(cfg.zoneAdjustments)},now());`);
 cfg.domains.forEach((d, di) => {
   out.push(`INSERT INTO "ScoringDomain"("id","versionId","code","name","weight","orderIndex") VALUES (${q("dom_" + d.code)},${q("ver_1")},${q(d.code)},${q(d.name)},${d.weight},${di});`);

@@ -47,6 +47,38 @@ describe("classification — 1/W/2025 (sensible + triggers immobiliers)", () => 
   });
 });
 
+describe("classification — 1/W/2025 (complétude art.10-12, §6.2)", () => {
+  it("crédit in fine impayé > 90 / 180 / 360j après terme → PRE_DOUTEUX / DOUTEUX / COMPROMIS", () => {
+    const inFine = (days: number) => classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0, credit_type: "in_fine", days_after_maturity: days } }).resultClass;
+    expect(inFine(100)).toBe("PRE_DOUTEUX");
+    expect(inFine(200)).toBe("DOUTEUX");
+    expect(inFine(400)).toBe("COMPROMIS");
+  });
+  it("crédit amortissable non concerné par le déclencheur in fine", () => {
+    expect(classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0, credit_type: "amortissable", days_after_maturity: 400 } }).resultClass).toBe("SAIN");
+  });
+  it("dépassement de ligne > 10% non régularisé > 180j → DOUTEUX (art.11)", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0, overdraft_excess_pct: 15, overdraft_excess_days: 200 } });
+    expect(r.resultClass).toBe("DOUTEUX");
+  });
+  it("compte débiteur sans mouvements créditeurs > 360j → COMPROMIS (art.12)", () => {
+    expect(classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0, debit_no_credit_movements_days: 400 } }).resultClass).toBe("COMPROMIS");
+  });
+  it("information d'avancement/commercialisation non fiable → SENSIBLE (art.5.3)", () => {
+    expect(classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0, unreliable_commercialization_info: true } }).resultClass).toBe("SENSIBLE");
+  });
+  it("qualité des données : dpd_days manquant → INCOMPLETE_BLOCKING", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { legal_exposure: "clear", financials_unavailable: false } });
+    expect(r.dataQuality.status).toBe("INCOMPLETE_BLOCKING");
+    expect(r.dataQuality.missingCriticalData).toContain("dpd_days");
+  });
+  it("qualité des données : toutes les clés critiques/importantes présentes → COMPLETE", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0, legal_exposure: "clear", financials_unavailable: false } });
+    expect(r.dataQuality.status).toBe("COMPLETE");
+    expect(r.dataQuality.missingCriticalData).toHaveLength(0);
+  });
+});
+
 describe("restructuration (1/W art.17-31)", () => {
   it("1ère restructuration avec différé ≥ 12 mois → SENSIBLE (art.22)", () => {
     const r = classify({ regime: REGIME_1W_2025, inputs: {}, restructuring: { restructured: true, count: 1, deferralMonths: 12 } });
@@ -77,5 +109,18 @@ describe("effet groupe (art.33/50)", () => {
     const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 200 }, groupPeerClass: "SENSIBLE" });
     expect(r.resultClass).toBe("DOUTEUX");
     expect(r.groupContagionClass).toBeUndefined();
+  });
+});
+
+describe("contagion contrepartie (même promoteur, art.33/50)", () => {
+  it("propage la classe la plus sévère d'une autre exposition de la contrepartie", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0 }, counterpartyPeerClass: "DOUTEUX" });
+    expect(r.resultClass).toBe("DOUTEUX");
+    expect(r.counterpartyContagionClass).toBe("DOUTEUX");
+  });
+  it("n'améliore pas une classe propre déjà plus sévère", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 400 }, counterpartyPeerClass: "SENSIBLE" });
+    expect(r.resultClass).toBe("COMPROMIS");
+    expect(r.counterpartyContagionClass).toBeUndefined();
   });
 });

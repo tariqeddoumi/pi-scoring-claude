@@ -50,8 +50,9 @@ function ProgressBar({ value }: { value: number }) {
   );
 }
 
-export default async function ProjectMonitoringPage({ params }: { params: { id: string } }) {
-  const res = await safe(() => getProjectMonitoring(params.id));
+export default async function ProjectMonitoringPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await safe(() => getProjectMonitoring(id));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const data = res.data;
   if (!data) return notFound();

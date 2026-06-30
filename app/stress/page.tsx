@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getStressTest } from "@/server/queries";
+import { getStressTest, getStressBattery } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Table, Th, Td, Badge, Stat, Button } from "@/components/ui";
 import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
@@ -24,15 +24,18 @@ function Delta({ base, stressed }: { base: number; stressed: number }) {
 export default async function StressPage({
   searchParams,
 }: {
-  searchParams: { preSaleDrop?: string; dpdAdd?: string };
+  searchParams: Promise<{ preSaleDrop?: string; dpdAdd?: string }>;
 }) {
   if (!(await currentUserCan(PERMISSIONS.PROJECT_READ))) return <AccessDenied />;
-  const preSaleDrop = num(searchParams.preSaleDrop, 20);
-  const dpdAdd = num(searchParams.dpdAdd, 120);
+  const sp = await searchParams;
+  const preSaleDrop = num(sp.preSaleDrop, 20);
+  const dpdAdd = num(sp.dpdAdd, 120);
 
   const res = await safe(() => getStressTest({ preSaleDrop, dpdAdd }));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const d = res.data;
+  const batteryRes = await safe(() => getStressBattery());
+  const battery = batteryRes.ok ? batteryRes.data : null;
 
   return (
     <div className="space-y-6">
@@ -44,8 +47,43 @@ export default async function StressPage({
         </p>
       </div>
 
+      {battery && (
+        <Card>
+          <CardHeader><CardTitle>Batterie de scénarios standard (§9.1)</CardTitle></CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <thead>
+                <tr><Th>Scénario</Th><Th className="text-right">Perte attendue</Th><Th className="text-right">Δ EL</Th><Th className="text-right">Provision</Th><Th className="text-right">Δ Provision</Th><Th className="text-right">Dégradés</Th><Th className="text-right">Stage 3</Th></tr>
+              </thead>
+              <tbody>
+                <tr className="text-muted-foreground">
+                  <Td>Base (sans choc)</Td>
+                  <Td className="text-right whitespace-nowrap">{formatMAD(battery.base.totalEl)}</Td>
+                  <Td className="text-right">—</Td>
+                  <Td className="text-right whitespace-nowrap">{formatMAD(battery.base.totalProvision)}</Td>
+                  <Td className="text-right">—</Td>
+                  <Td className="text-right">—</Td>
+                  <Td className="text-right">{battery.base.stageDist[3] ?? 0}</Td>
+                </tr>
+                {battery.scenarios.map((sc) => (
+                  <tr key={sc.key}>
+                    <Td className="font-medium">{sc.label}</Td>
+                    <Td className="text-right whitespace-nowrap">{formatMAD(sc.totalEl)}</Td>
+                    <Td className="text-right whitespace-nowrap text-red-600">{sc.elDelta >= 0 ? "+" : ""}{formatMAD(sc.elDelta)}</Td>
+                    <Td className="text-right whitespace-nowrap">{formatMAD(sc.totalProvision)}</Td>
+                    <Td className="text-right whitespace-nowrap text-red-600">{sc.provDelta >= 0 ? "+" : ""}{formatMAD(sc.provDelta)}</Td>
+                    <Td className="text-right">{sc.downgrades}/{battery.total}</Td>
+                    <Td className="text-right">{sc.stage3}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
-        <CardHeader><CardTitle>Scénario de choc</CardTitle></CardHeader>
+        <CardHeader><CardTitle>Scénario de choc personnalisé</CardTitle></CardHeader>
         <CardContent>
           <form method="get" className="flex flex-wrap items-end gap-4">
             <label className="space-y-1 text-sm">

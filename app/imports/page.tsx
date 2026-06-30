@@ -41,8 +41,20 @@ export default async function ImportsPage() {
       </p>
 
       <Card>
-        <CardHeader><CardTitle>Modèle de colonnes attendu</CardTitle></CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
+          <CardTitle>Modèle de colonnes attendu</CardTitle>
+          <a
+            href="/api/import/template"
+            className="inline-flex items-center rounded-md border border-border bg-background px-3 py-1.5 text-sm font-medium hover:bg-muted whitespace-nowrap"
+          >
+            ⬇ Télécharger le modèle (.xlsx)
+          </a>
+        </CardHeader>
         <CardContent className="p-0">
+          <p className="px-4 pb-2 text-xs text-muted-foreground">
+            Le fichier .xlsx contient une feuille « Projets » (en-têtes + ligne d'exemple) et une feuille
+            « Dictionnaire » détaillant chaque colonne (domaine, valeurs autorisées, exemple).
+          </p>
           <Table>
             <thead><tr><Th>Colonne</Th><Th>Description</Th></tr></thead>
             <tbody>

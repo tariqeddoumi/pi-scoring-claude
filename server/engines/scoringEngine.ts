@@ -1,9 +1,9 @@
 // =====================================================================
-//  scoringEngine.ts — Modèle interne Promotion Immobilière V1.0
+//  scoringEngine.ts — Moteur de scoring interne (paramétrable par modèle)
 //
 //  Chaîne de calcul (déterministe, pure) :
-//   1. ScoreCrit (0..échelle, défaut 0..5) par critère (QUAL/NUM)
-//   2. ScoreDomaine 0..100 = moyenne pondérée des KPI (normalisée)
+//   1. ScoreCrit (1..échelle ; PI_PROMOTION v2.0 = 1..10) par critère (QUAL/NUM)
+//   2. ScoreDomaine 0..100 = moyenne pondérée des KPI (normalisée par l'échelle)
 //   3. S_eco = Σ poids_domaine × ScoreDomaine  (D1..D4)
 //   4. S_adj = S_eco × (1 + α_Seg + β_Zone)
 //   5. D5 : malus M et déclencheurs de souffrance (hors score)

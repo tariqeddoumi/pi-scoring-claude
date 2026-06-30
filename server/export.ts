@@ -16,6 +16,7 @@ import { computeEcl } from "@/lib/domain/ifrs9";
 import { projectEad, facilityEad, scheduleDpd, totalOverdue } from "@/lib/domain/facility";
 import { computeGfaRelief } from "@/lib/domain/gfaVefa";
 import { WORKFLOW_LABELS, COMMITTEE_OUTCOME_LABELS, type WorkflowStateName, type CommitteeOutcomeName } from "@/lib/workflow";
+import { buildCommitteeWorkbook, type CommitteeData, type WorkbookSheet } from "@/lib/domain/committeeWorkbook";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
 
 function csvCell(v: unknown): string {
@@ -209,6 +210,86 @@ ${wfBlock}
 
 <p class="muted">Document généré automatiquement — normes minimales BKAM + lecture Bâle/IFRS 9 indicative, à valider en comité.</p>
 </body></html>`;
+}
+
+/**
+ * Dossier de comité DÉTAILLÉ d'un projet sous forme de feuilles Excel (AoA) :
+ * synthèse + risque, scoring critère par critère, classification 1/W (avec
+ * déclencheurs et qualité des données) et provisionnement (avec garanties).
+ * Renvoie null si le projet est introuvable.
+ */
+export async function committeeWorkbookSheets(projectId: string): Promise<WorkbookSheet[] | null> {
+  const [calib, p] = await Promise.all([
+    getActiveCalibration(),
+    prisma.realEstateProject.findUnique({
+      where: { id: projectId },
+      include: {
+        promoter: true,
+        facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
+        scoringRuns: {
+          orderBy: { createdAt: "desc" }, take: 1,
+          include: {
+            domainResults: { include: { domain: true } },
+            criterionResults: { include: { criterion: { include: { domain: true } } } },
+          },
+        },
+        classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, include: { regime: true } },
+        provisionRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    }),
+  ]);
+  if (!p) return null;
+
+  const run = p.scoringRuns[0];
+  const cls = p.classificationRuns[0];
+  const prov = p.provisionRuns[0];
+  const ead = prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead;
+  const m = computeRiskMetrics(
+    { score: run?.scoreFinal ?? null, cls: (cls?.resultClass ?? null) as RegulatoryClassCode | null, ead, eligibleGuarantees: prov?.eligibleGuarantees ?? 0 },
+    calib,
+  );
+  const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
+
+  const data: CommitteeData = {
+    project: {
+      reference: p.reference, name: p.name, promoter: p.promoter.name,
+      city: p.city, segment: p.segment, nature: p.assetType === "EXPLOITATION" ? "Exploitation" : "Promotion",
+    },
+    score: run?.scoreFinal ?? null,
+    decision: run?.decision ? DECISION_LABELS[run.decision] : null,
+    regulatory: {
+      className: cls ? CLASS_LABELS[cls.resultClass] : "—",
+      regimeName: cls?.regime.name ?? "—",
+      isWatchList: cls?.isWatchList ?? false,
+      restructuringNote: cls?.restructuringNote ?? null,
+      overrideNote: cls?.overrideNote ?? null,
+      dataQualityStatus: cls?.dataQualityStatus ?? null,
+      missingCriticalData: Array.isArray(cls?.missingCriticalData) ? (cls!.missingCriticalData as string[]) : [],
+      triggers: ((cls?.triggeredBy as any[]) ?? []).map((t) => ({ kind: String(t.kind ?? ""), targetClass: String(t.targetClass ?? ""), reason: String(t.reason ?? "") })),
+    },
+    metrics: {
+      ead: m.ead, slotting: SLOTTING_LABELS[m.slotting], stage: m.stage, pd: m.pd, lgd: m.lgd,
+      expectedLoss: m.expectedLoss, ecl: ecl.ecl, rwa: m.rwa, riskWeight: m.riskWeight,
+    },
+    provision: prov
+      ? {
+          ead: prov.ead, reservedAgios: prov.reservedAgios, eligibleGuarantees: prov.eligibleGuarantees,
+          provisionBase: prov.provisionBase, rate: prov.rate, provisionAmount: prov.provisionAmount, isIrregular: prov.isIrregular,
+          breakdown: ((prov.guaranteeBreakdown as any[]) ?? []).map((b) => ({
+            typeCode: String(b.typeCode ?? ""), marketValue: Number(b.marketValue ?? 0),
+            effectiveQuotity: Number(b.effectiveQuotity ?? 0), eligibleValue: Number(b.eligibleValue ?? 0),
+          })),
+        }
+      : null,
+    domains: (run?.domainResults ?? []).map((d) => ({ code: d.domain.code, name: d.domain.name, score: d.score })),
+    criteria: (run?.criterionResults ?? []).map((c) => ({
+      domainCode: c.criterion.domain.code, code: c.criterion.code, name: c.criterion.name,
+      rawValue: c.rawValue, score: c.score, weighted: c.weighted, matchedRef: c.matchedRef, gateBlocked: c.gateBlocked,
+    })),
+    redFlags: ((run?.triggeredRedFlags as any[]) ?? []).map((f) => ({ name: String(f.name ?? ""), malus: Number(f.malus ?? 0) })),
+  };
+
+  return buildCommitteeWorkbook(data);
 }
 
 /** Dossier de comité consolidé d'un programme / groupe d'intérêt. */

@@ -28,6 +28,9 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate
 
+      - name: Lint
+        run: npm run lint
+
       - name: Typecheck
         run: npm run typecheck
 

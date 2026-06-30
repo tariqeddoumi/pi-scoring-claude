@@ -9,6 +9,7 @@ export function ImportForm() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
+  const [autoScore, setAutoScore] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -20,6 +21,7 @@ export function ImportForm() {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      if (autoScore) fd.append("autoScore", "1");
       const res = await runImport(fd);
       if (!res.ok) { setError(res.error); return; }
       setSummary(res.summary);
@@ -46,6 +48,11 @@ export function ImportForm() {
         <Button type="submit" disabled={pending || !file}>{pending ? "Import en cours…" : "Importer"}</Button>
       </div>
 
+      <label className="flex items-center gap-2 text-sm text-muted-foreground">
+        <input type="checkbox" checked={autoScore} onChange={(e) => setAutoScore(e.target.checked)} />
+        Lancer le scoring automatiquement après l'import (projets de promotion)
+      </label>
+
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       {summary && (
@@ -54,6 +61,12 @@ export function ImportForm() {
             <span className="font-medium">{summary.success}</span> ligne(s) importée(s) sur {summary.total}
             {summary.failed > 0 && <> · <span className="text-red-600 font-medium">{summary.failed} en erreur</span></>}.
           </p>
+          {summary.scored !== undefined && (
+            <p>
+              <span className="font-medium">{summary.scored}</span> projet(s) scoré(s) automatiquement
+              {summary.scoreFailed ? <> · <span className="text-amber-600 font-medium">{summary.scoreFailed} non scoré(s)</span></> : null}.
+            </p>
+          )}
           {summary.errors.length > 0 && (
             <ul className="list-disc pl-5 text-red-600 space-y-0.5 max-h-48 overflow-auto">
               {summary.errors.map((er, i) => <li key={i}>Ligne {er.rowIndex} : {er.message}</li>)}

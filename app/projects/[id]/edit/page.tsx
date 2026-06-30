@@ -8,9 +8,10 @@ import { PERMISSIONS } from "@/lib/rbac";
 
 export const dynamic = "force-dynamic";
 
-export default async function EditProjectPage({ params }: { params: { id: string } }) {
+export default async function EditProjectPage({ params }: { params: Promise<{ id: string }> }) {
   if (!(await currentUserCan(PERMISSIONS.PROJECT_WRITE))) return <AccessDenied />;
-  const res = await safe(() => Promise.all([getProjectFormOptions(), getProjectForEdit(params.id)]));
+  const { id } = await params;
+  const res = await safe(() => Promise.all([getProjectFormOptions(), getProjectForEdit(id)]));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const [options, project] = res.data;
   if (!project) return notFound();

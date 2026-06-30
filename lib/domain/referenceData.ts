@@ -15,15 +15,22 @@ import type {
 } from "./types";
 
 // ---------------------------------------------------------------------
-//  MODELE DE SCORING PROMOTION IMMOBILIERE V1.0
-//  S_eco = 0,22·D1 + 0,18·D2 + 0,28·D3 + 0,22·D4
+//  MODELE DE SCORING PROMOTION IMMOBILIERE V2.0 — échelle critère 1..10
+//  Notes critère sur 1..10 (barèmes 1 / 6 / 10), agrégées en score domaine
+//  0..100, puis score interne 0..100. Pondérations de domaines normalisées
+//  à 100% (D1..D4) ; D5 reste une couche d'alertes (malus / gates).
+//  S_eco = 0,25·D1 + 0,20·D2 + 0,31·D3 + 0,24·D4
 //  S_adj = S_eco × (1 + α_Seg + β_Zone) ; S_final = S_adj − M(D5)
+//  Migration V1→V2 : barèmes 0/3/5 → 1/6/10 (plus de note 0 hors gate),
+//  seuil de gate relevé de 0 à 1, somme des poids de domaines portée à 100%
+//  (corrige l'incohérence des 90% renormalisés). Les scores 0..100 et les
+//  seuils de décision (75/65/50) sont préservés.
 // ---------------------------------------------------------------------
 
 export const PROMOTION_SCORING_MODEL: ScoringModelConfig = {
   modelCode: "PI_PROMOTION",
-  version: "v1.0.0",
-  scoreScale: 5,
+  version: "v2.0.0",
+  scoreScale: 10,
   bamCoefficients: {
     SAIN: 1.0,
     SENSIBLE: 0.9,
@@ -58,60 +65,60 @@ export const PROMOTION_SCORING_MODEL: ScoringModelConfig = {
     {
       code: "D1",
       name: "Sponsor & Gouvernance",
-      weight: 0.22,
+      weight: 0.25,
       criteria: [
         {
           code: "D1C1", name: "Projets similaires livrés (5 ans)", type: "NUM", weight: 0.2,
           inputKey: "promoter_completed_projects", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 1, score: 0, label: "Aucun (critique)" },
-            { minIncl: 1, maxExcl: 3, score: 3, label: "1-2 (vigilance)" },
-            { minIncl: 3, maxExcl: null, score: 5, label: "≥3 (OK)" },
+            { minIncl: null, maxExcl: 1, score: 1, label: "Aucun (critique)" },
+            { minIncl: 1, maxExcl: 3, score: 6, label: "1-2 (vigilance)" },
+            { minIncl: 3, maxExcl: null, score: 10, label: "≥3 (OK)" },
           ],
         },
         {
           code: "D1C2", name: "Gearing promoteur (dettes nettes / FP)", type: "NUM", weight: 0.25,
           inputKey: "promoter_gearing", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 100, score: 5, label: "≤100% (OK)" },
-            { minIncl: 100, maxExcl: 150, score: 3, label: "100-150% (vigilance)" },
-            { minIncl: 150, maxExcl: null, score: 0, label: ">150% (critique)" },
+            { minIncl: null, maxExcl: 100, score: 10, label: "≤100% (OK)" },
+            { minIncl: 100, maxExcl: 150, score: 6, label: "100-150% (vigilance)" },
+            { minIncl: 150, maxExcl: null, score: 1, label: ">150% (critique)" },
           ],
         },
         {
           code: "D1C3", name: "Gouvernance & structure juridique", type: "QUAL", weight: 0.15,
           inputKey: "governance_quality", isGate: false,
           options: [
-            { value: "opaque", label: "Opaque", score: 0 },
-            { value: "partielle", label: "Partielle", score: 3 },
-            { value: "claire", label: "Claire / structurée", score: 5 },
+            { value: "opaque", label: "Opaque", score: 1 },
+            { value: "partielle", label: "Partielle", score: 6 },
+            { value: "claire", label: "Claire / structurée", score: 10 },
           ],
         },
         {
           code: "D1C4", name: "Concentration mono-projet (CA projet / CA total)", type: "NUM", weight: 0.15,
           inputKey: "mono_project_concentration", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 40, score: 5, label: "≤40% (OK)" },
-            { minIncl: 40, maxExcl: 60, score: 3, label: "40-60% (vigilance)" },
-            { minIncl: 60, maxExcl: null, score: 0, label: ">60% (critique)" },
+            { minIncl: null, maxExcl: 40, score: 10, label: "≤40% (OK)" },
+            { minIncl: 40, maxExcl: 60, score: 6, label: "40-60% (vigilance)" },
+            { minIncl: 60, maxExcl: null, score: 1, label: ">60% (critique)" },
           ],
         },
         {
           code: "D1C5", name: "Typologie promoteur", type: "QUAL", weight: 0.1,
           inputKey: "promoter_type", isGate: false,
           options: [
-            { value: "opportuniste", label: "Opportuniste", score: 1 },
-            { value: "regional", label: "Régional", score: 3 },
-            { value: "structure", label: "Structuré", score: 5 },
+            { value: "opportuniste", label: "Opportuniste", score: 2 },
+            { value: "regional", label: "Régional", score: 6 },
+            { value: "structure", label: "Structuré", score: 10 },
           ],
         },
         {
           code: "D1C6", name: "Apport effectif (injecté / prévu)", type: "NUM", weight: 0.15,
-          inputKey: "equity_injected_ratio", isGate: true, gateThreshold: 0,
+          inputKey: "equity_injected_ratio", isGate: true, gateThreshold: 1,
           ranges: [
-            { minIncl: null, maxExcl: 80, score: 0, label: "<80% (critique)" },
-            { minIncl: 80, maxExcl: 100, score: 3, label: "80-100% (vigilance)" },
-            { minIncl: 100, maxExcl: null, score: 5, label: "≥100% (OK)" },
+            { minIncl: null, maxExcl: 80, score: 1, label: "<80% (critique)" },
+            { minIncl: 80, maxExcl: 100, score: 6, label: "80-100% (vigilance)" },
+            { minIncl: 100, maxExcl: null, score: 10, label: "≥100% (OK)" },
           ],
         },
       ],
@@ -119,68 +126,69 @@ export const PROMOTION_SCORING_MODEL: ScoringModelConfig = {
     {
       code: "D2",
       name: "Qualité intrinsèque du projet",
-      weight: 0.18,
+      weight: 0.20,
       criteria: [
         {
           code: "D2C1", name: "Foncier & autorisations", type: "QUAL", weight: 0.2,
-          inputKey: "land_permits_status", isGate: true, gateThreshold: 0,
+          inputKey: "land_permits_status", isGate: true, gateThreshold: 1,
           options: [
-            { value: "absentes", label: "Titre non purgé / autorisations absentes", score: 0 },
-            { value: "partielles", label: "Partielles", score: 3 },
-            { value: "definitives", label: "Titre purgé + autorisations définitives", score: 5 },
+            { value: "absentes", label: "Titre non purgé / autorisations absentes", score: 1 },
+            { value: "partielles", label: "Partielles", score: 6 },
+            { value: "definitives", label: "Titre purgé + autorisations définitives", score: 10 },
           ],
         },
         {
           code: "D2C2", name: "Marché & positionnement", type: "QUAL", weight: 0.2,
           inputKey: "market_positioning", isGate: false,
           options: [
-            { value: "sur_positionne", label: "Sur-positionné / sur-offre", score: 1 },
-            { value: "moyen", label: "Correct", score: 3 },
-            { value: "aligne", label: "Aligné / forte demande", score: 5 },
+            { value: "sur_positionne", label: "Sur-positionné / sur-offre", score: 2 },
+            { value: "moyen", label: "Correct", score: 6 },
+            { value: "aligne", label: "Aligné / forte demande", score: 10 },
           ],
         },
         {
           code: "D2C3", name: "Complexité technique", type: "QUAL", weight: 0.15,
           inputKey: "technical_complexity", isGate: false,
           options: [
-            { value: "elevee", label: "Élevée", score: 1 },
-            { value: "moyenne", label: "Moyenne", score: 3 },
-            { value: "standard", label: "Standard", score: 5 },
+            { value: "elevee", label: "Élevée", score: 2 },
+            { value: "moyenne", label: "Moyenne", score: 6 },
+            { value: "standard", label: "Standard", score: 10 },
           ],
         },
         {
           code: "D2C4", name: "Avancement vs planning", type: "NUM", weight: 0.15,
           inputKey: "progress_vs_plan", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 80, score: 0, label: "<80% (critique)" },
-            { minIncl: 80, maxExcl: 100, score: 3, label: "80-100% (vigilance)" },
-            { minIncl: 100, maxExcl: null, score: 5, label: "≥100% (OK)" },
+            { minIncl: null, maxExcl: 80, score: 1, label: "<80% (critique)" },
+            { minIncl: 80, maxExcl: 100, score: 6, label: "80-100% (vigilance)" },
+            { minIncl: 100, maxExcl: null, score: 10, label: "≥100% (OK)" },
           ],
         },
         {
           code: "D2C5", name: "Litiges clients / SAV", type: "QUAL", weight: 0.1,
           inputKey: "sav_litigation", isGate: false,
           options: [
-            { value: "eleve", label: "Élevé", score: 1 },
-            { value: "moyen", label: "Moyen", score: 3 },
-            { value: "faible", label: "Faible", score: 5 },
+            { value: "eleve", label: "Élevé", score: 2 },
+            { value: "moyen", label: "Moyen", score: 6 },
+            { value: "faible", label: "Faible", score: 10 },
           ],
         },
         {
           code: "D2C6", name: "Sensibilité macro / subvention", type: "QUAL", weight: 0.1,
           inputKey: "macro_sensitivity", isGate: false,
           options: [
-            { value: "elevee", label: "Élevée", score: 1 },
-            { value: "faible", label: "Faible", score: 5 },
+            { value: "elevee", label: "Élevée", score: 2 },
+            { value: "moyenne", label: "Moyenne", score: 6 },
+            { value: "faible", label: "Faible", score: 10 },
           ],
         },
         {
           code: "D2C7", name: "Coût foncier / CA", type: "NUM", weight: 0.1,
           inputKey: "land_cost_ratio", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 25, score: 5, label: "≤25% (OK)" },
-            { minIncl: 25, maxExcl: 35, score: 3, label: "25-35% (vigilance)" },
-            { minIncl: 35, maxExcl: null, score: 0, label: ">35% (critique)" },
+            { minIncl: null, maxExcl: 25, score: 10, label: "≤25% (OK)" },
+            { minIncl: 25, maxExcl: 35, score: 6, label: "25-35% (vigilance)" },
+            { minIncl: 35, maxExcl: null, score: 1, label: ">35% (critique)" },
           ],
         },
       ],
@@ -188,69 +196,69 @@ export const PROMOTION_SCORING_MODEL: ScoringModelConfig = {
     {
       code: "D3",
       name: "Commercial & Cash-flow",
-      weight: 0.28,
+      weight: 0.31,
       criteria: [
         {
           code: "D3C1", name: "Préventes sécurisées (encaissées / CA)", type: "NUM", weight: 0.25,
           inputKey: "pre_sale_rate", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 25, score: 0, label: "<25% (critique)" },
-            { minIncl: 25, maxExcl: 40, score: 3, label: "25-40% (vigilance)" },
-            { minIncl: 40, maxExcl: null, score: 5, label: "≥40% (OK)" },
+            { minIncl: null, maxExcl: 25, score: 1, label: "<25% (critique)" },
+            { minIncl: 25, maxExcl: 40, score: 6, label: "25-40% (vigilance)" },
+            { minIncl: 40, maxExcl: null, score: 10, label: "≥40% (OK)" },
           ],
         },
         {
           code: "D3C2", name: "Ventes vs planning", type: "NUM", weight: 0.1,
           inputKey: "sales_vs_plan", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 80, score: 0, label: "<80% (critique)" },
-            { minIncl: 80, maxExcl: 100, score: 3, label: "80-100% (vigilance)" },
-            { minIncl: 100, maxExcl: null, score: 5, label: "≥100% (OK)" },
+            { minIncl: null, maxExcl: 80, score: 1, label: "<80% (critique)" },
+            { minIncl: 80, maxExcl: 100, score: 6, label: "80-100% (vigilance)" },
+            { minIncl: 100, maxExcl: null, score: 10, label: "≥100% (OK)" },
           ],
         },
         {
           code: "D3C3", name: "DSO (jours)", type: "NUM", weight: 0.1,
           inputKey: "dso_days", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 120, score: 5, label: "≤120j (OK)" },
-            { minIncl: 120, maxExcl: 240, score: 3, label: "120-240j (vigilance)" },
-            { minIncl: 240, maxExcl: null, score: 0, label: ">240j (critique)" },
+            { minIncl: null, maxExcl: 120, score: 10, label: "≤120j (OK)" },
+            { minIncl: 120, maxExcl: 240, score: 6, label: "120-240j (vigilance)" },
+            { minIncl: 240, maxExcl: null, score: 1, label: ">240j (critique)" },
           ],
         },
         {
           code: "D3C4", name: "Cash coverage (cash / échéances)", type: "NUM", weight: 0.2,
           inputKey: "cash_coverage", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 1, score: 0, label: "<1,0x (critique)" },
-            { minIncl: 1, maxExcl: 1.2, score: 3, label: "1,0-1,2x (vigilance)" },
-            { minIncl: 1.2, maxExcl: null, score: 5, label: "≥1,2x (OK)" },
+            { minIncl: null, maxExcl: 1, score: 1, label: "<1,0x (critique)" },
+            { minIncl: 1, maxExcl: 1.2, score: 6, label: "1,0-1,2x (vigilance)" },
+            { minIncl: 1.2, maxExcl: null, score: 10, label: "≥1,2x (OK)" },
           ],
         },
         {
           code: "D3C5", name: "Impasse brute", type: "NUM", weight: 0.15,
           inputKey: "funding_gap_pct", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 0.01, score: 5, label: "≤0% (OK)" },
-            { minIncl: 0.01, maxExcl: 10, score: 3, label: "0-10% (vigilance)" },
-            { minIncl: 10, maxExcl: null, score: 0, label: ">10% (critique)" },
+            { minIncl: null, maxExcl: 0.01, score: 10, label: "≤0% (OK)" },
+            { minIncl: 0.01, maxExcl: 10, score: 6, label: "0-10% (vigilance)" },
+            { minIncl: 10, maxExcl: null, score: 1, label: ">10% (critique)" },
           ],
         },
         {
           code: "D3C6", name: "Rotation stock (mois)", type: "NUM", weight: 0.1,
           inputKey: "stock_rotation_months", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 18, score: 5, label: "≤18m (OK)" },
-            { minIncl: 18, maxExcl: 30, score: 3, label: "18-30m (vigilance)" },
-            { minIncl: 30, maxExcl: null, score: 0, label: ">30m (critique)" },
+            { minIncl: null, maxExcl: 18, score: 10, label: "≤18m (OK)" },
+            { minIncl: 18, maxExcl: 30, score: 6, label: "18-30m (vigilance)" },
+            { minIncl: 30, maxExcl: null, score: 1, label: ">30m (critique)" },
           ],
         },
         {
           code: "D3C7", name: "Marge brute stressée (prix -10%)", type: "NUM", weight: 0.1,
           inputKey: "stressed_margin_pct", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 10, score: 0, label: "<10% (critique)" },
-            { minIncl: 10, maxExcl: 15, score: 3, label: "10-15% (vigilance)" },
-            { minIncl: 15, maxExcl: null, score: 5, label: "≥15% (OK)" },
+            { minIncl: null, maxExcl: 10, score: 1, label: "<10% (critique)" },
+            { minIncl: 10, maxExcl: 15, score: 6, label: "10-15% (vigilance)" },
+            { minIncl: 15, maxExcl: null, score: 10, label: "≥15% (OK)" },
           ],
         },
       ],
@@ -258,59 +266,59 @@ export const PROMOTION_SCORING_MODEL: ScoringModelConfig = {
     {
       code: "D4",
       name: "Structuration financière & LGD",
-      weight: 0.22,
+      weight: 0.24,
       criteria: [
         {
           code: "D4C1", name: "Marge brute (CA - coûts directs)/CA", type: "NUM", weight: 0.2,
           inputKey: "gross_margin_pct", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 15, score: 0, label: "<15% (critique)" },
-            { minIncl: 15, maxExcl: 25, score: 3, label: "15-25% (vigilance)" },
-            { minIncl: 25, maxExcl: null, score: 5, label: "≥25% (OK)" },
+            { minIncl: null, maxExcl: 15, score: 1, label: "<15% (critique)" },
+            { minIncl: 15, maxExcl: 25, score: 6, label: "15-25% (vigilance)" },
+            { minIncl: 25, maxExcl: null, score: 10, label: "≥25% (OK)" },
           ],
         },
         {
           code: "D4C2", name: "LTC (dette / coût total)", type: "NUM", weight: 0.15,
           inputKey: "ltc", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 60, score: 5, label: "≤60% (OK)" },
-            { minIncl: 60, maxExcl: 80, score: 3, label: "60-80% (vigilance)" },
-            { minIncl: 80, maxExcl: null, score: 0, label: ">80% (critique)" },
+            { minIncl: null, maxExcl: 60, score: 10, label: "≤60% (OK)" },
+            { minIncl: 60, maxExcl: 80, score: 6, label: "60-80% (vigilance)" },
+            { minIncl: 80, maxExcl: null, score: 1, label: ">80% (critique)" },
           ],
         },
         {
           code: "D4C3", name: "LTV stressée (dette / valeur×0,90)", type: "NUM", weight: 0.2,
           inputKey: "ltv_stressed", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 70, score: 5, label: "≤70% (OK)" },
-            { minIncl: 70, maxExcl: 85, score: 3, label: "70-85% (vigilance)" },
-            { minIncl: 85, maxExcl: null, score: 0, label: ">85% (critique)" },
+            { minIncl: null, maxExcl: 70, score: 10, label: "≤70% (OK)" },
+            { minIncl: 70, maxExcl: 85, score: 6, label: "70-85% (vigilance)" },
+            { minIncl: 85, maxExcl: null, score: 1, label: ">85% (critique)" },
           ],
         },
         {
           code: "D4C4", name: "Couverture garanties réalisable", type: "NUM", weight: 0.2,
           inputKey: "guarantee_coverage", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 90, score: 0, label: "<90% (critique)" },
-            { minIncl: 90, maxExcl: 120, score: 3, label: "90-120% (vigilance)" },
-            { minIncl: 120, maxExcl: null, score: 5, label: "≥120% (OK)" },
+            { minIncl: null, maxExcl: 90, score: 1, label: "<90% (critique)" },
+            { minIncl: 90, maxExcl: 120, score: 6, label: "90-120% (vigilance)" },
+            { minIncl: 120, maxExcl: null, score: 10, label: "≥120% (OK)" },
           ],
         },
         {
           code: "D4C5", name: "Rang bancaire 1er rang", type: "QUAL", weight: 0.1,
           inputKey: "first_rank", isGate: false,
           options: [
-            { value: "non", label: "Non 1er rang", score: 0 },
-            { value: "oui", label: "1er rang", score: 5 },
+            { value: "non", label: "Non 1er rang", score: 1 },
+            { value: "oui", label: "1er rang", score: 10 },
           ],
         },
         {
           code: "D4C6", name: "Interest coverage (EBITDA / charges fin.)", type: "NUM", weight: 0.15,
           inputKey: "interest_coverage", isGate: false,
           ranges: [
-            { minIncl: null, maxExcl: 1.5, score: 0, label: "<1,5x (critique)" },
-            { minIncl: 1.5, maxExcl: 3, score: 3, label: "1,5-3x (vigilance)" },
-            { minIncl: 3, maxExcl: null, score: 5, label: "≥3x (OK)" },
+            { minIncl: null, maxExcl: 1.5, score: 1, label: "<1,5x (critique)" },
+            { minIncl: 1.5, maxExcl: 3, score: 6, label: "1,5-3x (vigilance)" },
+            { minIncl: 3, maxExcl: null, score: 10, label: "≥3x (OK)" },
           ],
         },
       ],
@@ -442,6 +450,20 @@ export const REGIME_1W_2025: RegulatoryRegimeConfig = {
     { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { clause: { key: "finished_2y_no_sales", op: "isTrue" } }, priority: 28, description: "Projet finalisé ≥ 2 ans, commercialisation figée (art.12.6)" },
     { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { clause: { key: "project_stopped_over_1y", op: "isTrue" } }, priority: 28, description: "Projet à l'arrêt > 1 an (art.12.7)" },
     { kind: "LEGAL", targetClass: "CTX", condition: { clause: { key: "legal_exposure", op: "eq", value: "litigation" } }, priority: 40, description: "Action en justice / contestation (art.12.8)" },
+    // --- Crédit in fine : non remboursement du principal après terme (art.10-12) ---
+    { kind: "QUALITATIVE", targetClass: "PRE_DOUTEUX", condition: { all: [{ key: "credit_type", op: "eq", value: "in_fine" }, { key: "days_after_maturity", op: "gte", value: 90 }, { key: "days_after_maturity", op: "lt", value: 180 }] }, priority: 11, description: "Crédit in fine impayé > 90j après terme (art.10)" },
+    { kind: "QUALITATIVE", targetClass: "DOUTEUX", condition: { all: [{ key: "credit_type", op: "eq", value: "in_fine" }, { key: "days_after_maturity", op: "gte", value: 180 }, { key: "days_after_maturity", op: "lt", value: 360 }] }, priority: 21, description: "Crédit in fine impayé > 180j après terme (art.11)" },
+    { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { all: [{ key: "credit_type", op: "eq", value: "in_fine" }, { key: "days_after_maturity", op: "gte", value: 360 }] }, priority: 31, description: "Crédit in fine impayé > 360j après terme (art.12)" },
+    // --- Dépassements de ligne > 10% des autorisations (art.10-12) ---
+    { kind: "QUALITATIVE", targetClass: "PRE_DOUTEUX", condition: { all: [{ key: "overdraft_excess_pct", op: "gt", value: 10 }, { key: "overdraft_excess_days", op: "gte", value: 90 }, { key: "overdraft_excess_days", op: "lt", value: 180 }] }, priority: 12, description: "Dépassement > 10% non régularisé > 90j (art.10)" },
+    { kind: "QUALITATIVE", targetClass: "DOUTEUX", condition: { all: [{ key: "overdraft_excess_pct", op: "gt", value: 10 }, { key: "overdraft_excess_days", op: "gte", value: 180 }, { key: "overdraft_excess_days", op: "lt", value: 360 }] }, priority: 22, description: "Dépassement > 10% non régularisé > 180j (art.11)" },
+    { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { all: [{ key: "overdraft_excess_pct", op: "gt", value: 10 }, { key: "overdraft_excess_days", op: "gte", value: 360 }] }, priority: 32, description: "Dépassement > 10% non régularisé > 360j (art.12)" },
+    // --- Compte débiteur sans mouvements créditeurs réels (art.10-12) ---
+    { kind: "QUALITATIVE", targetClass: "PRE_DOUTEUX", condition: { all: [{ key: "debit_no_credit_movements_days", op: "gte", value: 90 }, { key: "debit_no_credit_movements_days", op: "lt", value: 180 }] }, priority: 9, description: "Compte débiteur sans mouvements créditeurs > 90j (art.10)" },
+    { kind: "QUALITATIVE", targetClass: "DOUTEUX", condition: { all: [{ key: "debit_no_credit_movements_days", op: "gte", value: 180 }, { key: "debit_no_credit_movements_days", op: "lt", value: 360 }] }, priority: 19, description: "Compte débiteur sans mouvements créditeurs > 180j (art.11)" },
+    { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { clause: { key: "debit_no_credit_movements_days", op: "gte", value: 360 } }, priority: 29, description: "Compte débiteur sans mouvements créditeurs > 360j (art.12)" },
+    // --- Absence d'information fiable d'avancement / commercialisation (art.5.3) ---
+    { kind: "QUALITATIVE", targetClass: "SENSIBLE", condition: { any: [{ key: "unreliable_construction_progress_info", op: "isTrue" }, { key: "unreliable_commercialization_info", op: "isTrue" }] }, priority: 6, description: "Information avancement/commercialisation non fiable (art.5.3)" },
   ],
 };
 

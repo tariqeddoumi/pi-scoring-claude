@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure } from "@/server/queries";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
+import { OverridePanel, type OverrideRow } from "@/components/OverridePanel";
 import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { GfaVefaCard } from "@/components/GfaVefaCard";
@@ -39,8 +40,9 @@ const WF_STATE_COLORS: Record<WorkflowStateName, string> = {
   REJECTED: "bg-red-100 text-red-800 border-red-300",
 };
 
-export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const res = await safe(() => getProjectDetail(params.id));
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await safe(() => getProjectDetail(id));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const p = res.data;
   if (!p) return notFound();
@@ -54,9 +56,17 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
   const prov = p.provisionRuns[0];
   const calib = await getActiveCalibration();
   const scoreHistory = await getScoringHistory(p.id);
+  const counterparty = await getCounterpartyExposure(p.promoterId);
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
+  const canValidate = !!actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE);
+  const overrideRows: OverrideRow[] = p.regulatoryOverrides.map((o) => ({
+    id: o.id, forcedClass: o.forcedClass, engineClass: o.engineClass,
+    justification: o.justification, status: o.status, active: o.active,
+    requestedBy: o.requestedBy?.name ?? "—", decidedBy: o.decidedBy?.name ?? null,
+    createdAt: o.createdAt.toISOString(),
+  }));
 
   const sectionTable = (sectionKey: keyof typeof INPUT_SECTIONS) => {
     const s = INPUT_SECTIONS[sectionKey]!;
@@ -99,6 +109,9 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
           <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline">Dossier comité (PDF)</Button>
+          </a>
+          <a href={`/api/export/project/${p.id}/xlsx`}>
+            <Button variant="outline">Dossier comité (Excel)</Button>
           </a>
         </div>
       </div>
@@ -269,14 +282,24 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
         </TabsContent>
 
         <TabsContent value="Classification BKAM">
+         <div className="space-y-4">
           {cls ? (
             <Card><CardHeader><CardTitle>Classification — {cls.regime.name}</CardTitle></CardHeader><CardContent className="space-y-3">
               <div className="flex items-center gap-3">
                 <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>
                 {cls.isWatchList && <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Watch List</Badge>}
                 {cls.groupContagionClass && <Badge className="bg-purple-100 text-purple-800 border-purple-300">Contagion groupe : {CLASS_LABELS[cls.groupContagionClass]}</Badge>}
+                {cls.dataQualityStatus && cls.dataQualityStatus !== "COMPLETE" && (
+                  <Badge className={cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? "bg-red-100 text-red-800 border-red-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                    {cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? "Données critiques manquantes" : "Données incomplètes"}
+                  </Badge>
+                )}
               </div>
+              {Array.isArray(cls.missingCriticalData) && (cls.missingCriticalData as string[]).length > 0 && (
+                <p className="text-xs text-muted-foreground">Manquant : {(cls.missingCriticalData as string[]).join(", ")}</p>
+              )}
               {cls.restructuringNote && <p className="text-sm"><span className="font-medium">Restructuration : </span>{cls.restructuringNote}</p>}
+              {cls.overrideNote && <p className="text-sm text-purple-700"><span className="font-medium">Dérogation : </span>{cls.overrideNote}</p>}
               <div>
                 <p className="text-sm font-medium mb-1">Déclencheurs</p>
                 <ul className="text-sm list-disc pl-5 space-y-0.5">
@@ -288,6 +311,35 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
               </div>
             </CardContent></Card>
           ) : <p className="text-muted-foreground text-sm">Lancez un scoring pour classifier.</p>}
+          <Card><CardHeader><CardTitle>Dérogations comité (1/W)</CardTitle></CardHeader><CardContent>
+            <OverridePanel projectId={p.id} overrides={overrideRows} canValidate={canValidate} />
+          </CardContent></Card>
+
+          {counterparty && counterparty.count > 1 && (
+            <Card><CardHeader><CardTitle>Contrepartie — expositions liées</CardTitle></CardHeader><CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span>{counterparty.promoter.name}</span>
+                <span className="text-muted-foreground">{counterparty.count} projet(s)</span>
+                <span className="text-muted-foreground">Exposition totale {formatMAD(counterparty.totalExposure)}</span>
+                {counterparty.severeClass && <Badge className={CLASS_COLORS[counterparty.severeClass]}>Classe la plus sévère : {CLASS_LABELS[counterparty.severeClass]}</Badge>}
+              </div>
+              <Table>
+                <thead><tr><Th>Référence</Th><Th>Projet</Th><Th>Classe</Th><Th>Exposition</Th></tr></thead>
+                <tbody>
+                  {counterparty.members.map((mb) => (
+                    <tr key={mb.id} className={mb.id === p.id ? "bg-muted/40" : undefined}>
+                      <Td className="font-mono text-xs">{mb.reference}</Td>
+                      <Td>{mb.name}{mb.id === p.id ? <span className="ml-1 text-xs text-muted-foreground">(ce projet)</span> : null}</Td>
+                      <Td>{mb.cls ? <Badge className={CLASS_COLORS[mb.cls]}>{CLASS_LABELS[mb.cls]}</Badge> : "—"}</Td>
+                      <Td>{formatMAD(mb.exposure)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              <p className="text-xs text-muted-foreground">Contagion contrepartie (art.33/50) : la classe la plus sévère se propage aux autres expositions de la contrepartie au prochain calcul.</p>
+            </CardContent></Card>
+          )}
+         </div>
         </TabsContent>
 
         <TabsContent value="Provisionnement">
@@ -340,6 +392,27 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                         <Td>{d.weighted.toFixed(1)}</Td>
                       </tr>
                     ))}
+                  </tbody>
+                </Table>
+              </CardContent></Card>
+              <Card className="lg:col-span-3"><CardHeader><CardTitle>Détail par critère (explicabilité)</CardTitle></CardHeader><CardContent className="p-0">
+                <Table>
+                  <thead><tr><Th>Domaine</Th><Th>Critère</Th><Th>Valeur source</Th><Th>Note /10</Th><Th>Poids</Th><Th>Contribution</Th><Th>Règle retenue</Th></tr></thead>
+                  <tbody>
+                    {[...run.criterionResults]
+                      .sort((a, b) => (a.criterion.domain.code + a.criterion.code).localeCompare(b.criterion.domain.code + b.criterion.code))
+                      .map((c) => (
+                        <tr key={c.id} className={c.gateBlocked ? "bg-red-50" : undefined}>
+                          <Td className="text-muted-foreground">{c.criterion.domain.code}</Td>
+                          <Td>{c.criterion.name}{c.gateBlocked ? <span className="ml-1 text-red-600 text-xs font-medium">(gate)</span> : null}</Td>
+                          <Td className="font-mono text-xs">{c.rawValue ?? "—"}</Td>
+                          <Td className="font-medium">{c.score}</Td>
+                          <Td>{formatPercent(c.criterion.weight * 100, 0)}</Td>
+                          <Td>{c.weighted.toFixed(2)}</Td>
+                          <Td className="text-xs text-muted-foreground">{c.matchedRef ?? "—"}</Td>
+                        </tr>
+                      ))}
+                    {run.criterionResults.length === 0 && <tr><Td className="text-muted-foreground">Aucun détail de critère.</Td></tr>}
                   </tbody>
                 </Table>
               </CardContent></Card>

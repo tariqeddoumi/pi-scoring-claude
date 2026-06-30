@@ -220,12 +220,25 @@ export interface RestructuringContext {
   dpdOnRestructured?: number; // impayé sur créance restructurée (art.29)
 }
 
+// Qualité des données réglementaires (1/W §6.2 — données critiques manquantes).
+export type DataQualityStatus = "COMPLETE" | "INCOMPLETE" | "INCOMPLETE_BLOCKING";
+
+export interface DataQuality {
+  status: DataQualityStatus;
+  // Clés d'entrée critiques/importantes manquantes (non renseignées).
+  missingCriticalData: string[];
+}
+
 export interface ClassificationResult {
   resultClass: RegulatoryClassCode;
   isWatchList: boolean;
   blocksGo: boolean;
   restructuringNote?: string;
   groupContagionClass?: RegulatoryClassCode;
+  // Contagion contrepartie (même promoteur, multi-projets/facilités) — art.33/50.
+  counterpartyContagionClass?: RegulatoryClassCode;
+  // Statut de complétude des données ayant servi à la classification.
+  dataQuality: DataQuality;
   triggeredBy: Array<{
     kind: TriggerKind;
     targetClass: RegulatoryClassCode;
