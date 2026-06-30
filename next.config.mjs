@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 // En-têtes de sécurité appliqués à toutes les routes (V1.5 lot D).
-// Note CSRF : les Server Actions Next 14 vérifient déjà l'origine (Origin == Host) ;
+// Note CSRF : les Server Actions Next 15 vérifient déjà l'origine (Origin == Host) ;
 // `serverActions.allowedOrigins` restreint les origines autorisées en complément.
 const securityHeaders = [
   // HSTS : force HTTPS (2 ans, sous-domaines, preload).
@@ -15,7 +15,7 @@ const securityHeaders = [
   // Réduit la surface d'API navigateur.
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
   // CSP pragmatique : bloque l'embarquement et les scripts/connexions externes.
-  // 'unsafe-inline'/'unsafe-eval' sont requis par le runtime Next 14 (App Router) ;
+  // 'unsafe-inline'/'unsafe-eval' sont requis par le runtime Next 15 (App Router) ;
   // un durcissement par nonce est prévu en V2.
   {
     key: "Content-Security-Policy",
@@ -35,10 +35,9 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: "5mb",
-    },
+  // Next 15 : les Server Actions sont stables (config hors `experimental`).
+  serverActions: {
+    bodySizeLimit: "5mb",
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];

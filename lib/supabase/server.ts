@@ -4,8 +4,9 @@ import { cookies } from "next/headers";
 // Client Supabase côté serveur (App Router) — lecture de session via cookies.
 // Sert de socle à l'authentification ; le RBAC applicatif reste géré par
 // la table User/Role (lib/rbac.ts).
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  // Next 15 : cookies() est asynchrone (Dynamic APIs).
+  const cookieStore = await cookies();
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -36,7 +37,7 @@ export function createClient() {
  */
 export async function getCurrentAppUser() {
   try {
-    const supabase = createClient();
+    const supabase = await createClient();
     const { data } = await supabase.auth.getUser();
     const email = data.user?.email;
     if (!email) return null;

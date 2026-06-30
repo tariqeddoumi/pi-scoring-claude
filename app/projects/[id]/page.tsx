@@ -39,8 +39,9 @@ const WF_STATE_COLORS: Record<WorkflowStateName, string> = {
   REJECTED: "bg-red-100 text-red-800 border-red-300",
 };
 
-export default async function ProjectDetailPage({ params }: { params: { id: string } }) {
-  const res = await safe(() => getProjectDetail(params.id));
+export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await safe(() => getProjectDetail(id));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const p = res.data;
   if (!p) return notFound();

@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     if (user) {
       securityEvent("logout", { actorId: user.id, email: user.email, role: user.role.name });
     }
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.auth.signOut();
   } catch {
     // Auth non configurée : on redirige quand même vers /login.

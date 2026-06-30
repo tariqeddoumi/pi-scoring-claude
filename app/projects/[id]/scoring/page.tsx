@@ -8,8 +8,9 @@ import { DbSetupNotice, safe } from "@/lib/dbGuard";
 
 export const dynamic = "force-dynamic";
 
-export default async function ScoringWizardPage({ params }: { params: { id: string } }) {
-  const res = await safe(() => getProjectDetail(params.id));
+export default async function ScoringWizardPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const res = await safe(() => getProjectDetail(id));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const p = res.data;
   if (!p) return notFound();

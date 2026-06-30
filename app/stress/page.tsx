@@ -24,11 +24,12 @@ function Delta({ base, stressed }: { base: number; stressed: number }) {
 export default async function StressPage({
   searchParams,
 }: {
-  searchParams: { preSaleDrop?: string; dpdAdd?: string };
+  searchParams: Promise<{ preSaleDrop?: string; dpdAdd?: string }>;
 }) {
   if (!(await currentUserCan(PERMISSIONS.PROJECT_READ))) return <AccessDenied />;
-  const preSaleDrop = num(searchParams.preSaleDrop, 20);
-  const dpdAdd = num(searchParams.dpdAdd, 120);
+  const sp = await searchParams;
+  const preSaleDrop = num(sp.preSaleDrop, 20);
+  const dpdAdd = num(sp.dpdAdd, 120);
 
   const res = await safe(() => getStressTest({ preSaleDrop, dpdAdd }));
   if (!res.ok) return <DbSetupNotice error={res.error} />;

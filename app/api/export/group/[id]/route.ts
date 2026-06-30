@@ -5,7 +5,8 @@ import { securityEvent } from "@/lib/securityLog";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   let actor;
   try {
     actor = await authorize(PERMISSIONS.EXPORT_RUN);
@@ -16,10 +17,10 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   securityEvent("export", {
     actorId: actor.id,
     role: actor.role.name,
-    resource: `group:${params.id}`,
+    resource: `group:${id}`,
   });
   try {
-    const html = await groupReportHtml(params.id);
+    const html = await groupReportHtml(id);
     if (!html) return new Response("Groupe introuvable", { status: 404 });
     return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8" } });
   } catch (e) {
