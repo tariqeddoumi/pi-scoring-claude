@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { recordLogin, recordLoginFailure } from "@/server/actions/auth";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
+import { APP_NAME, APP_LOGO_URL } from "@/lib/appConfig";
 
 function LoginForm() {
   const router = useRouter();
@@ -41,8 +42,10 @@ function LoginForm() {
 
   return (
     <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle>Connexion — PI Scoring BKAM</CardTitle>
+      <CardHeader className="space-y-2">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={APP_LOGO_URL} alt={APP_NAME} className="h-12 w-12 rounded-md object-contain" />
+        <CardTitle>{APP_NAME}</CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-4">

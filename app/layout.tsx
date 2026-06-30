@@ -4,9 +4,10 @@ import "./globals.css";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type PermissionCode, type RoleName } from "@/lib/rbac";
 import { Button } from "@/components/ui";
+import { APP_NAME, APP_NAME_SHORT, APP_TAGLINE, APP_LOGO_URL } from "@/lib/appConfig";
 
 export const metadata: Metadata = {
-  title: "PI Scoring BKAM — Promotion Immobilière",
+  title: APP_NAME,
   description:
     "Scoring de projets de promotion immobilière, classification et provisionnement BKAM (19/G/2002, 1/W/2025).",
 };
@@ -45,9 +46,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <div className="min-h-screen flex">
           <aside className="w-60 shrink-0 border-r border-border bg-background hidden md:flex md:flex-col">
-            <div className="p-4 border-b border-border">
-              <div className="font-bold text-lg leading-tight">PI Scoring</div>
-              <div className="text-xs text-muted-foreground">BKAM 19/G · 1/W/2025</div>
+            <div className="p-4 border-b border-border flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={APP_LOGO_URL} alt={APP_NAME} className="h-9 w-9 rounded-md object-contain shrink-0" />
+              <div className="min-w-0">
+                <div className="font-bold text-sm leading-tight">{APP_NAME_SHORT}</div>
+                <div className="text-xs text-muted-foreground">{APP_TAGLINE}</div>
+              </div>
             </div>
             <nav className="flex-1 p-2 space-y-1">
               {NAV.filter((n) => hasPermission(user.role.name as RoleName, n.perm)).map((n) => (
