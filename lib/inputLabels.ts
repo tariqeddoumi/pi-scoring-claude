@@ -25,9 +25,13 @@ export const INPUT_SECTIONS: Record<string, { title: string; keys: string[] }> =
     title: "Cash-flow",
     keys: ["cash_coverage", "funding_gap_pct", "funding_gap_persistent", "stock_rotation_months"],
   },
+  credit: {
+    title: "Crédit & dépassements (1/W)",
+    keys: ["credit_type", "days_after_maturity", "bullet_unpaid", "authorized_amount", "overdraft_excess_pct", "overdraft_excess_days", "debit_no_credit_movements_days"],
+  },
   regulatoire: {
     title: "Vulnérabilité réglementaire",
-    keys: ["dpd_days", "restructured", "restructuring_count", "restructuring_deferral_months", "restructuring_viable", "second_restructuring_in_observation", "dpd_on_restructured", "legal_exposure", "project_stopped_months", "project_stopped_over_1y", "judicial_recovery", "debt_equity_ratio", "revenue_drop_pct", "seizure_notice", "financials_late_7m", "negative_credit_bureau", "bp_significant_gap", "financials_unavailable"],
+    keys: ["dpd_days", "restructured", "restructuring_count", "restructuring_deferral_months", "restructuring_viable", "second_restructuring_in_observation", "dpd_on_restructured", "legal_exposure", "project_stopped_months", "project_stopped_over_1y", "judicial_recovery", "debt_equity_ratio", "revenue_drop_pct", "seizure_notice", "financials_late_7m", "negative_credit_bureau", "bp_significant_gap", "financials_unavailable", "unreliable_construction_progress_info", "unreliable_commercialization_info"],
   },
 };
 
@@ -83,6 +87,16 @@ export const INPUT_LABELS: Record<string, string> = {
   negative_credit_bureau: "Information négative Crédit Bureau / SCIP",
   bp_significant_gap: "Décalage significatif vs business plan",
   financials_unavailable: "Situation financière non évaluable",
+  // --- Crédit in fine / dépassements / compte débiteur (1/W art.10-12) ---
+  credit_type: "Type de crédit",
+  days_after_maturity: "Impayé in fine après terme (jours)",
+  bullet_unpaid: "Principal in fine non remboursé",
+  authorized_amount: "Montant autorisé (MAD)",
+  overdraft_excess_pct: "Dépassement d'autorisation (%)",
+  overdraft_excess_days: "Ancienneté du dépassement (jours)",
+  debit_no_credit_movements_days: "Compte débiteur sans mouvements créditeurs (jours)",
+  unreliable_construction_progress_info: "Information d'avancement non fiable / absente",
+  unreliable_commercialization_info: "Information de commercialisation non fiable / absente",
   // --- Modèle actifs d'exploitation & de rapport (hôtels, bureaux, commerces) ---
   occupancy_rate: "Taux d'occupation (%)",
   lease_indexation: "Indexation des baux",

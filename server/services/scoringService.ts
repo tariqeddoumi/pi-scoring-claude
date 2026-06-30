@@ -79,6 +79,8 @@ async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): P
       isWatchList: classification.isWatchList,
       groupContagionClass: classification.groupContagionClass ?? null,
       restructuringNote: classification.restructuringNote ?? null,
+      dataQualityStatus: classification.dataQuality.status,
+      missingCriticalData: classification.dataQuality.missingCriticalData as any,
       triggeredBy: classification.triggeredBy as any,
       inputSnapshot: inputs as any,
     },

@@ -450,6 +450,20 @@ export const REGIME_1W_2025: RegulatoryRegimeConfig = {
     { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { clause: { key: "finished_2y_no_sales", op: "isTrue" } }, priority: 28, description: "Projet finalisé ≥ 2 ans, commercialisation figée (art.12.6)" },
     { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { clause: { key: "project_stopped_over_1y", op: "isTrue" } }, priority: 28, description: "Projet à l'arrêt > 1 an (art.12.7)" },
     { kind: "LEGAL", targetClass: "CTX", condition: { clause: { key: "legal_exposure", op: "eq", value: "litigation" } }, priority: 40, description: "Action en justice / contestation (art.12.8)" },
+    // --- Crédit in fine : non remboursement du principal après terme (art.10-12) ---
+    { kind: "QUALITATIVE", targetClass: "PRE_DOUTEUX", condition: { all: [{ key: "credit_type", op: "eq", value: "in_fine" }, { key: "days_after_maturity", op: "gte", value: 90 }, { key: "days_after_maturity", op: "lt", value: 180 }] }, priority: 11, description: "Crédit in fine impayé > 90j après terme (art.10)" },
+    { kind: "QUALITATIVE", targetClass: "DOUTEUX", condition: { all: [{ key: "credit_type", op: "eq", value: "in_fine" }, { key: "days_after_maturity", op: "gte", value: 180 }, { key: "days_after_maturity", op: "lt", value: 360 }] }, priority: 21, description: "Crédit in fine impayé > 180j après terme (art.11)" },
+    { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { all: [{ key: "credit_type", op: "eq", value: "in_fine" }, { key: "days_after_maturity", op: "gte", value: 360 }] }, priority: 31, description: "Crédit in fine impayé > 360j après terme (art.12)" },
+    // --- Dépassements de ligne > 10% des autorisations (art.10-12) ---
+    { kind: "QUALITATIVE", targetClass: "PRE_DOUTEUX", condition: { all: [{ key: "overdraft_excess_pct", op: "gt", value: 10 }, { key: "overdraft_excess_days", op: "gte", value: 90 }, { key: "overdraft_excess_days", op: "lt", value: 180 }] }, priority: 12, description: "Dépassement > 10% non régularisé > 90j (art.10)" },
+    { kind: "QUALITATIVE", targetClass: "DOUTEUX", condition: { all: [{ key: "overdraft_excess_pct", op: "gt", value: 10 }, { key: "overdraft_excess_days", op: "gte", value: 180 }, { key: "overdraft_excess_days", op: "lt", value: 360 }] }, priority: 22, description: "Dépassement > 10% non régularisé > 180j (art.11)" },
+    { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { all: [{ key: "overdraft_excess_pct", op: "gt", value: 10 }, { key: "overdraft_excess_days", op: "gte", value: 360 }] }, priority: 32, description: "Dépassement > 10% non régularisé > 360j (art.12)" },
+    // --- Compte débiteur sans mouvements créditeurs réels (art.10-12) ---
+    { kind: "QUALITATIVE", targetClass: "PRE_DOUTEUX", condition: { all: [{ key: "debit_no_credit_movements_days", op: "gte", value: 90 }, { key: "debit_no_credit_movements_days", op: "lt", value: 180 }] }, priority: 9, description: "Compte débiteur sans mouvements créditeurs > 90j (art.10)" },
+    { kind: "QUALITATIVE", targetClass: "DOUTEUX", condition: { all: [{ key: "debit_no_credit_movements_days", op: "gte", value: 180 }, { key: "debit_no_credit_movements_days", op: "lt", value: 360 }] }, priority: 19, description: "Compte débiteur sans mouvements créditeurs > 180j (art.11)" },
+    { kind: "QUALITATIVE", targetClass: "COMPROMIS", condition: { clause: { key: "debit_no_credit_movements_days", op: "gte", value: 360 } }, priority: 29, description: "Compte débiteur sans mouvements créditeurs > 360j (art.12)" },
+    // --- Absence d'information fiable d'avancement / commercialisation (art.5.3) ---
+    { kind: "QUALITATIVE", targetClass: "SENSIBLE", condition: { any: [{ key: "unreliable_construction_progress_info", op: "isTrue" }, { key: "unreliable_commercialization_info", op: "isTrue" }] }, priority: 6, description: "Information avancement/commercialisation non fiable (art.5.3)" },
   ],
 };
 

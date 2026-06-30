@@ -773,6 +773,9 @@ model ClassificationRun {
   groupContagionClass RegulatoryClassCode?
   // Détail restructuration ayant impacté la classe (art.17-31).
   restructuringNote String?
+  // Qualité des données (1/W §6.2) : COMPLETE | INCOMPLETE | INCOMPLETE_BLOCKING
+  dataQualityStatus String?
+  missingCriticalData Json?  // clés critiques/importantes manquantes
   triggeredBy Json     // triggers déclenchés + détails
   inputSnapshot Json
   createdAt   DateTime @default(now())

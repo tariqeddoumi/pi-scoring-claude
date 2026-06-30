@@ -19,6 +19,8 @@ const BOOL_INPUT_KEYS = [
   // Déclencheurs réglementaires 1/W + contexte de restructuration (art.5/17-31).
   "seizure_notice", "financials_late_7m", "negative_credit_bureau", "financials_unavailable",
   "restructuring_viable", "second_restructuring_in_observation",
+  // Crédit in fine / fiabilité de l'information (art.10-12 / art.5.3).
+  "bullet_unpaid", "unreliable_construction_progress_info", "unreliable_commercialization_info",
 ];
 
 export interface ImportSummary {

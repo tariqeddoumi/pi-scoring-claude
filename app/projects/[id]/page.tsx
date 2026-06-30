@@ -275,7 +275,15 @@ export default async function ProjectDetailPage({ params }: { params: { id: stri
                 <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>
                 {cls.isWatchList && <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Watch List</Badge>}
                 {cls.groupContagionClass && <Badge className="bg-purple-100 text-purple-800 border-purple-300">Contagion groupe : {CLASS_LABELS[cls.groupContagionClass]}</Badge>}
+                {cls.dataQualityStatus && cls.dataQualityStatus !== "COMPLETE" && (
+                  <Badge className={cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? "bg-red-100 text-red-800 border-red-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                    {cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? "Données critiques manquantes" : "Données incomplètes"}
+                  </Badge>
+                )}
               </div>
+              {Array.isArray(cls.missingCriticalData) && (cls.missingCriticalData as string[]).length > 0 && (
+                <p className="text-xs text-muted-foreground">Manquant : {(cls.missingCriticalData as string[]).join(", ")}</p>
+              )}
               {cls.restructuringNote && <p className="text-sm"><span className="font-medium">Restructuration : </span>{cls.restructuringNote}</p>}
               <div>
                 <p className="text-sm font-medium mb-1">Déclencheurs</p>

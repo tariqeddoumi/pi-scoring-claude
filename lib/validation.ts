@@ -49,7 +49,7 @@ export const scoringInputsSchema = z.object({
   technical_complexity: z.enum(["elevee", "moyenne", "standard"]),
   progress_vs_plan: z.coerce.number().min(0),
   sav_litigation: z.enum(["eleve", "moyen", "faible"]),
-  macro_sensitivity: z.enum(["elevee", "faible"]),
+  macro_sensitivity: z.enum(["elevee", "moyenne", "faible"]),
   land_cost_ratio: z.coerce.number().min(0).max(100),
   // --- D3 Commercial & Cash-flow ---
   pre_sale_rate: z.coerce.number().min(0).max(100),
@@ -94,6 +94,17 @@ export const scoringInputsSchema = z.object({
   restructuring_deferral_months: z.coerce.number().min(0).optional().default(0),
   second_restructuring_in_observation: bool,
   dpd_on_restructured: z.coerce.number().min(0).optional().default(0),
+  // --- Crédit in fine / dépassements / compte débiteur (1/W art.10-12) ---
+  credit_type: z.enum(["amortissable", "in_fine", "decouvert"]).optional(),
+  days_after_maturity: z.coerce.number().min(0).optional().default(0),
+  bullet_unpaid: bool,
+  authorized_amount: z.coerce.number().min(0).optional().default(0),
+  overdraft_excess_pct: z.coerce.number().min(0).optional().default(0),
+  overdraft_excess_days: z.coerce.number().min(0).optional().default(0),
+  debit_no_credit_movements_days: z.coerce.number().min(0).optional().default(0),
+  // --- Fiabilité de l'information (art.5.3) ---
+  unreliable_construction_progress_info: bool,
+  unreliable_commercialization_info: bool,
 });
 
 export type ScoringInputsForm = z.infer<typeof scoringInputsSchema>;

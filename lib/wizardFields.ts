@@ -108,9 +108,23 @@ export const WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] =
     ],
   },
   {
+    id: "credit", title: "Crédit & dépassements (1/W art.10-12)",
+    fields: [
+      sel("credit_type", [["amortissable", "Amortissable"], ["in_fine", "In fine"], ["decouvert", "Découvert / ligne"]]),
+      { key: "days_after_maturity", type: "number" },
+      { key: "bullet_unpaid", type: "bool" },
+      { key: "authorized_amount", type: "number" },
+      { key: "overdraft_excess_pct", type: "number", step: "0.1" },
+      { key: "overdraft_excess_days", type: "number" },
+      { key: "debit_no_credit_movements_days", type: "number" },
+    ],
+  },
+  {
     id: "regulatoire", title: "Vulnérabilité réglementaire BAM",
     fields: [
       { key: "dpd_days", type: "number" },
+      { key: "unreliable_construction_progress_info", type: "bool" },
+      { key: "unreliable_commercialization_info", type: "bool" },
       { key: "construction_delay_months", type: "number" },
       { key: "project_stopped_months", type: "number" },
       sel("restructured", [["no", "Non"], ["yes", "Oui"]]),
