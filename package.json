@@ -5,7 +5,8 @@
   "description": "Tool de scoring de projets de promotion immobilière avec classification et provisionnement BKAM (19/G/2002, 1/W/2025).",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",

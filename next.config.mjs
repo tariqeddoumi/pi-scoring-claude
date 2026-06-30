@@ -35,9 +35,12 @@ const securityHeaders = [
 
 const nextConfig = {
   reactStrictMode: true,
-  // Next 15 : les Server Actions sont stables (config hors `experimental`).
-  serverActions: {
-    bodySizeLimit: "5mb",
+  // Les Server Actions sont stables, mais les réglages bodySizeLimit/allowedOrigins
+  // restent sous `experimental` en Next 15.
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "5mb",
+    },
   },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }];
