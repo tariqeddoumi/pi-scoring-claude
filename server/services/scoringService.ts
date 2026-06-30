@@ -49,7 +49,7 @@ interface ClassifyResult {
 async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): Promise<ClassifyResult> {
   const project = await tx.realEstateProject.findUniqueOrThrow({
     where: { id: projectId },
-    select: { id: true, groupId: true },
+    select: { id: true, groupId: true, promoterId: true },
   });
   const { regimeId, config: regime } = await loadActiveRegime(tx);
   const inputs = await loadProjectInputs(tx, projectId);
@@ -58,6 +58,10 @@ async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): P
   const groupPeerClass = project.groupId
     ? await mostSevereGroupClass(tx, project.groupId, projectId)
     : undefined;
+
+  // Contagion contrepartie (même promoteur) : classe la plus sévère des autres
+  // projets/facilités de la contrepartie (art.33/50 appliqué à la contrepartie).
+  const counterpartyPeerClass = await mostSevereCounterpartyClass(tx, project.promoterId, projectId);
 
   // Contexte de restructuration (art.17-31) issu des entrées.
   const restructuring = {
@@ -69,7 +73,7 @@ async function classifyAndPersist(tx: Tx, projectId: string, actorId: string): P
     dpdOnRestructured: typeof inputs.dpd_on_restructured === "number" ? inputs.dpd_on_restructured : undefined,
   };
 
-  const classification = classify({ regime, inputs, restructuring, groupPeerClass });
+  const classification = classify({ regime, inputs, restructuring, groupPeerClass, counterpartyPeerClass });
 
   // Dérogation comité (1/W §6.2) : une dérogation APPROVED et active force la
   // classe. La classe calculée par le moteur est conservée (engineClass) et la
@@ -473,6 +477,31 @@ async function mostSevereGroupClass(
 ): Promise<RegulatoryClassCode | undefined> {
   const peers = await tx.realEstateProject.findMany({
     where: { groupId, id: { not: excludeProjectId } },
+    select: {
+      classificationRuns: {
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        select: { resultClass: true },
+      },
+    },
+  });
+  return mostSevereClass(
+    peers.map((p) => p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined),
+  );
+}
+
+/**
+ * Contagion contrepartie (BKAM art.33/50 appliqué à la contrepartie) : classe
+ * la plus sévère parmi les dernières classifications des AUTRES projets du même
+ * promoteur (contrepartie), pour propager le défaut à toutes ses expositions.
+ */
+async function mostSevereCounterpartyClass(
+  tx: Tx,
+  promoterId: string,
+  excludeProjectId: string,
+): Promise<RegulatoryClassCode | undefined> {
+  const peers = await tx.realEstateProject.findMany({
+    where: { promoterId, id: { not: excludeProjectId } },
     select: {
       classificationRuns: {
         orderBy: { createdAt: "desc" },

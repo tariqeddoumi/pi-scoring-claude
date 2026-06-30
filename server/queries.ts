@@ -114,6 +114,39 @@ export async function getProjectDetail(id: string) {
   });
 }
 
+/**
+ * Exposition consolidée d'une contrepartie (promoteur) : ses projets avec leur
+ * dernière classe et exposition (EAD), la classe la plus sévère (contagion
+ * contrepartie art.33/50) et l'exposition totale. Sert à expliciter le risque
+ * multi-projets/facilités de la contrepartie (1/W §6.2 #9).
+ */
+export async function getCounterpartyExposure(promoterId: string) {
+  const promoter = await prisma.promoter.findUnique({ where: { id: promoterId }, select: { id: true, name: true } });
+  if (!promoter) return null;
+  const projects = await prisma.realEstateProject.findMany({
+    where: { promoterId },
+    select: {
+      id: true, reference: true, name: true, loanAmount: true,
+      classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultClass: true } },
+      provisionRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { ead: true } },
+      facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  const members = projects.map((p) => ({
+    id: p.id, reference: p.reference, name: p.name,
+    cls: (p.classificationRuns[0]?.resultClass ?? null) as RegulatoryClassCode | null,
+    exposure: p.provisionRuns[0]?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead,
+  }));
+  return {
+    promoter,
+    members,
+    count: members.length,
+    severeClass: mostSevereClass(members.map((m) => m.cls ?? undefined)),
+    totalExposure: members.reduce((s, m) => s + m.exposure, 0),
+  };
+}
+
 // ---------------------------------------------------------------------
 //  Suivi de projet de promotion : commercialisation par tranche / lot.
 //  Lit les tranches + lots et calcule la synthèse (ventes, CA, décalage

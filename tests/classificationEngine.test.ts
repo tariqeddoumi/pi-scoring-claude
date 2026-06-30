@@ -111,3 +111,16 @@ describe("effet groupe (art.33/50)", () => {
     expect(r.groupContagionClass).toBeUndefined();
   });
 });
+
+describe("contagion contrepartie (même promoteur, art.33/50)", () => {
+  it("propage la classe la plus sévère d'une autre exposition de la contrepartie", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 0 }, counterpartyPeerClass: "DOUTEUX" });
+    expect(r.resultClass).toBe("DOUTEUX");
+    expect(r.counterpartyContagionClass).toBe("DOUTEUX");
+  });
+  it("n'améliore pas une classe propre déjà plus sévère", () => {
+    const r = classify({ regime: REGIME_1W_2025, inputs: { dpd_days: 400 }, counterpartyPeerClass: "SENSIBLE" });
+    expect(r.resultClass).toBe("COMPROMIS");
+    expect(r.counterpartyContagionClass).toBeUndefined();
+  });
+});

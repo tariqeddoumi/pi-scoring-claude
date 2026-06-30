@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure } from "@/server/queries";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
@@ -56,6 +56,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const prov = p.provisionRuns[0];
   const calib = await getActiveCalibration();
   const scoreHistory = await getScoringHistory(p.id);
+  const counterparty = await getCounterpartyExposure(p.promoterId);
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
@@ -313,6 +314,31 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <Card><CardHeader><CardTitle>Dérogations comité (1/W)</CardTitle></CardHeader><CardContent>
             <OverridePanel projectId={p.id} overrides={overrideRows} canValidate={canValidate} />
           </CardContent></Card>
+
+          {counterparty && counterparty.count > 1 && (
+            <Card><CardHeader><CardTitle>Contrepartie — expositions liées</CardTitle></CardHeader><CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <span>{counterparty.promoter.name}</span>
+                <span className="text-muted-foreground">{counterparty.count} projet(s)</span>
+                <span className="text-muted-foreground">Exposition totale {formatMAD(counterparty.totalExposure)}</span>
+                {counterparty.severeClass && <Badge className={CLASS_COLORS[counterparty.severeClass]}>Classe la plus sévère : {CLASS_LABELS[counterparty.severeClass]}</Badge>}
+              </div>
+              <Table>
+                <thead><tr><Th>Référence</Th><Th>Projet</Th><Th>Classe</Th><Th>Exposition</Th></tr></thead>
+                <tbody>
+                  {counterparty.members.map((mb) => (
+                    <tr key={mb.id} className={mb.id === p.id ? "bg-muted/40" : undefined}>
+                      <Td className="font-mono text-xs">{mb.reference}</Td>
+                      <Td>{mb.name}{mb.id === p.id ? <span className="ml-1 text-xs text-muted-foreground">(ce projet)</span> : null}</Td>
+                      <Td>{mb.cls ? <Badge className={CLASS_COLORS[mb.cls]}>{CLASS_LABELS[mb.cls]}</Badge> : "—"}</Td>
+                      <Td>{formatMAD(mb.exposure)}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+              <p className="text-xs text-muted-foreground">Contagion contrepartie (art.33/50) : la classe la plus sévère se propage aux autres expositions de la contrepartie au prochain calcul.</p>
+            </CardContent></Card>
+          )}
          </div>
         </TabsContent>
 

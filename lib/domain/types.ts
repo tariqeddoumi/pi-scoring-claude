@@ -235,6 +235,8 @@ export interface ClassificationResult {
   blocksGo: boolean;
   restructuringNote?: string;
   groupContagionClass?: RegulatoryClassCode;
+  // Contagion contrepartie (même promoteur, multi-projets/facilités) — art.33/50.
+  counterpartyContagionClass?: RegulatoryClassCode;
   // Statut de complétude des données ayant servi à la classification.
   dataQuality: DataQuality;
   triggeredBy: Array<{

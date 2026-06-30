@@ -33,6 +33,9 @@ export interface ClassificationParams {
   restructuring?: RestructuringContext;
   // Classe la plus sévère observée sur le groupe d'intérêt (effet groupe).
   groupPeerClass?: RegulatoryClassCode;
+  // Classe la plus sévère des autres expositions de la même contrepartie
+  // (même promoteur : autres projets/facilités) — contagion contrepartie.
+  counterpartyPeerClass?: RegulatoryClassCode;
   // Surcharge éventuelle des clés évaluées pour la qualité des données.
   criticalKeys?: string[];
   importantKeys?: string[];
@@ -167,6 +170,22 @@ export function classify(params: ClassificationParams): ClassificationResult {
     }
   }
 
+  // 3bis. Contagion contrepartie (même promoteur, autres projets/facilités) :
+  // la classe la plus sévère d'une autre exposition de la contrepartie contamine.
+  let counterpartyContagionClass: RegulatoryClassCode | undefined;
+  if (params.counterpartyPeerClass) {
+    const peerSev = severityOf(params.counterpartyPeerClass);
+    if (peerSev > bestSeverity) {
+      counterpartyContagionClass = params.counterpartyPeerClass;
+      triggeredBy.push({
+        kind: "CROSS_DEFAULT",
+        targetClass: params.counterpartyPeerClass,
+        reason: `Contagion contrepartie : autre exposition classée ${params.counterpartyPeerClass}`,
+      });
+      consider(params.counterpartyPeerClass);
+    }
+  }
+
   const def = classByCode.get(bestClass);
   return {
     resultClass: bestClass,
@@ -174,6 +193,7 @@ export function classify(params: ClassificationParams): ClassificationResult {
     blocksGo: def?.blocksGo ?? false,
     restructuringNote,
     groupContagionClass,
+    counterpartyContagionClass,
     dataQuality: assessDataQuality(inputs, params.criticalKeys, params.importantKeys),
     triggeredBy,
   };
