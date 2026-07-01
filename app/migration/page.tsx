@@ -1,4 +1,4 @@
-import { getMigrationMatrix } from "@/server/queries";
+import { getMigrationMatrix, getPdBacktest } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Table, Th, Td, Badge, Stat } from "@/components/ui";
 import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
@@ -25,6 +25,10 @@ export default async function MigrationPage() {
   const { order, counts, rowTotals, totalTransitions, stable, upgrades, downgrades } = matrix;
 
   const pct = (n: number) => (totalTransitions > 0 ? `${Math.round((n / totalTransitions) * 100)}%` : "—");
+  const pct1 = (v: number) => `${(v * 100).toFixed(1)} %`;
+
+  const btRes = await safe(getPdBacktest);
+  const bt = btRes.ok ? btRes.data : null;
 
   return (
     <div className="space-y-6">
@@ -84,6 +88,45 @@ export default async function MigrationPage() {
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {bt && bt.total > 0 && (
+        <>
+          <div>
+            <h2 className="text-lg font-semibold">Backtesting du PD proxy (calibration)</h2>
+            <p className="text-sm text-muted-foreground">
+              PD prédite par le modèle vs fréquence de défaut observée (classe BKAM en défaut) par tranche de score.
+              Indicatif sur le portefeuille courant — significatif avec un historique de défauts réel.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat label="PD moyenne prédite" value={pct1(bt.meanPredictedPd)} />
+            <Stat label="Taux de défaut observé" value={pct1(bt.observedDefaultRate)} hint={`${bt.defaults}/${bt.total} dossiers`} />
+            <Stat label="Écart de calibration" value={pct1(bt.calibrationGap)} hint={bt.calibrationGap >= 0 ? "modèle prudent" : "modèle optimiste"} />
+            <Stat label="Score de Brier" value={bt.brier.toFixed(3)} hint="0 = parfait" />
+          </div>
+          <Card>
+            <CardHeader><CardTitle>Courbe de calibration par tranche de score</CardTitle></CardHeader>
+            <CardContent className="p-0 overflow-x-auto">
+              <Table>
+                <thead>
+                  <tr><Th>Tranche de score</Th><Th className="text-center">Dossiers</Th><Th className="text-center">Score moyen</Th><Th className="text-center">PD prédite (moy.)</Th><Th className="text-center">Défaut observé</Th></tr>
+                </thead>
+                <tbody>
+                  {bt.bands.map((b) => (
+                    <tr key={b.label}>
+                      <Td className="font-medium">{b.label}</Td>
+                      <Td className="text-center">{b.count || "—"}</Td>
+                      <Td className="text-center">{b.count ? b.avgScore.toFixed(0) : "—"}</Td>
+                      <Td className="text-center">{b.count ? pct1(b.avgPredictedPd) : "—"}</Td>
+                      <Td className="text-center">{b.count ? pct1(b.observedDefaultRate) : "—"}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
       )}
     </div>
   );

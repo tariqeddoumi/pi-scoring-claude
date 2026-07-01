@@ -22,7 +22,8 @@ import { classSeverity } from "@/lib/domain/groups";
 import { projectEad } from "@/lib/domain/facility";
 import { applyStress, STRESS_SCENARIOS, type StressShock } from "@/lib/domain/stress";
 import { classify } from "@/server/engines/regulatoryClassificationEngine";
-import { runScoring } from "@/server/engines/scoringEngine";
+import { runScoring, pdProxy } from "@/server/engines/scoringEngine";
+import { buildPdBacktest } from "@/lib/domain/pdBacktest";
 import { computeProvision } from "@/server/engines/provisioningEngine";
 import {
   PROMOTION_SCORING_MODEL,
@@ -540,6 +541,27 @@ export async function getMigrationMatrix(): Promise<{
   const matrix = migrationMatrixFromSequences(sequences);
 
   return { matrix, projectsTracked: byProject.size, projectsWithHistory };
+}
+
+/**
+ * Backtesting du PD proxy (diagnostic §9.1) : confronte la PD prédite par le
+ * modèle (pdProxy sur le score final) à la fréquence de défaut OBSERVÉE (classe
+ * réglementaire en défaut : PRE_DOUTEUX+), par tranche de score. Indicatif sur
+ * le portefeuille courant ; significatif avec un historique de défauts réel.
+ */
+export async function getPdBacktest() {
+  const DEFAULT_CLASSES = new Set(["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"]);
+  const projects = await prisma.realEstateProject.findMany({
+    select: {
+      scoringRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { scoreFinal: true } },
+      classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultClass: true } },
+    },
+  });
+  const observations = projects
+    .map((p) => ({ score: p.scoringRuns[0]?.scoreFinal ?? null, cls: (p.classificationRuns[0]?.resultClass ?? null) as string | null }))
+    .filter((o) => typeof o.score === "number")
+    .map((o) => ({ scoreFinal: o.score as number, predictedPd: pdProxy(o.score as number), isDefault: o.cls != null && DEFAULT_CLASSES.has(o.cls) }));
+  return buildPdBacktest(observations);
 }
 
 // ---------------------------------------------------------------------
