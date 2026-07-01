@@ -24,16 +24,24 @@
 
 | Paquet | Sévérité | Décision | Justification |
 |--------|----------|----------|----------------|
-| `xlsx` (Prototype Pollution, ReDoS) | high | **Atténué, à remplacer** | Aucun correctif sur le registre npm. Usage strictement **serveur**, derrière la permission `import.run`, avec plafond de taille par fichier. Remédiation cible : installer SheetJS depuis le CDN officiel (`https://cdn.sheetjs.com/…`) ou isoler le parsing dans un worker, après validation de la contrainte de build (dépendance hors registre). |
 | `postcss` (< 8.5.10, **bundlé par `next`**) | moderate | **Suivi amont** | Transitif interne à Next (XSS au stringify de CSS non fiable — hors de notre cas d'usage). Sera résolu par un correctif Next ultérieur ; non maîtrisable côté application. |
+
+Audit production courant : **0 critique / 0 high / 2 moderate** (uniquement `postcss` via Next).
+
+## Résolu depuis
+
+- **`xlsx` (SheetJS)** — la CVE (Prototype Pollution + ReDoS) est **corrigée** :
+  la dépendance est désormais servie depuis le CDN officiel SheetJS
+  (`https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz`, version 0.20.3), qui
+  intègre les correctifs absents du registre npm. Contrainte : `npm ci` (local
+  et Vercel) doit pouvoir joindre `cdn.sheetjs.com` au build — accès vérifié.
 
 > Dépendances **de développement** exclues (non embarquées) : `glob` (chaîne
 > `eslint-config-next`, CLI jamais invoquée), etc. — sans impact production.
 
 ## Recommandations de suivi
 
-1. **xlsx** : décider du remplacement (CDN SheetJS ou alternative) — dépendance de build à arbitrer.
-2. Activer un audit bloquant en CI : `npm audit --omit=dev --audit-level=high`
-   (une fois xlsx traité, pour verrouiller la non-régression de production).
-3. **Lint** : `next lint` est déprécié (retrait en Next 16) — migrer vers l'ESLint
+1. Activer un audit bloquant en CI : `npm audit --omit=dev --audit-level=high`
+   (verrouille la non-régression de production ; passe déjà au vert).
+2. **Lint** : `next lint` est déprécié (retrait en Next 16) — migrer vers l'ESLint
    CLI (`npx @next/codemod next-lint-to-eslint-cli .`) lors d'un prochain passage.
