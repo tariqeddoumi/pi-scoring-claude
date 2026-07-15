@@ -34,6 +34,9 @@ import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
 import { summarizeCommercialisation, type UnitView } from "@/lib/domain/commercialisation";
 import { analyzeVisitReports, type VisitReportView } from "@/lib/domain/visitReports";
 import { computeBusinessPlanDrift, type UnitBaselineView } from "@/lib/domain/businessPlan";
+import { EVENT_TYPES } from "@/lib/domain/referentiels";
+import { scoreFreshness } from "@/lib/domain/reviewPolicy";
+import { hasMaterialEventSince } from "@/lib/domain/eventSignals";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -247,6 +250,82 @@ export async function getProjectMonitoring(id: string) {
     })),
   );
 
+  // Journal d'événements + timeline chronologique unifiée du projet
+  // (événements, visites, révisions BP, étapes workflow, scorings).
+  const events = await prisma.projectEvent.findMany({
+    where: { projectId: id },
+    orderBy: { eventDate: "desc" },
+    include: { createdBy: { select: { name: true } } },
+  });
+  const [workflowSteps, scoringRuns] = await Promise.all([
+    prisma.workflowStep.findMany({
+      where: { projectId: id },
+      orderBy: { createdAt: "desc" },
+      include: { actor: { select: { name: true } } },
+    }),
+    prisma.scoringRun.findMany({
+      where: { projectId: id },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, createdAt: true, scoreFinal: true, decision: true },
+    }),
+  ]);
+
+  const timeline: TimelineEntry[] = [
+    ...events.map((e) => ({
+      kind: "EVENT" as const,
+      id: e.id,
+      date: e.eventDate,
+      title: e.title ?? EVENT_TYPES.labelOf(e.type),
+      type: e.type,
+      severity: e.severity,
+      detail: e.note,
+      amount: e.amount,
+      actor: e.createdBy.name,
+      resolved: e.resolved,
+      affectsScoring: e.affectsScoring,
+    })),
+    ...reports.map((r) => ({
+      kind: "VISIT" as const,
+      id: r.id,
+      date: r.visitDate,
+      title: `Visite de chantier${r.trancheCode ? ` (${r.trancheCode})` : ""}`,
+      detail: r.summary,
+      severity: r.delayRisk || r.safetyIssue ? "WARNING" : "INFO",
+      actor: r.author?.name ?? r.inspectorName,
+      amount: null,
+    })),
+    ...bpRevisions.map((b) => ({
+      kind: "BP_REVISION" as const,
+      id: b.id,
+      date: b.createdAt,
+      title: `Révision business plan v${b.version}`,
+      detail: b.reason,
+      severity: "WARNING",
+      actor: b.requestedByName,
+      amount: null,
+    })),
+    ...workflowSteps.map((s) => ({
+      kind: "WORKFLOW" as const,
+      id: s.id,
+      date: s.createdAt,
+      title: `Circuit : ${WORKFLOW_LABELS[s.toState as WorkflowStateName]}`,
+      detail: s.comment,
+      severity: "INFO",
+      actor: s.actor?.name ?? null,
+      amount: null,
+    })),
+    ...scoringRuns.map((r) => ({
+      kind: "SCORING" as const,
+      id: r.id,
+      date: r.createdAt,
+      title: `Scoring : ${r.scoreFinal ?? "—"} · ${r.decision ?? ""}`,
+      detail: null,
+      severity: "INFO",
+      actor: null,
+      amount: null,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   return {
     project,
     tranches,
@@ -257,7 +336,97 @@ export async function getProjectMonitoring(id: string) {
     bpDrift,
     bpRevisions,
     unitsForRevision,
+    events,
+    timeline,
   };
+}
+
+export interface TimelineEntry {
+  kind: "EVENT" | "VISIT" | "BP_REVISION" | "WORKFLOW" | "SCORING";
+  id: string;
+  date: Date;
+  title: string;
+  detail?: string | null;
+  severity?: string;
+  actor?: string | null;
+  amount?: number | null;
+  type?: string;
+  resolved?: boolean;
+  affectsScoring?: boolean;
+}
+
+/**
+ * Fraîcheur du score d'un projet : périodicité par classe (revue régulière)
+ * + déclenchement immédiat sur événement matériel postérieur au dernier calcul.
+ */
+export async function getScoreFreshness(projectId: string) {
+  const [lastRun, lastCls, events] = await Promise.all([
+    prisma.scoringRun.findFirst({
+      where: { projectId },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    }),
+    prisma.classificationRun.findFirst({
+      where: { projectId },
+      orderBy: { createdAt: "desc" },
+      select: { resultClass: true },
+    }),
+    prisma.projectEvent.findMany({
+      where: { projectId },
+      select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true },
+    }),
+  ]);
+  return scoreFreshness({
+    lastScoredAt: lastRun?.createdAt ?? null,
+    cls: (lastCls?.resultClass as RegulatoryClassCode | undefined) ?? null,
+    materialEventSince: hasMaterialEventSince(events, lastRun?.createdAt ?? null),
+  });
+}
+
+/**
+ * File des re-scorings : projets dont le score doit être recalculé (revue
+ * périodique dépassée, événement matériel, ou jamais scoré). Alimente les
+ * tableaux de bord (front et risque).
+ */
+export async function getRescoringQueue() {
+  const projects = await prisma.realEstateProject.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: {
+      promoter: { select: { name: true } },
+      scoringRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
+      classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultClass: true } },
+      events: { select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true } },
+    },
+  });
+
+  const items = projects
+    .map((p) => {
+      const lastRun = p.scoringRuns[0]?.createdAt ?? null;
+      const f = scoreFreshness({
+        lastScoredAt: lastRun,
+        cls: (p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined) ?? null,
+        materialEventSince: hasMaterialEventSince(p.events, lastRun),
+      });
+      return {
+        id: p.id,
+        reference: p.reference,
+        name: p.name,
+        promoter: p.promoter.name,
+        exposure: p.loanAmount ?? 0,
+        cls: (p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined) ?? null,
+        freshness: f,
+      };
+    })
+    .filter((it) => it.freshness.needsRescoring)
+    .sort((a, b) => {
+      // Événements matériels d'abord, puis retard décroissant.
+      const rank = (s: string) => (s === "EVENT_TRIGGERED" ? 0 : s === "OVERDUE" ? 1 : 2);
+      const r = rank(a.freshness.status) - rank(b.freshness.status);
+      if (r !== 0) return r;
+      return (b.freshness.overdueDays ?? 0) - (a.freshness.overdueDays ?? 0);
+    });
+
+  return { items, total: items.length };
 }
 
 /** Historique des scores d'un projet (du plus ancien au plus récent). */

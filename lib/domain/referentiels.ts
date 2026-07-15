@@ -155,9 +155,57 @@ export const PROMOTER_LINK_TYPES = indexed([
   { value: "autre", label: "Autre lien" },
 ] as const);
 
+// --- Journal d'événements projet ---------------------------------------------
+// Chaque type porte une sévérité par défaut et un indicateur « matériel pour le
+// scoring » (affectsScoring). Les événements matériels OUVERTS alimentent la
+// classification 1/W/2025 (cf. lib/domain/eventSignals.ts) et rendent le score
+// « à rafraîchir » (cf. lib/domain/reviewPolicy.ts).
+export interface EventTypeDef extends RefItem {
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  affectsScoring: boolean;
+}
+
+export const EVENT_TYPES_LIST: readonly EventTypeDef[] = [
+  // Cycle financier
+  { value: "deblocage", label: "Déblocage / tirage", severity: "INFO", affectsScoring: false },
+  { value: "remboursement", label: "Remboursement", severity: "INFO", affectsScoring: false },
+  { value: "incident_paiement", label: "Incident de paiement (impayé)", severity: "CRITICAL", affectsScoring: true },
+  { value: "regularisation", label: "Régularisation d'impayé", severity: "INFO", affectsScoring: true },
+  { value: "avenant_credit", label: "Avenant au crédit", severity: "WARNING", affectsScoring: true },
+  { value: "restructuration", label: "Restructuration de la créance", severity: "CRITICAL", affectsScoring: true },
+  // Chantier & autorisations
+  { value: "arret_chantier", label: "Arrêt de chantier", severity: "CRITICAL", affectsScoring: true },
+  { value: "reprise_chantier", label: "Reprise de chantier", severity: "INFO", affectsScoring: true },
+  { value: "probleme_administratif", label: "Problème administratif / blocage autorisation", severity: "WARNING", affectsScoring: true },
+  { value: "obtention_autorisation", label: "Obtention d'autorisation / permis", severity: "INFO", affectsScoring: false },
+  { value: "reception_travaux", label: "Réception des travaux (tranche/projet)", severity: "INFO", affectsScoring: false },
+  // Commercialisation
+  { value: "lancement_commercialisation", label: "Lancement de la commercialisation", severity: "INFO", affectsScoring: false },
+  { value: "evenement_commercial", label: "Événement commercial notable", severity: "INFO", affectsScoring: false },
+  // Garanties & sûretés
+  { value: "changement_garantie", label: "Constitution / changement de garantie", severity: "WARNING", affectsScoring: true },
+  { value: "mainlevee", label: "Mainlevée (totale/partielle)", severity: "INFO", affectsScoring: false },
+  // Juridique & signaux externes
+  { value: "litige", label: "Litige / action en justice", severity: "CRITICAL", affectsScoring: true },
+  { value: "saisie_atd", label: "Saisie-arrêt / ATD", severity: "CRITICAL", affectsScoring: true },
+  { value: "redressement_judiciaire", label: "Redressement / liquidation judiciaire", severity: "CRITICAL", affectsScoring: true },
+  { value: "info_negative_bureau", label: "Information négative Crédit Bureau / SCIP", severity: "WARNING", affectsScoring: true },
+  { value: "changement_actionnariat", label: "Changement d'actionnariat / gouvernance", severity: "WARNING", affectsScoring: true },
+  { value: "autre", label: "Autre événement", severity: "INFO", affectsScoring: false },
+] as const;
+
+export const EVENT_TYPES = indexed(EVENT_TYPES_LIST);
+export const EVENT_TYPE_DEFS = new Map(EVENT_TYPES_LIST.map((e) => [e.value, e]));
+
+export const EVENT_SEVERITIES = indexed([
+  { value: "INFO", label: "Information" },
+  { value: "WARNING", label: "Vigilance" },
+  { value: "CRITICAL", label: "Critique" },
+] as const);
+
 /** Tous les référentiels exposés (utile pour un futur écran d'administration). */
 export const REFERENTIELS = {
   SEGMENTS, ZONES, ASSET_TYPES, PROJECT_TYPES, PROJECT_STATUSES,
   SALE_MODES, STANDINGS, UNIT_TYPES, UNIT_STATUSES, TRANCHE_STATUSES,
-  LEGAL_FORMS, LAND_STATUSES, PROMOTER_LINK_TYPES,
+  LEGAL_FORMS, LAND_STATUSES, PROMOTER_LINK_TYPES, EVENT_TYPES, EVENT_SEVERITIES,
 } as const;

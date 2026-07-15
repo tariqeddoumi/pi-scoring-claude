@@ -237,6 +237,7 @@ model User {
   visitReports     VisitReport[] @relation("VisitReportAuthor")
   overridesRequested RegulatoryOverride[] @relation("OverrideRequester")
   overridesDecided   RegulatoryOverride[] @relation("OverrideDecider")
+  projectEvents    ProjectEvent[] @relation("ProjectEventAuthor")
 }
 
 // =====================================================================
@@ -368,6 +369,32 @@ model RealEstateProject {
   tranches          Tranche[]
   visitReports      VisitReport[]
   bpRevisions       BusinessPlanRevision[]
+  events            ProjectEvent[]
+}
+
+// Journal d'événements du cycle de vie du projet (tous types d'actifs) :
+// déblocages, incidents de paiement, arrêts de chantier, litiges, saisies,
+// restructurations, autorisations, réceptions, mainlevées… Source unique du
+// suivi événementiel ; les événements matériels (affectsScoring) alimentent la
+// classification 1/W/2025 via eventSignals et déclenchent un re-scoring.
+model ProjectEvent {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type           String   // cf. referentiels EVENT_TYPES
+  severity       String   @default("INFO") // INFO | WARNING | CRITICAL
+  title          String?  // libellé court complémentaire
+  eventDate      DateTime @default(now()) // survenance
+  endDate        DateTime? // clôture/régularisation (levée d'arrêt, mainlevée…)
+  amount         Float?   // montant associé (déblocage, impayé, avenant…)
+  note           String?
+  affectsScoring Boolean  @default(false) // matériel pour scoring/classification
+  resolved       Boolean  @default(false)
+  createdById    String
+  createdBy      User     @relation("ProjectEventAuthor", fields: [createdById], references: [id])
+  createdAt      DateTime @default(now())
+
+  @@index([projectId, eventDate])
 }
 
 // Tranche (phase de construction / commercialisation) d'un programme.
