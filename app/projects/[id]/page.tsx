@@ -21,7 +21,7 @@ import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
-import { SEGMENTS, ZONES, PROJECT_STATUSES } from "@/lib/domain/referentiels";
+import { SEGMENTS, ZONES, PROJECT_STATUSES, LAND_STATUSES } from "@/lib/domain/referentiels";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +33,7 @@ const TABS = [
 const WF_STATE_COLORS: Record<WorkflowStateName, string> = {
   DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
   SUBMITTED: "bg-blue-100 text-blue-800 border-blue-300",
+  BRANCH_REVIEW: "bg-cyan-100 text-cyan-800 border-cyan-300",
   ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
   MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
   COMMITTEE: "bg-amber-100 text-amber-800 border-amber-300",
@@ -234,15 +235,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </TabsList>
 
         <TabsContent value="Identification">
+          <div className="space-y-4">
           <div className="grid lg:grid-cols-2 gap-4">
             <Card><CardHeader><CardTitle>Identification</CardTitle></CardHeader><CardContent className="p-0">
               <Table><tbody>
                 <tr><Td className="text-muted-foreground">Référence</Td><Td className="font-medium">{p.reference}</Td></tr>
+                <tr><Td className="text-muted-foreground">Promoteur</Td><Td><Link href={`/promoters/${p.promoterId}`} className="text-primary hover:underline">{p.promoter.name}</Link></Td></tr>
                 <tr><Td className="text-muted-foreground">Type</Td><Td>{p.projectType ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{SEGMENTS.labelOf(p.segment)} / {ZONES.labelOf(p.zone)}</Td></tr>
                 <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{p.city ?? "—"} / {p.region ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Adresse</Td><Td>{p.address ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.group ? <Link href="/groups" className="text-primary hover:underline">{p.group.name}</Link> : "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Unités</Td><Td>{p.totalUnits ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Surfaces (terrain / construit)</Td><Td>{p.landAreaSqm != null ? `${p.landAreaSqm} m²` : "—"} / {p.builtAreaSqm != null ? `${p.builtAreaSqm} m²` : "—"}</Td></tr>
               </tbody></Table>
             </CardContent></Card>
             <div className="grid grid-cols-2 gap-4 content-start">
@@ -251,6 +256,21 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <Stat label="Fonds propres" value={formatMAD(p.ownEquity)} />
               <Stat label="Chargé d'affaires" value={p.rm?.name ?? "—"} />
             </div>
+          </div>
+          <div className="grid lg:grid-cols-2 gap-4">
+            <Card><CardHeader><CardTitle>Foncier & autorisations (fiche)</CardTitle></CardHeader><CardContent className="p-0">
+              <Table><tbody>
+                <tr><Td className="text-muted-foreground">Titre(s) foncier(s)</Td><Td>{p.landTitleRef ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Statut foncier</Td><Td>{LAND_STATUSES.labelOf(p.landStatus)}</Td></tr>
+                <tr><Td className="text-muted-foreground">Autorisation de construire</Td><Td>{p.buildPermitRef ?? "—"}{p.buildPermitDate ? ` (${formatDate(p.buildPermitDate)})` : ""}</Td></tr>
+              </tbody></Table>
+            </CardContent></Card>
+            <Card><CardHeader><CardTitle>Calendrier & description</CardTitle></CardHeader><CardContent className="space-y-2 text-sm">
+              <p><span className="text-muted-foreground">Démarrage travaux : </span>{p.startDate ? formatDate(p.startDate) : "—"}</p>
+              <p><span className="text-muted-foreground">Livraison prévue : </span>{p.expectedDeliveryDate ? formatDate(p.expectedDeliveryDate) : "—"}</p>
+              {p.description && <p className="whitespace-pre-wrap border-t border-border pt-2">{p.description}</p>}
+            </CardContent></Card>
+          </div>
           </div>
         </TabsContent>
 

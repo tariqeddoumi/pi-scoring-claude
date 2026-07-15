@@ -24,6 +24,7 @@ async function seedRbac() {
     "project.write": "Modifier les projets",
     "scoring.run": "Lancer un scoring",
     "scoring.validate": "Valider un scoring",
+    "workflow.endorse": "Émettre l'avis front (directeur de centre d'affaires)",
     "model.read": "Consulter le modèle",
     "model.write": "Administrer le modèle",
     "regime.read": "Consulter les régimes",
@@ -63,9 +64,11 @@ async function seedRbac() {
   // Utilisateurs de démonstration (un par rôle)
   const demoUsers: Array<{ email: string; name: string; role: string }> = [
     { email: "admin@bank.ma", name: "Amine Admin", role: "ADMIN" },
-    { email: "analyst@bank.ma", name: "Rita Analyste", role: "RISK_ANALYST" },
+    { email: "analyst@bank.ma", name: "Rita Contre-étude", role: "RISK_ANALYST" },
     { email: "rm@bank.ma", name: "Karim Chargé d'affaires", role: "RELATIONSHIP_MANAGER" },
-    { email: "manager@bank.ma", name: "Salma Manager", role: "MANAGER" },
+    { email: "dca@bank.ma", name: "Nadia Directrice de centre d'affaires", role: "BRANCH_DIRECTOR" },
+    { email: "dr@bank.ma", name: "Yassine Directeur de région", role: "REGIONAL_DIRECTOR" },
+    { email: "manager@bank.ma", name: "Salma Comité", role: "MANAGER" },
     { email: "auditor@bank.ma", name: "Omar Auditeur", role: "AUDITOR" },
   ];
   const users: Record<string, string> = {};

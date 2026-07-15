@@ -272,11 +272,12 @@ export async function getScoringHistory(projectId: string) {
 
 /** Options pour le formulaire projet : promoteurs + chargés d'affaires. */
 export async function getProjectFormOptions() {
-  const [promoters, managers] = await Promise.all([
+  const [promoters, managers, groups] = await Promise.all([
     prisma.promoter.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
     prisma.user.findMany({ where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
-  return { promoters, managers };
+  return { promoters, managers, groups };
 }
 
 /** Projet pour pré-remplir le formulaire d'édition. */
@@ -288,8 +289,119 @@ export async function getProjectForEdit(id: string) {
       assetType: true, city: true, region: true, projectType: true, segment: true,
       zone: true, status: true, saleMode: true, totalUnits: true, totalCost: true,
       loanAmount: true, ownEquity: true,
+      groupId: true, address: true, landAreaSqm: true, builtAreaSqm: true,
+      landTitleRef: true, landStatus: true, buildPermitRef: true, buildPermitDate: true,
+      startDate: true, expectedDeliveryDate: true, description: true,
     },
   });
+}
+
+// ---------------------------------------------------------------------
+//  Promoteurs : liste, fiche signalétique et liens (parties liées).
+// ---------------------------------------------------------------------
+
+export async function getPromoters() {
+  return prisma.promoter.findMany({
+    orderBy: { name: "asc" },
+    include: {
+      group: { select: { id: true, name: true } },
+      _count: { select: { projects: true, linksFrom: true, linksTo: true } },
+    },
+  });
+}
+
+export async function getPromoterDetail(id: string) {
+  const promoter = await prisma.promoter.findUnique({
+    where: { id },
+    include: {
+      group: { select: { id: true, name: true } },
+      projects: {
+        orderBy: { updatedAt: "desc" },
+        include: {
+          scoringRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+          classificationRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+        },
+      },
+      linksFrom: { include: { to: { select: { id: true, name: true } } } },
+      linksTo: { include: { from: { select: { id: true, name: true } } } },
+    },
+  });
+  if (!promoter) return null;
+
+  const others = await prisma.promoter.findMany({
+    where: { id: { not: id } },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+  const groups = await prisma.group.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
+  return { promoter, others, groups };
+}
+
+// ---------------------------------------------------------------------
+//  Tableau de bord FRONT (chargé d'affaires / directeur de centre / région) :
+//  mon portefeuille, dossiers en attente de mon action, pipeline global.
+// ---------------------------------------------------------------------
+
+export async function getFrontDashboard(userId: string, role: RoleName) {
+  const projects = await prisma.realEstateProject.findMany({
+    orderBy: { updatedAt: "desc" },
+    include: {
+      promoter: { select: { name: true } },
+      scoringRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+      workflowSteps: { orderBy: { createdAt: "desc" }, take: 1, include: { actor: { select: { name: true } } } },
+    },
+  });
+
+  const stateOf = (p: (typeof projects)[number]) =>
+    (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
+
+  // Pipeline global par état du circuit.
+  const pipeline: { state: WorkflowStateName; label: string; count: number; exposure: number }[] = [];
+  const byState = new Map<WorkflowStateName, { count: number; exposure: number }>();
+  for (const p of projects) {
+    const s = stateOf(p);
+    const acc = byState.get(s) ?? { count: 0, exposure: 0 };
+    acc.count += 1;
+    acc.exposure += p.loanAmount ?? 0;
+    byState.set(s, acc);
+  }
+  for (const s of Object.keys(WORKFLOW_LABELS) as WorkflowStateName[]) {
+    const v = byState.get(s);
+    if (v) pipeline.push({ state: s, label: WORKFLOW_LABELS[s], count: v.count, exposure: v.exposure });
+  }
+
+  // Dossiers en attente d'une action de MON rôle.
+  const actionable = actionableStatesFor(role);
+  const toProcess = projects
+    .filter((p) => actionable.includes(stateOf(p)))
+    .map((p) => ({
+      id: p.id,
+      reference: p.reference,
+      name: p.name,
+      promoter: p.promoter.name,
+      state: stateOf(p),
+      stateLabel: WORKFLOW_LABELS[stateOf(p)],
+      exposure: p.loanAmount ?? 0,
+      since: p.workflowSteps[0]?.createdAt ?? p.createdAt,
+    }));
+
+  // Mon portefeuille (dossiers dont je suis le chargé d'affaires).
+  const mine = projects
+    .filter((p) => p.rmId === userId)
+    .map((p) => ({
+      id: p.id,
+      reference: p.reference,
+      name: p.name,
+      promoter: p.promoter.name,
+      state: stateOf(p),
+      stateLabel: WORKFLOW_LABELS[stateOf(p)],
+      exposure: p.loanAmount ?? 0,
+      score: p.scoringRuns[0]?.scoreFinal ?? null,
+      decision: p.scoringRuns[0]?.decision ?? null,
+    }));
+
+  const myExposure = mine.reduce((n, p) => n + p.exposure, 0);
+  return { pipeline, toProcess, mine, myExposure, totalCount: projects.length };
 }
 
 export async function getPortfolioStats() {

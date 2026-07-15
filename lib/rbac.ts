@@ -1,12 +1,24 @@
 // =====================================================================
 //  RBAC — rôles, permissions et garde côté serveur.
 //  Le mapping rôle -> permissions est la source de vérité du seed.
+//
+//  Profils (orientation banque de détail / centre d'affaires) :
+//  - RELATIONSHIP_MANAGER : chargé d'affaires (front) — instruit et saisit.
+//  - BRANCH_DIRECTOR      : directeur de centre d'affaires — avis front.
+//  - REGIONAL_DIRECTOR    : directeur de région / banque régionale — décision
+//                           selon délégation.
+//  - RISK_ANALYST         : contre-étude / analyse risque — valide le score.
+//  - MANAGER              : comité de crédit (président).
+//  - AUDITOR              : audit interne (lecture).
+//  - ADMIN                : tout (paramétrage, utilisateurs).
 // =====================================================================
 
 export type RoleName =
   | "ADMIN"
   | "RISK_ANALYST"
   | "RELATIONSHIP_MANAGER"
+  | "BRANCH_DIRECTOR"
+  | "REGIONAL_DIRECTOR"
   | "MANAGER"
   | "AUDITOR";
 
@@ -16,6 +28,7 @@ export const PERMISSIONS = {
   PROJECT_WRITE: "project.write",
   SCORING_RUN: "scoring.run",
   SCORING_VALIDATE: "scoring.validate",
+  WORKFLOW_ENDORSE: "workflow.endorse", // avis front (directeur de centre d'affaires)
   MODEL_READ: "model.read",
   MODEL_WRITE: "model.write",
   REGIME_READ: "regime.read",
@@ -46,6 +59,23 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionCode[]> = {
     PERMISSIONS.SCORING_RUN,
     PERMISSIONS.EXPORT_RUN,
   ],
+  BRANCH_DIRECTOR: [
+    PERMISSIONS.PROJECT_READ,
+    PERMISSIONS.PROJECT_WRITE,
+    PERMISSIONS.SCORING_RUN,
+    PERMISSIONS.WORKFLOW_ENDORSE,
+    PERMISSIONS.EXPORT_RUN,
+  ],
+  REGIONAL_DIRECTOR: [
+    PERMISSIONS.PROJECT_READ,
+    PERMISSIONS.SCORING_RUN,
+    PERMISSIONS.SCORING_VALIDATE,
+    PERMISSIONS.WORKFLOW_ENDORSE,
+    PERMISSIONS.MODEL_READ,
+    PERMISSIONS.REGIME_READ,
+    PERMISSIONS.EXPORT_RUN,
+    PERMISSIONS.AUDIT_READ,
+  ],
   MANAGER: [
     PERMISSIONS.PROJECT_READ,
     PERMISSIONS.SCORING_RUN,
@@ -66,11 +96,24 @@ export const ROLE_PERMISSIONS: Record<RoleName, PermissionCode[]> = {
 
 export const ROLE_LABELS: Record<RoleName, string> = {
   ADMIN: "Administrateur",
-  RISK_ANALYST: "Analyste Risque",
+  RISK_ANALYST: "Contre-étude (Risque)",
   RELATIONSHIP_MANAGER: "Chargé d'affaires",
-  MANAGER: "Manager / Comité",
+  BRANCH_DIRECTOR: "Directeur de centre d'affaires",
+  REGIONAL_DIRECTOR: "Directeur de région",
+  MANAGER: "Comité de crédit",
   AUDITOR: "Auditeur",
 };
+
+/** Rôles du réseau (front) — pilotage commercial du dossier. */
+export const FRONT_ROLES: RoleName[] = [
+  "RELATIONSHIP_MANAGER",
+  "BRANCH_DIRECTOR",
+  "REGIONAL_DIRECTOR",
+];
+
+export function isFrontRole(role: RoleName): boolean {
+  return FRONT_ROLES.includes(role);
+}
 
 export function hasPermission(role: RoleName, perm: PermissionCode): boolean {
   return ROLE_PERMISSIONS[role]?.includes(perm) ?? false;

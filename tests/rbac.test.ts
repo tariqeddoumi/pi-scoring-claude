@@ -52,3 +52,26 @@ describe("RBAC — mapping rôles / permissions", () => {
     }
   });
 });
+
+describe("RBAC — profils front (DCA, directeur de région)", () => {
+  it("le DCA émet l'avis front mais ne valide pas la décision", () => {
+    expect(hasPermission("BRANCH_DIRECTOR", PERMISSIONS.WORKFLOW_ENDORSE)).toBe(true);
+    expect(hasPermission("BRANCH_DIRECTOR", PERMISSIONS.SCORING_VALIDATE)).toBe(false);
+    expect(hasPermission("BRANCH_DIRECTOR", PERMISSIONS.PROJECT_WRITE)).toBe(true);
+  });
+
+  it("le directeur de région valide (délégation) mais n'écrit pas les dossiers", () => {
+    expect(hasPermission("REGIONAL_DIRECTOR", PERMISSIONS.SCORING_VALIDATE)).toBe(true);
+    expect(hasPermission("REGIONAL_DIRECTOR", PERMISSIONS.PROJECT_WRITE)).toBe(false);
+  });
+
+  it("seul le risque/admin calibre le modèle (model.write)", () => {
+    for (const r of ["RELATIONSHIP_MANAGER", "BRANCH_DIRECTOR", "REGIONAL_DIRECTOR"] as const) {
+      expect(hasPermission(r, PERMISSIONS.MODEL_WRITE)).toBe(false);
+    }
+  });
+
+  it("le chargé d'affaires n'a pas l'avis front (réservé au DCA)", () => {
+    expect(hasPermission("RELATIONSHIP_MANAGER", PERMISSIONS.WORKFLOW_ENDORSE)).toBe(false);
+  });
+});

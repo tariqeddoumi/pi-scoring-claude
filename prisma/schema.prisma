@@ -28,6 +28,8 @@ enum RoleName {
   RELATIONSHIP_MANAGER
   MANAGER
   AUDITOR
+  BRANCH_DIRECTOR // Directeur de centre d'affaires (avis front)
+  REGIONAL_DIRECTOR // Directeur de région / Banque régionale (décision par délégation)
 }
 
 enum CriterionType {
@@ -77,6 +79,7 @@ enum TriggerKind {
 enum WorkflowState {
   DRAFT
   SUBMITTED
+  BRANCH_REVIEW // Avis du directeur de centre d'affaires (étage front)
   ANALYST_REVIEW
   MANAGER_VALIDATION
   COMMITTEE
@@ -246,16 +249,55 @@ model Promoter {
   legalForm       String?
   rcNumber        String? // registre de commerce
   iceNumber       String? // identifiant commun de l'entreprise
-  groupName       String?
+  groupName       String? // legacy (texte libre) — préférer groupId
   yearsExperience Int?
   completedProjects Int?
   internalRating  String?
   contactEmail    String?
   contactPhone    String?
+
+  // --- Signalétique (identification complète) ---
+  ifNumber        String? // identifiant fiscal
+  cnssNumber      String? // affiliation CNSS
+  patenteNumber   String? // taxe professionnelle (patente)
+  capital         Float?  // capital social (MAD)
+  foundedYear     Int?
+  managerName     String? // dirigeant principal / gérant
+  shareholders    String? // actionnariat (texte structuré)
+  address         String?
+  city            String?
+  website         String?
+  bankRelations   String? // autres relations bancaires déclarées
+  notes           String?
+
+  // Rattachement au groupe d'intérêt (effet groupe BKAM)
+  groupId         String?
+  group           Group?  @relation(fields: [groupId], references: [id])
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   projects RealEstateProject[]
+  linksFrom PromoterLink[] @relation("PromoterLinkFrom")
+  linksTo   PromoterLink[] @relation("PromoterLinkTo")
+}
+
+// Lien entre promoteurs (parties liées) : maison mère/filiale, actionnaire
+// commun, dirigeant commun, caution croisée… Sert à matérialiser les
+// interconnexions pertinentes pour l'effet groupe et l'analyse de contagion.
+model PromoterLink {
+  id        String   @id @default(cuid())
+  fromId    String
+  from      Promoter @relation("PromoterLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        Promoter @relation("PromoterLinkTo", fields: [toId], references: [id], onDelete: Cascade)
+  type      String   // cf. referentiels PROMOTER_LINK_TYPES (filiale, actionnaire_commun, …)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([fromId, toId, type])
+  @@index([fromId])
+  @@index([toId])
 }
 
 model RealEstateProject {
@@ -270,6 +312,7 @@ model RealEstateProject {
   // Localisation & nature
   city          String?
   region        String?
+  address       String? // adresse / lieu-dit du projet
   projectType   String? // résidentiel, mixte, bureaux, social...
   // Segmentation métier (module α_Seg / β_Zone du modèle V1.0)
   segment       String? // social | intermediaire | moyen_haut | touristique | bureaux | commerces | villas
@@ -293,6 +336,19 @@ model RealEstateProject {
   hasGFA        Boolean  @default(false)   // GFA en place (couvre l'achèvement)
   gfaAmount     Float?   // montant garanti par la GFA (MAD)
   gfaProvider   String?  // établissement garant (banque / assurance)
+
+  // --- Foncier & autorisations ---
+  landTitleRef    String? // n° du/des titre(s) foncier(s)
+  landStatus      String? // statut foncier (cf. referentiels LAND_STATUSES)
+  buildPermitRef  String? // n° autorisation de construire
+  buildPermitDate DateTime?
+
+  // --- Calendrier prévisionnel ---
+  startDate            DateTime? // démarrage travaux prévu/réel
+  expectedDeliveryDate DateTime? // livraison prévue
+
+  // Description libre (consistance du programme, points d'attention…)
+  description   String?
 
   status        String  @default("PROSPECT")
   createdAt     DateTime @default(now())
@@ -938,6 +994,7 @@ model Group {
   updatedAt DateTime @updatedAt
 
   projects  RealEstateProject[]
+  promoters Promoter[]
 }
 
 // Décision formelle du comité de crédit (quorum, votes, conditions, validité).

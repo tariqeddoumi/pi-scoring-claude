@@ -11,6 +11,7 @@ import { PERMISSIONS, hasPermission, type PermissionCode, type RoleName } from "
 export type WorkflowStateName =
   | "DRAFT"
   | "SUBMITTED"
+  | "BRANCH_REVIEW"
   | "ANALYST_REVIEW"
   | "MANAGER_VALIDATION"
   | "COMMITTEE"
@@ -28,10 +29,11 @@ export interface TransitionDef {
 }
 
 export const WORKFLOW_LABELS: Record<WorkflowStateName, string> = {
-  DRAFT: "Brouillon",
+  DRAFT: "Brouillon (chargé d'affaires)",
   SUBMITTED: "Soumis",
-  ANALYST_REVIEW: "Revue analyste",
-  MANAGER_VALIDATION: "Validation responsable",
+  BRANCH_REVIEW: "Avis directeur de centre d'affaires",
+  ANALYST_REVIEW: "Contre-étude (Risque)",
+  MANAGER_VALIDATION: "Décision (délégation)",
   COMMITTEE: "Comité de crédit",
   APPROVED: "Approuvé",
   REJECTED: "Rejeté",
@@ -42,11 +44,20 @@ export const WORKFLOW_TRANSITIONS: Record<WorkflowStateName, TransitionDef[]> = 
     { to: "SUBMITTED", label: "Soumettre", permission: PERMISSIONS.PROJECT_WRITE, kind: "advance" },
   ],
   SUBMITTED: [
-    { to: "ANALYST_REVIEW", label: "Prendre en revue", permission: PERMISSIONS.SCORING_RUN, kind: "advance" },
+    { to: "BRANCH_REVIEW", label: "Prendre pour avis (DCA)", permission: PERMISSIONS.WORKFLOW_ENDORSE, kind: "advance" },
+    // Chemin de compatibilité : la contre-étude peut se saisir directement du
+    // dossier (petits centres sans étage DCA, dossiers historiques).
+    { to: "ANALYST_REVIEW", label: "Prendre en contre-étude", permission: PERMISSIONS.SCORING_RUN, kind: "advance" },
     { to: "REJECTED", label: "Rejeter", permission: PERMISSIONS.SCORING_RUN, kind: "reject" },
   ],
+  BRANCH_REVIEW: [
+    { to: "ANALYST_REVIEW", label: "Avis favorable — transmettre à la contre-étude", permission: PERMISSIONS.WORKFLOW_ENDORSE, kind: "advance" },
+    { to: "DRAFT", label: "Renvoyer au chargé d'affaires", permission: PERMISSIONS.WORKFLOW_ENDORSE, kind: "rework" },
+    { to: "REJECTED", label: "Avis défavorable — rejeter", permission: PERMISSIONS.WORKFLOW_ENDORSE, kind: "reject" },
+  ],
   ANALYST_REVIEW: [
-    { to: "MANAGER_VALIDATION", label: "Transmettre au responsable", permission: PERMISSIONS.SCORING_RUN, kind: "advance" },
+    { to: "MANAGER_VALIDATION", label: "Score validé — transmettre à la décision", permission: PERMISSIONS.SCORING_RUN, kind: "advance" },
+    { to: "DRAFT", label: "Renvoyer au chargé d'affaires", permission: PERMISSIONS.SCORING_RUN, kind: "rework" },
     { to: "REJECTED", label: "Rejeter", permission: PERMISSIONS.SCORING_RUN, kind: "reject" },
   ],
   MANAGER_VALIDATION: [
