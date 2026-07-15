@@ -14,6 +14,7 @@ import { authorize, AuthorizationError } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { getProjectMonitoring } from "@/server/queries";
 import { deriveScoringInputs, type MonitoringSignals } from "@/lib/domain/scoringSignals";
+import { deriveEventInputs } from "@/lib/domain/eventSignals";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
 export async function saveProjectInputs(
@@ -160,26 +161,44 @@ export async function syncMonitoringToInputs(projectId: string) {
 
   const mon = await getProjectMonitoring(projectId);
   if (!mon) return { ok: false as const, error: "Projet introuvable." };
-  if (mon.summary.sales.totalUnits === 0) {
-    return { ok: false as const, error: "Aucun lot enregistré : renseignez d'abord le suivi (tranches/lots)." };
+
+  // 1. Signaux de commercialisation/avancement (si des lots existent).
+  const values: Record<string, string | number | boolean> = {};
+  const notes: { key: string; label: string; value?: string; reason: string }[] = [];
+  if (mon.summary.sales.totalUnits > 0) {
+    const signals: MonitoringSignals = {
+      preSaleRatePct: mon.summary.sales.preSaleRatePct,
+      salesVsPlanPct: mon.summary.businessPlan.salesVsPlanPct,
+      caDeltaPct: mon.summary.businessPlan.caDeltaPct,
+      unitsLate: mon.summary.businessPlan.unitsLate,
+      totalUnits: mon.summary.sales.totalUnits,
+      observedProgressPct: mon.visitAnalysis.trend.latestProgressPct,
+      plannedProgressPct: mon.plannedProgressPct,
+    };
+    const derived = deriveScoringInputs(signals);
+    Object.assign(values, derived.values);
+    notes.push(...derived.notes);
   }
 
-  const signals: MonitoringSignals = {
-    preSaleRatePct: mon.summary.sales.preSaleRatePct,
-    salesVsPlanPct: mon.summary.businessPlan.salesVsPlanPct,
-    caDeltaPct: mon.summary.businessPlan.caDeltaPct,
-    unitsLate: mon.summary.businessPlan.unitsLate,
-    totalUnits: mon.summary.sales.totalUnits,
-    observedProgressPct: mon.visitAnalysis.trend.latestProgressPct,
-    plannedProgressPct: mon.plannedProgressPct,
-  };
-  const derived = deriveScoringInputs(signals);
+  // 2. Signaux du journal d'événements (arrêt de chantier, litige, saisie,
+  //    restructuration… → inputs de classification 1/W).
+  const events = await prisma.projectEvent.findMany({
+    where: { projectId },
+    select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true },
+  });
+  const fromEvents = deriveEventInputs(events);
+  Object.assign(values, fromEvents.values);
+  notes.push(...fromEvents.notes);
+
+  if (Object.keys(values).length === 0) {
+    return { ok: false as const, error: "Rien à synchroniser : ni lots de suivi, ni événement matériel au journal." };
+  }
 
   await prisma.$transaction(async (tx) => {
-    for (const [key, value] of Object.entries(derived.values)) {
+    for (const [key, value] of Object.entries(values)) {
       const data = {
         valueNum: typeof value === "number" ? value : null,
-        valueStr: null,
+        valueStr: typeof value === "string" ? value : null,
         valueBool: typeof value === "boolean" ? value : null,
       };
       await tx.projectInput.upsert({
@@ -189,7 +208,7 @@ export async function syncMonitoringToInputs(projectId: string) {
       });
     }
     await recordAudit(
-      { actorId: actor.id, action: "UPDATE", entity: "ProjectInput", entityId: projectId, after: derived.values, metadata: { source: "monitoring_sync" } },
+      { actorId: actor.id, action: "UPDATE", entity: "ProjectInput", entityId: projectId, after: values, metadata: { source: "monitoring_sync" } },
       tx,
     );
   });
@@ -197,5 +216,5 @@ export async function syncMonitoringToInputs(projectId: string) {
   revalidatePath(`/projects/${projectId}`);
   revalidatePath(`/projects/${projectId}/scoring`);
   revalidatePath(`/projects/${projectId}/suivi`);
-  return { ok: true as const, notes: derived.notes };
+  return { ok: true as const, notes };
 }

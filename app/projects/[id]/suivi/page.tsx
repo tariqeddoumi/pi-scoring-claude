@@ -9,6 +9,7 @@ import { TRANCHE_STATUSES, UNIT_STATUSES, UNIT_TYPES } from "@/lib/domain/refere
 import type { RiskLevel } from "@/lib/domain/visitReports";
 import { VisitReportForm } from "@/components/VisitReportForm";
 import { SyncToScoringButton } from "@/components/SyncToScoringButton";
+import { ProjectEventsPanel } from "@/components/ProjectEventsPanel";
 import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
@@ -57,12 +58,26 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
   const data = res.data;
   if (!data) return notFound();
 
-  const { project, tranches, summary, reports, visitAnalysis, bpDrift, bpRevisions, unitsForRevision } = data;
+  const { project, tranches, summary, reports, visitAnalysis, bpDrift, bpRevisions, unitsForRevision, timeline } = data;
   const { sales, revenue, byTranche, byStanding, byType, businessPlan, standingChanges, mainlevees } = summary;
   const hasUnits = sales.totalUnits > 0 || sales.withdrawn > 0;
 
   const actor = await getCurrentAppUser();
   const canWrite = actor ? hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) : false;
+
+  // Timeline sérialisée pour le composant client (dates ISO).
+  const timelineView = timeline.map((t) => ({
+    kind: t.kind,
+    id: t.id,
+    date: new Date(t.date).toISOString(),
+    title: t.title,
+    detail: t.detail ?? null,
+    severity: t.severity,
+    actor: t.actor ?? null,
+    amount: t.amount ?? null,
+    resolved: t.resolved,
+    affectsScoring: t.affectsScoring,
+  }));
 
   return (
     <div className="space-y-6">
@@ -136,11 +151,18 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
         </CardContent>
       </Card>
 
-      {canWrite && hasUnits && (
+      {/* ===================== Journal du projet (tous événements) ===================== */}
+      <ProjectEventsPanel projectId={project.id} timeline={timelineView} canWrite={canWrite} />
+
+      {canWrite && (
         <Card>
           <CardHeader><CardTitle>Alimenter le scoring depuis le suivi</CardTitle></CardHeader>
-          <CardContent>
+          <CardContent className="space-y-2">
             <SyncToScoringButton projectId={project.id} />
+            <p className="text-xs text-muted-foreground">
+              Synchronise la commercialisation, l&apos;avancement chantier ET les événements matériels du journal
+              (arrêt de chantier, litige, saisie, restructuration…) vers les entrées de scoring/classification 1/W.
+            </p>
           </CardContent>
         </Card>
       )}

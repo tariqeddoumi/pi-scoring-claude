@@ -208,6 +208,21 @@ export const visitReportSchema = z.object({
 
 export type VisitReportFormValues = z.infer<typeof visitReportSchema>;
 
+// Événement du journal projet (suivi événementiel, tous types d'actifs).
+export const projectEventSchema = z.object({
+  projectId: z.string().min(1, "Projet requis"),
+  type: z.string().min(1, "Type d'événement requis"),
+  severity: z.enum(["INFO", "WARNING", "CRITICAL"]).optional(),
+  title: z.string().max(200).optional(),
+  eventDate: z.string().min(1, "Date requise"),
+  endDate: z.string().optional(),
+  amount: z.coerce.number().min(0).optional().nullable(),
+  note: z.string().max(4000).optional(),
+  affectsScoring: z.coerce.boolean().optional(),
+});
+
+export type ProjectEventFormValues = z.infer<typeof projectEventSchema>;
+
 // Création / édition d'un projet de promotion (formulaire à listes déroulantes).
 export const projectUpsertSchema = z.object({
   id: z.string().optional(),

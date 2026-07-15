@@ -2,7 +2,10 @@ import { Card, CardContent, CardHeader, CardTitle, Badge, Stat } from "@/compone
 import { formatMAD, formatPercent } from "@/lib/utils";
 import { computeRiskMetrics, SLOTTING_LABELS, DEFAULT_CALIBRATION, type RiskCalibration } from "@/lib/domain/riskMetrics";
 import { computeEcl } from "@/lib/domain/ifrs9";
+import { computeStandardApproach, BAM_SOLVENCY_RATIO } from "@/lib/domain/standardApproach";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
+
+const DEFAULT_CLASSES: RegulatoryClassCode[] = ["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
 
 const SLOTTING_COLORS: Record<string, string> = {
   STRONG: "bg-emerald-100 text-emerald-800 border-emerald-300",
@@ -23,6 +26,7 @@ export function RiskMetricsCard({
   ead,
   eligibleGuarantees,
   bkamProvision,
+  assetType = "PROMOTION",
   calib = DEFAULT_CALIBRATION,
 }: {
   score: number | null;
@@ -30,11 +34,18 @@ export function RiskMetricsCard({
   ead: number;
   eligibleGuarantees: number;
   bkamProvision?: number | null;
+  assetType?: "PROMOTION" | "EXPLOITATION";
   calib?: RiskCalibration;
 }) {
   if (!score && !cls) return null;
   const m = computeRiskMetrics({ score, cls, ead, eligibleGuarantees }, calib);
   const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
+  const std = computeStandardApproach({
+    assetType,
+    isDefault: cls != null && DEFAULT_CLASSES.includes(cls),
+    ead: m.ead,
+    specificProvisions: bkamProvision ?? 0,
+  });
 
   return (
     <Card>
@@ -69,10 +80,21 @@ export function RiskMetricsCard({
           </div>
         </div>
 
+        <div className="rounded-md border border-border p-3">
+          <div className="text-sm font-medium mb-2">Méthode standard (approche retenue) — exigence prudentielle BAM</div>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Stat label="Pondération" value={formatPercent(std.riskWeight * 100, 0)} hint={std.label} />
+            <Stat label="EAD nette" value={formatMAD(std.eadNet)} hint="EAD − provisions spécifiques" />
+            <Stat label="RWA (standard)" value={formatMAD(std.rwa)} />
+            <Stat label="Fonds propres requis" value={formatMAD(std.capitalRequirement)} hint={`ratio ${Math.round(BAM_SOLVENCY_RATIO * 100)} %`} />
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">{std.reason}</p>
+        </div>
+
         <p className="text-xs text-muted-foreground">
-          Lecture internationale (approche slotting supervisée Bâle pour le financement spécialisé,
-          pertes attendues IRB, staging IFRS 9) dérivée du score et de la classe BKAM. Paramètres
-          PD/LGD/pondérations indicatifs — à calibrer sur l'historique de la banque.
+          La méthode standard (ci-dessus) est l&apos;approche réglementaire retenue. La lecture slotting /
+          pertes attendues IRB et le staging IFRS 9 sont fournis à titre de pilotage interne. Paramètres
+          PD/LGD/pondérations indicatifs — à calibrer sur l&apos;historique de la banque.
         </p>
       </CardContent>
     </Card>

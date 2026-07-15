@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getPortfolioStats, getFrontDashboard } from "@/server/queries";
+import { getPortfolioStats, getFrontDashboard, getRescoringQueue } from "@/server/queries";
+import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { Card, CardContent, CardHeader, CardTitle, Stat, Badge, Table, Th, Td } from "@/components/ui";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
@@ -27,6 +28,8 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
     );
   }
   const { pipeline, toProcess, mine, myExposure, totalCount } = res.data;
+  const rescoring = await safe(getRescoringQueue);
+  const rescoreCount = rescoring.ok ? rescoring.data.total : 0;
 
   return (
     <div className="space-y-6">
@@ -42,11 +45,12 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
         )}
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat label="Dossiers en portefeuille" value={totalCount} />
         <Stat label="Mes dossiers (CA)" value={mine.length} />
         <Stat label="Mon exposition" value={formatMAD(myExposure)} />
         <Stat label="En attente de mon action" value={toProcess.length} />
+        <Stat label="Scorings à rafraîchir" value={rescoreCount} hint="revue périodique / événement" />
       </div>
 
       <Card>
@@ -154,6 +158,8 @@ async function RiskDashboard() {
   }
   const { total, byClass, byDecision, totalProvision, totalExposure, projects } = res.data;
   const coverage = totalExposure > 0 ? (totalProvision / totalExposure) * 100 : 0;
+  const rescoring = await safe(getRescoringQueue);
+  const rescoreItems = rescoring.ok ? rescoring.data.items : [];
 
   return (
     <div className="space-y-6">
@@ -167,12 +173,47 @@ async function RiskDashboard() {
         </a>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat label="Projets suivis" value={total} />
         <Stat label="Exposition totale" value={formatMAD(totalExposure)} />
         <Stat label="Provisions BKAM" value={formatMAD(totalProvision)} />
         <Stat label="Taux de couverture" value={`${coverage.toFixed(1)} %`} />
+        <Stat label="Scorings à rafraîchir" value={rescoreItems.length} hint="revue périodique / événement" />
       </div>
+
+      {rescoreItems.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              Scorings à rafraîchir
+              <Badge className="bg-amber-100 text-amber-800 border-amber-300">{rescoreItems.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <thead>
+                <tr><Th>Référence</Th><Th>Projet</Th><Th>Promoteur</Th><Th>Classe</Th><Th>Motif</Th><Th>Exposition</Th></tr>
+              </thead>
+              <tbody>
+                {rescoreItems.slice(0, 10).map((it) => (
+                  <tr key={it.id} className="hover:bg-muted/50">
+                    <Td><Link className="text-primary hover:underline" href={`/projects/${it.id}`}>{it.reference}</Link></Td>
+                    <Td>{it.name}</Td>
+                    <Td>{it.promoter}</Td>
+                    <Td>{it.cls ? <Badge className={CLASS_COLORS[it.cls]}>{CLASS_LABELS[it.cls]}</Badge> : "—"}</Td>
+                    <Td>
+                      <Badge className={it.freshness.status === "EVENT_TRIGGERED" ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                        {FRESHNESS_LABELS[it.freshness.status]}
+                      </Badge>
+                    </Td>
+                    <Td className="whitespace-nowrap">{formatMAD(it.exposure)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <Card>

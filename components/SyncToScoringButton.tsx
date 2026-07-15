@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import { syncMonitoringToInputs } from "@/server/actions/scoring";
 
-type Note = { key: string; label: string; value: string; reason: string };
+type Note = { key: string; label: string; value?: string; reason: string };
 
 export function SyncToScoringButton({ projectId }: { projectId: string }) {
   const router = useRouter();
@@ -46,8 +46,7 @@ export function SyncToScoringButton({ projectId }: { projectId: string }) {
           <ul className="space-y-0.5">
             {notes.map((n) => (
               <li key={n.key} className="flex flex-wrap gap-x-2">
-                <span className="font-medium">{n.label} :</span>
-                <span>{n.value}</span>
+                <span className="font-medium">{n.label}{n.value ? ` : ${n.value}` : ""}</span>
                 <span className="text-muted-foreground">— {n.reason}</span>
               </li>
             ))}

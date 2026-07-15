@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness } from "@/server/queries";
+import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
@@ -58,6 +59,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const calib = await getActiveCalibration();
   const scoreHistory = await getScoringHistory(p.id);
   const counterparty = await getCounterpartyExposure(p.promoterId);
+  const freshness = await getScoreFreshness(p.id);
 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
@@ -104,9 +106,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           {actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) && (
             <Link href={`/projects/${p.id}/edit`}><Button variant="outline">Éditer</Button></Link>
           )}
-          {p.assetType === "PROMOTION" && (
-            <Link href={`/projects/${p.id}/suivi`}><Button variant="outline">Suivi de commercialisation</Button></Link>
-          )}
+          <Link href={`/projects/${p.id}/suivi`}>
+            <Button variant="outline">{p.assetType === "PROMOTION" ? "Suivi (commercialisation & événements)" : "Suivi (événements & visites)"}</Button>
+          </Link>
           <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
             <Button variant="outline">Dossier comité (PDF)</Button>
@@ -116,6 +118,19 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </a>
         </div>
       </div>
+
+      {(freshness.needsRescoring || freshness.status === "DUE_SOON") && (
+        <div className={`rounded-md border p-3 text-sm ${
+          freshness.needsRescoring
+            ? "border-amber-300 bg-amber-50 text-amber-900"
+            : "border-blue-200 bg-blue-50 text-blue-900"
+        }`}>
+          <span className="font-medium">{FRESHNESS_LABELS[freshness.status]}</span> — {freshness.reason}
+          {freshness.nextReviewAt && (
+            <span className="text-muted-foreground"> (échéance : {formatDate(freshness.nextReviewAt)})</span>
+          )}
+        </div>
+      )}
 
       <RunScoringButton projectId={p.id} />
 
@@ -202,6 +217,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
         eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
         bkamProvision={prov?.provisionAmount ?? null}
+        assetType={p.assetType as "PROMOTION" | "EXPLOITATION"}
         calib={calib}
       />
 
