@@ -14,6 +14,7 @@ import { transitionWorkflow } from "@/server/actions/workflow";
 const STATE_COLORS: Record<WorkflowStateName, string> = {
   DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
   SUBMITTED: "bg-blue-100 text-blue-800 border-blue-300",
+  BRANCH_REVIEW: "bg-cyan-100 text-cyan-800 border-cyan-300",
   ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
   MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
   COMMITTEE: "bg-amber-100 text-amber-800 border-amber-300",

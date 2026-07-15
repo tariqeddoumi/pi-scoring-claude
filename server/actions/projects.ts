@@ -195,6 +195,12 @@ export async function upsertProject(raw: Record<string, unknown>) {
     throw e;
   }
 
+  const toDate = (v?: string) => {
+    if (!v?.trim()) return null;
+    const dt = new Date(v);
+    return isNaN(dt.getTime()) ? null : dt;
+  };
+
   const data = {
     reference: d.reference.trim(),
     name: d.name.trim(),
@@ -212,6 +218,18 @@ export async function upsertProject(raw: Record<string, unknown>) {
     totalCost: d.totalCost ?? null,
     loanAmount: d.loanAmount ?? null,
     ownEquity: d.ownEquity ?? null,
+    // Saisie complète (V2.1)
+    groupId: d.groupId || null,
+    address: d.address?.trim() || null,
+    landAreaSqm: d.landAreaSqm ?? null,
+    builtAreaSqm: d.builtAreaSqm ?? null,
+    landTitleRef: d.landTitleRef?.trim() || null,
+    landStatus: d.landStatus || null,
+    buildPermitRef: d.buildPermitRef?.trim() || null,
+    buildPermitDate: toDate(d.buildPermitDate),
+    startDate: toDate(d.startDate),
+    expectedDeliveryDate: toDate(d.expectedDeliveryDate),
+    description: d.description?.trim() || null,
   };
 
   let projectId = d.id;

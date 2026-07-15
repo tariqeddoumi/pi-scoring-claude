@@ -119,8 +119,45 @@ export const TRANCHE_STATUSES = indexed([
   { value: "CLOTUREE", label: "Clôturée" },
 ] as const);
 
+// --- Formes juridiques (signalétique promoteur) ------------------------------
+export const LEGAL_FORMS = indexed([
+  { value: "SARL", label: "SARL" },
+  { value: "SARL_AU", label: "SARL AU" },
+  { value: "SA", label: "SA" },
+  { value: "SAS", label: "SAS" },
+  { value: "SNC", label: "SNC" },
+  { value: "SCI", label: "SCI" },
+  { value: "GIE", label: "GIE" },
+  { value: "PERSONNE_PHYSIQUE", label: "Personne physique" },
+  { value: "AUTRE", label: "Autre" },
+] as const);
+
+// --- Statut foncier de l'assiette du projet ----------------------------------
+export const LAND_STATUSES = indexed([
+  { value: "titre_foncier", label: "Titré (titre foncier)" },
+  { value: "en_cours_immatriculation", label: "En cours d'immatriculation" },
+  { value: "melk", label: "Melk (non immatriculé)" },
+  { value: "domanial", label: "Domanial / cession État" },
+  { value: "collectif", label: "Terres collectives" },
+  { value: "habous", label: "Habous" },
+  { value: "autre", label: "Autre" },
+] as const);
+
+// --- Liens entre promoteurs (parties liées / effet groupe) --------------------
+export const PROMOTER_LINK_TYPES = indexed([
+  { value: "maison_mere", label: "Maison mère de" },
+  { value: "filiale", label: "Filiale de" },
+  { value: "actionnaire_commun", label: "Actionnaire commun" },
+  { value: "dirigeant_commun", label: "Dirigeant commun" },
+  { value: "caution_croisee", label: "Caution croisée" },
+  { value: "partenaire_projet", label: "Partenaire de projet (co-promotion)" },
+  { value: "lien_familial", label: "Lien familial entre dirigeants" },
+  { value: "autre", label: "Autre lien" },
+] as const);
+
 /** Tous les référentiels exposés (utile pour un futur écran d'administration). */
 export const REFERENTIELS = {
   SEGMENTS, ZONES, ASSET_TYPES, PROJECT_TYPES, PROJECT_STATUSES,
   SALE_MODES, STANDINGS, UNIT_TYPES, UNIT_STATUSES, TRANCHE_STATUSES,
+  LEGAL_FORMS, LAND_STATUSES, PROMOTER_LINK_TYPES,
 } as const;

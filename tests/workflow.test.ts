@@ -116,3 +116,35 @@ describe("workflow — file d'attente par rôle", () => {
     expect(roleTransitions("RISK_ANALYST", "MANAGER_VALIDATION")).toHaveLength(0);
   });
 });
+
+describe("workflow — étage front (avis directeur de centre d'affaires)", () => {
+  it("le DCA prend le dossier soumis pour avis, puis le transmet à la contre-étude", () => {
+    expect(findTransition("SUBMITTED", "BRANCH_REVIEW")?.permission).toBe(PERMISSIONS.WORKFLOW_ENDORSE);
+    expect(findTransition("BRANCH_REVIEW", "ANALYST_REVIEW")?.permission).toBe(PERMISSIONS.WORKFLOW_ENDORSE);
+  });
+
+  it("le DCA peut renvoyer au chargé d'affaires ou rejeter", () => {
+    expect(findTransition("BRANCH_REVIEW", "DRAFT")?.kind).toBe("rework");
+    expect(findTransition("BRANCH_REVIEW", "REJECTED")?.kind).toBe("reject");
+  });
+
+  it("le chemin direct Soumis → Contre-étude reste ouvert (compatibilité)", () => {
+    expect(findTransition("SUBMITTED", "ANALYST_REVIEW")).toBeDefined();
+  });
+
+  it("le chargé d'affaires n'agit pas au stade de l'avis DCA", () => {
+    expect(roleTransitions("RELATIONSHIP_MANAGER", "BRANCH_REVIEW")).toHaveLength(0);
+    expect(actionableStatesFor("BRANCH_DIRECTOR")).toContain("BRANCH_REVIEW");
+    expect(actionableStatesFor("BRANCH_DIRECTOR")).toContain("SUBMITTED");
+  });
+
+  it("le directeur de région décide (délégation) mais la contre-étude non", () => {
+    expect(actionableStatesFor("REGIONAL_DIRECTOR")).toContain("MANAGER_VALIDATION");
+    expect(actionableStatesFor("REGIONAL_DIRECTOR")).toContain("COMMITTEE");
+    expect(roleTransitions("RISK_ANALYST", "MANAGER_VALIDATION")).toHaveLength(0);
+  });
+
+  it("la contre-étude peut renvoyer le dossier au chargé d'affaires", () => {
+    expect(findTransition("ANALYST_REVIEW", "DRAFT")?.kind).toBe("rework");
+  });
+});

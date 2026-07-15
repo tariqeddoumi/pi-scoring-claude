@@ -227,9 +227,60 @@ export const projectUpsertSchema = z.object({
   totalCost: z.coerce.number().min(0).optional().nullable(),
   loanAmount: z.coerce.number().min(0).optional().nullable(),
   ownEquity: z.coerce.number().min(0).optional().nullable(),
+  // --- Saisie complète (V2.1) ---
+  groupId: z.string().optional().nullable(),
+  address: z.string().optional(),
+  landAreaSqm: z.coerce.number().min(0).optional().nullable(),
+  builtAreaSqm: z.coerce.number().min(0).optional().nullable(),
+  landTitleRef: z.string().optional(),
+  landStatus: z.string().optional(),
+  buildPermitRef: z.string().optional(),
+  buildPermitDate: z.string().optional(), // ISO (yyyy-mm-dd)
+  startDate: z.string().optional(),
+  expectedDeliveryDate: z.string().optional(),
+  description: z.string().max(4000).optional(),
 });
 
 export type ProjectUpsertValues = z.infer<typeof projectUpsertSchema>;
+
+// Signalétique promoteur (création / édition).
+export const promoterUpsertSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(2, "Raison sociale requise"),
+  legalForm: z.string().optional(),
+  rcNumber: z.string().optional(),
+  iceNumber: z.string().optional(),
+  ifNumber: z.string().optional(),
+  cnssNumber: z.string().optional(),
+  patenteNumber: z.string().optional(),
+  capital: z.coerce.number().min(0).optional().nullable(),
+  foundedYear: z.coerce.number().int().min(1900).max(2100).optional().nullable(),
+  managerName: z.string().optional(),
+  shareholders: z.string().max(4000).optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  website: z.string().optional(),
+  contactEmail: z.string().email("Email invalide").optional().or(z.literal("")),
+  contactPhone: z.string().optional(),
+  yearsExperience: z.coerce.number().int().min(0).optional().nullable(),
+  completedProjects: z.coerce.number().int().min(0).optional().nullable(),
+  internalRating: z.string().optional(),
+  bankRelations: z.string().max(2000).optional(),
+  notes: z.string().max(4000).optional(),
+  groupId: z.string().optional().nullable(),
+});
+
+export type PromoterUpsertValues = z.infer<typeof promoterUpsertSchema>;
+
+// Lien entre promoteurs (parties liées).
+export const promoterLinkSchema = z.object({
+  fromId: z.string().min(1),
+  toId: z.string().min(1),
+  type: z.string().min(1, "Type de lien requis"),
+  note: z.string().max(500).optional(),
+}).refine((v) => v.fromId !== v.toId, { message: "Un promoteur ne peut être lié à lui-même.", path: ["toId"] });
+
+export type PromoterLinkValues = z.infer<typeof promoterLinkSchema>;
 
 // Révision du business plan (changement de standing / prix cible / calendrier).
 export const bpRevisionSchema = z.object({
