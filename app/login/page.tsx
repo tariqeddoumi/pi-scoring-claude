@@ -22,19 +22,43 @@ function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        await recordLoginFailure(email);
+      // Phase 1 — configuration : échoue si les variables NEXT_PUBLIC_SUPABASE_*
+      // étaient absentes au moment du build (message explicite de createClient).
+      let supabase: ReturnType<typeof createClient>;
+      try {
+        supabase = createClient();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Configuration Supabase invalide.");
+        return;
+      }
+
+      // Phase 2 — appel au service d'authentification (réseau, CSP, DNS…).
+      let signInError: { message: string } | null;
+      try {
+        ({ error: signInError } = await supabase.auth.signInWithPassword({ email, password }));
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        setError(
+          "Service d'authentification injoignable (réseau, pare-feu ou CSP). " +
+            `Détail : ${detail}`,
+        );
+        return;
+      }
+
+      if (signInError) {
+        // Journalisation best-effort : son échec ne doit pas masquer le vrai résultat.
+        await recordLoginFailure(email).catch(() => {});
         setError("Identifiants invalides ou compte non autorisé.");
         return;
       }
-      await recordLogin();
+
+      await recordLogin().catch(() => {});
       // Rafraîchit les Server Components pour prendre en compte la session.
       router.replace(redirectedFrom);
       router.refresh();
-    } catch {
-      setError("Service d'authentification indisponible.");
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      setError(`Erreur inattendue à la connexion. Détail : ${detail}`);
     } finally {
       setLoading(false);
     }

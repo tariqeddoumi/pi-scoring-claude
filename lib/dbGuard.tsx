@@ -1,8 +1,38 @@
 import { Card, CardContent } from "@/components/ui";
 
+/** Diagnostic ciblé selon le message d'erreur Prisma (cause la plus fréquente d'abord). */
+function dbErrorHint(msg: string): string | null {
+  if (/does not exist in the current database/i.test(msg) && /public\./i.test(msg)) {
+    return (
+      "Cause probable : le paramètre `?schema=pi_scoring` manque dans DATABASE_URL " +
+      "(Prisma cherche les tables dans `public` au lieu de `pi_scoring`). " +
+      "Ajoutez `schema=pi_scoring` à la query string de DATABASE_URL et DIRECT_URL, puis redéployez."
+    );
+  }
+  if (/authentication failed|credentials/i.test(msg)) {
+    return (
+      "Cause probable : mot de passe incorrect dans DATABASE_URL. " +
+      "Réinitialisez le mot de passe base (Supabase → Project Settings → Database) " +
+      "et mettez à jour DATABASE_URL/DIRECT_URL sur l'hébergeur, puis redéployez."
+    );
+  }
+  if (/can't reach database server|connect(ion)? (refused|timed? ?out)/i.test(msg)) {
+    return (
+      "Cause probable : hôte/port injoignable depuis l'hébergeur. " +
+      "Vérifiez l'hôte du pooler Supabase (port 6543 avec `pgbouncer=true`) et que " +
+      "l'hébergeur autorise les connexions sortantes PostgreSQL."
+    );
+  }
+  if (/environment variable not found|DATABASE_URL/i.test(msg)) {
+    return "Cause probable : la variable DATABASE_URL n'est pas définie sur l'hébergeur (environnement d'exécution).";
+  }
+  return null;
+}
+
 /** Encadré affiché lorsque la base n'est pas joignable (setup non terminé). */
 export function DbSetupNotice({ error }: { error?: unknown }) {
   const msg = error instanceof Error ? error.message : String(error ?? "");
+  const hint = msg ? dbErrorHint(msg) : null;
   return (
     <Card>
       <CardContent>
@@ -17,6 +47,11 @@ npm run prisma:push    # créer le schéma
 npm run seed           # données de référence + démo
 npm run dev`}
         </pre>
+        {hint && (
+          <p className="text-sm mt-3 rounded border border-amber-300 bg-amber-50 p-3 text-amber-900">
+            {hint}
+          </p>
+        )}
         {msg && <p className="text-xs text-red-600 mt-2 break-all">{msg}</p>}
       </CardContent>
     </Card>
