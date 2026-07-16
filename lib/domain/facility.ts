@@ -70,3 +70,64 @@ export function totalOverdue(installments: InstallmentLike[], asOf: Date): numbe
   }
   return round2(sum);
 }
+
+/**
+ * Dépassement de ligne (%) : excédent du tiré sur l'autorisé, rapporté à
+ * l'autorisé, sur l'ensemble des facilités (art.10-12 : le seuil 1/W est 10 %,
+ * la DURÉE du dépassement reste à documenter manuellement).
+ */
+export function overdraftExcessPct(facilities: FacilityLike[]): number {
+  const authorized = facilities.reduce((s, f) => s + Math.max(0, f.authorizedAmount), 0);
+  const drawn = facilities.reduce((s, f) => s + Math.max(0, f.drawnAmount), 0);
+  if (authorized <= 0) return 0;
+  return round2(Math.max(0, ((drawn - authorized) / authorized) * 100));
+}
+
+// --- Déblocages vs avancement (décaissement en avance de phase) -----------
+
+export interface DisbursementPhaseInput {
+  /** Encours tiré total (MAD). */
+  drawn: number;
+  /** Montant autorisé total (MAD). */
+  authorized: number;
+  /** Avancement physique constaté (%), null si inconnu. */
+  progressPct: number | null;
+  /** Tolérance (points de %) avant alerte. */
+  thresholdPts?: number;
+}
+
+export interface DisbursementPhaseResult {
+  /** Part décaissée (%) — null si autorisé nul. */
+  drawnPct: number | null;
+  /** Écart décaissé − avancement (points), null si incalculable. */
+  gapPts: number | null;
+  /** Décaissements en avance de phase au-delà de la tolérance. */
+  alert: boolean;
+  reason: string | null;
+}
+
+export const DEFAULT_PHASE_GAP_PTS = 25;
+
+/**
+ * Rapproche les déblocages de l'avancement constaté : si la part décaissée
+ * excède l'avancement physique de plus de `thresholdPts` points, le projet
+ * consomme le crédit plus vite qu'il ne construit (risque de dérive d'emploi
+ * des fonds — vigilance renforcée et visite de chantier à déclencher).
+ */
+export function disbursementVsProgress(i: DisbursementPhaseInput): DisbursementPhaseResult {
+  const threshold = i.thresholdPts ?? DEFAULT_PHASE_GAP_PTS;
+  const drawnPct = i.authorized > 0 ? round2((Math.max(0, i.drawn) / i.authorized) * 100) : null;
+  if (drawnPct == null || i.progressPct == null) {
+    return { drawnPct, gapPts: null, alert: false, reason: null };
+  }
+  const gapPts = round2(drawnPct - i.progressPct);
+  const alert = gapPts > threshold;
+  return {
+    drawnPct,
+    gapPts,
+    alert,
+    reason: alert
+      ? `Décaissé ${drawnPct} % vs avancement constaté ${i.progressPct} % (+${gapPts} pts > tolérance ${threshold} pts).`
+      : null,
+  };
+}

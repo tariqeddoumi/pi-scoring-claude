@@ -219,6 +219,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         bkamProvision={prov?.provisionAmount ?? null}
         assetType={p.assetType as "PROMOTION" | "EXPLOITATION"}
         calib={calib}
+        dpdDays={typeof inputs.dpd_days === "number" ? inputs.dpd_days : null}
+        initialScore={scoreHistory[0]?.scoreFinal ?? null}
+        restructured={inputs.restructured === "yes"}
       />
 
       {p.workflowSteps.length > 0 && (

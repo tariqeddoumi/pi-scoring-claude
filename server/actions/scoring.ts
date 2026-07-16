@@ -15,6 +15,7 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { getProjectMonitoring } from "@/server/queries";
 import { deriveScoringInputs, type MonitoringSignals } from "@/lib/domain/scoringSignals";
 import { deriveEventInputs } from "@/lib/domain/eventSignals";
+import { scheduleDpd, totalOverdue, overdraftExcessPct } from "@/lib/domain/facility";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
 export async function saveProjectInputs(
@@ -189,6 +190,40 @@ export async function syncMonitoringToInputs(projectId: string) {
   const fromEvents = deriveEventInputs(events);
   Object.assign(values, fromEvents.values);
   notes.push(...fromEvents.notes);
+
+  // 3. Impayés RÉELS depuis l'échéancier des facilités : le DPD dérivé de la
+  //    plus ancienne échéance impayée alimente les bascules art.10-12 sans
+  //    ressaisie. Le dépassement de ligne (%) est également mesuré (sa durée
+  //    reste à documenter manuellement — art.10-12).
+  const facilities = await prisma.facility.findMany({
+    where: { projectId },
+    select: { authorizedAmount: true, drawnAmount: true, installments: { select: { dueDate: true, amountDue: true, amountPaid: true } } },
+  });
+  const installments = facilities.flatMap((f) => f.installments);
+  if (installments.length > 0) {
+    const now = new Date();
+    const dpd = scheduleDpd(installments, now);
+    const overdue = totalOverdue(installments, now);
+    values.dpd_days = dpd;
+    notes.push({
+      key: "dpd_days",
+      label: "Retard (DPD) dérivé de l'échéancier",
+      value: `${dpd} j`,
+      reason: dpd > 0
+        ? `Plus ancienne échéance impayée : ${dpd} j de retard, ${overdue.toLocaleString("fr-FR")} MAD échus non payés.`
+        : "Aucune échéance échue impayée.",
+    });
+    const excess = overdraftExcessPct(facilities);
+    if (excess > 0) {
+      values.overdraft_excess_pct = excess;
+      notes.push({
+        key: "overdraft_excess_pct",
+        label: "Dépassement de ligne",
+        value: `${excess} %`,
+        reason: "Encours tiré > autorisé — renseignez la durée du dépassement (art.10-12).",
+      });
+    }
+  }
 
   if (Object.keys(values).length === 0) {
     return { ok: false as const, error: "Rien à synchroniser : ni lots de suivi, ni événement matériel au journal." };

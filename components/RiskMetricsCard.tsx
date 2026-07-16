@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat } from "@/components/ui";
 import { formatMAD, formatPercent } from "@/lib/utils";
 import { computeRiskMetrics, SLOTTING_LABELS, DEFAULT_CALIBRATION, type RiskCalibration } from "@/lib/domain/riskMetrics";
-import { computeEcl } from "@/lib/domain/ifrs9";
+import { computeEcl, assessSicr } from "@/lib/domain/ifrs9";
 import { computeStandardApproach, BAM_SOLVENCY_RATIO } from "@/lib/domain/standardApproach";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
 
@@ -28,6 +28,9 @@ export function RiskMetricsCard({
   bkamProvision,
   assetType = "PROMOTION",
   calib = DEFAULT_CALIBRATION,
+  dpdDays = null,
+  initialScore = null,
+  restructured = false,
 }: {
   score: number | null;
   cls: RegulatoryClassCode | null;
@@ -36,10 +39,17 @@ export function RiskMetricsCard({
   bkamProvision?: number | null;
   assetType?: "PROMOTION" | "EXPLOITATION";
   calib?: RiskCalibration;
+  /** Critères SICR complémentaires (facultatifs). */
+  dpdDays?: number | null;
+  initialScore?: number | null;
+  restructured?: boolean;
 }) {
   if (!score && !cls) return null;
   const m = computeRiskMetrics({ score, cls, ead, eligibleGuarantees }, calib);
-  const ecl = computeEcl({ stage: m.stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
+  // Stage final = classe BKAM aggravée par les critères SICR IFRS 9 (§5.5).
+  const sicr = assessSicr({ cls, dpdDays, currentScore: score, initialScore, restructured });
+  const stage = sicr.stage;
+  const ecl = computeEcl({ stage, pd12m: m.pd, lgd: m.lgd, ead: m.ead, maturityYears: calib.maturityYears });
   const std = computeStandardApproach({
     assetType,
     isDefault: cls != null && DEFAULT_CLASSES.includes(cls),
@@ -53,7 +63,10 @@ export function RiskMetricsCard({
         <CardTitle className="flex flex-wrap items-center gap-2">
           Métriques de risque — Bâle / IFRS 9
           <Badge className={SLOTTING_COLORS[m.slotting]}>{SLOTTING_LABELS[m.slotting]}</Badge>
-          <Badge className={STAGE_COLORS[m.stage]}>IFRS 9 — Stage {m.stage}</Badge>
+          <Badge className={STAGE_COLORS[stage]}>IFRS 9 — Stage {stage}</Badge>
+          {sicr.sicrTriggered && (
+            <Badge className="bg-purple-100 text-purple-800 border-purple-300">SICR — dégradé en Stage 2</Badge>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -68,7 +81,7 @@ export function RiskMetricsCard({
         <div className="rounded-md border border-border p-3">
           <div className="text-sm font-medium mb-2">Double cadre de provisionnement</div>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <Stat label="ECL IFRS 9" value={formatMAD(ecl.ecl)} hint={ecl.horizon === "12M" ? "12 mois (Stage 1)" : `lifetime (Stage ${m.stage})`} />
+            <Stat label="ECL IFRS 9" value={formatMAD(ecl.ecl)} hint={ecl.horizon === "12M" ? "12 mois (Stage 1)" : `lifetime (Stage ${stage})`} />
             {bkamProvision != null && <Stat label="Provision BKAM" value={formatMAD(bkamProvision)} hint="prudentiel" />}
             {bkamProvision != null && (
               <Stat
@@ -79,6 +92,12 @@ export function RiskMetricsCard({
             )}
           </div>
         </div>
+
+        {sicr.sicrTriggered && (
+          <p className="text-xs text-purple-800 bg-purple-50 border border-purple-200 rounded-md p-2">
+            SICR (IFRS 9 §5.5) : {sicr.reasons.join(" ")}
+          </p>
+        )}
 
         <div className="rounded-md border border-border p-3">
           <div className="text-sm font-medium mb-2">Méthode standard (approche retenue) — exigence prudentielle BAM</div>
