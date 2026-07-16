@@ -54,3 +54,35 @@ describe("facility — échéancier (DPD & impayé)", () => {
     expect(totalOverdue(sched, asOf)).toBe(170);
   });
 });
+
+describe("facility — dépassement de ligne dérivé", () => {
+  it("mesure l'excédent du tiré sur l'autorisé en %", async () => {
+    const { overdraftExcessPct } = await import("@/lib/domain/facility");
+    expect(overdraftExcessPct([{ authorizedAmount: 100, drawnAmount: 115 }])).toBe(15);
+    expect(overdraftExcessPct([{ authorizedAmount: 100, drawnAmount: 90 }])).toBe(0);
+    expect(overdraftExcessPct([])).toBe(0);
+  });
+});
+
+describe("facility — déblocages vs avancement (avance de phase)", () => {
+  it("alerte quand le décaissé dépasse l'avancement au-delà de la tolérance", async () => {
+    const { disbursementVsProgress } = await import("@/lib/domain/facility");
+    const r = disbursementVsProgress({ drawn: 80, authorized: 100, progressPct: 40 });
+    expect(r.drawnPct).toBe(80);
+    expect(r.gapPts).toBe(40);
+    expect(r.alert).toBe(true);
+    expect(r.reason).toContain("80");
+  });
+
+  it("pas d'alerte dans la tolérance ou sans données", async () => {
+    const { disbursementVsProgress } = await import("@/lib/domain/facility");
+    expect(disbursementVsProgress({ drawn: 50, authorized: 100, progressPct: 40 }).alert).toBe(false);
+    expect(disbursementVsProgress({ drawn: 50, authorized: 100, progressPct: null }).alert).toBe(false);
+    expect(disbursementVsProgress({ drawn: 50, authorized: 0, progressPct: 40 }).alert).toBe(false);
+  });
+
+  it("le seuil est paramétrable", async () => {
+    const { disbursementVsProgress } = await import("@/lib/domain/facility");
+    expect(disbursementVsProgress({ drawn: 60, authorized: 100, progressPct: 45, thresholdPts: 10 }).alert).toBe(true);
+  });
+});

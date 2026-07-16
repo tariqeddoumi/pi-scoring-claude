@@ -19,7 +19,7 @@ import { consolidateProgram, type ProgramConsolidation, type AssetTypeCode } fro
 import { computeRiskMetrics, DEFAULT_CALIBRATION, type SlottingCategory, type RiskCalibration } from "@/lib/domain/riskMetrics";
 import { computeEcl } from "@/lib/domain/ifrs9";
 import { classSeverity } from "@/lib/domain/groups";
-import { projectEad } from "@/lib/domain/facility";
+import { projectEad, disbursementVsProgress } from "@/lib/domain/facility";
 import { applyStress, STRESS_SCENARIOS, type StressShock } from "@/lib/domain/stress";
 import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { runScoring, pdProxy } from "@/server/engines/scoringEngine";
@@ -250,6 +250,19 @@ export async function getProjectMonitoring(id: string) {
     })),
   );
 
+  // Déblocages vs avancement : la part décaissée est rapprochée de
+  // l'avancement physique constaté (décaissement en avance de phase).
+  const facilities = await prisma.facility.findMany({
+    where: { projectId: id },
+    select: { authorizedAmount: true, drawnAmount: true },
+  });
+  const observedProgress = reports.find((r) => r.observedProgressPct != null)?.observedProgressPct ?? null;
+  const disbursement = disbursementVsProgress({
+    drawn: facilities.reduce((s, f) => s + f.drawnAmount, 0),
+    authorized: facilities.reduce((s, f) => s + f.authorizedAmount, 0),
+    progressPct: observedProgress ?? plannedProgressPct,
+  });
+
   // Journal d'événements + timeline chronologique unifiée du projet
   // (événements, visites, révisions BP, étapes workflow, scorings).
   const events = await prisma.projectEvent.findMany({
@@ -338,6 +351,7 @@ export async function getProjectMonitoring(id: string) {
     unitsForRevision,
     events,
     timeline,
+    disbursement,
   };
 }
 

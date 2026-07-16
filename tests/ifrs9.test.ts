@@ -38,3 +38,43 @@ describe("ifrs9 — ECL par stage", () => {
     expect(r.pdUsed).toBe(lifetimePd(0.04, DEFAULT_MATURITY_YEARS));
   });
 });
+
+describe("ifrs9 — SICR (augmentation significative du risque)", () => {
+  it("classe en défaut → Stage 3 quel que soit le reste", async () => {
+    const { assessSicr } = await import("@/lib/domain/ifrs9");
+    expect(assessSicr({ cls: "DOUTEUX" }).stage).toBe(3);
+  });
+
+  it("classe sensible → Stage 2 (base watch list)", async () => {
+    const { assessSicr } = await import("@/lib/domain/ifrs9");
+    const r = assessSicr({ cls: "SENSIBLE" });
+    expect(r.stage).toBe(2);
+    expect(r.sicrTriggered).toBe(false);
+  });
+
+  it("arriérés > 30 j dégradent une créance SAINE en Stage 2 (présomption réfutable)", async () => {
+    const { assessSicr } = await import("@/lib/domain/ifrs9");
+    const r = assessSicr({ cls: "SAIN", dpdDays: 45 });
+    expect(r.stage).toBe(2);
+    expect(r.sicrTriggered).toBe(true);
+  });
+
+  it("dégradation du score ≥ 20 % vs octroi → Stage 2", async () => {
+    const { assessSicr } = await import("@/lib/domain/ifrs9");
+    const r = assessSicr({ cls: "SAIN", currentScore: 55, initialScore: 75 });
+    expect(r.stage).toBe(2);
+    expect(r.sicrTriggered).toBe(true);
+  });
+
+  it("restructuration (forbearance) → Stage 2 même si la classe est saine", async () => {
+    const { assessSicr } = await import("@/lib/domain/ifrs9");
+    expect(assessSicr({ cls: "SAIN", restructured: true }).stage).toBe(2);
+  });
+
+  it("créance saine sans signal SICR reste en Stage 1", async () => {
+    const { assessSicr } = await import("@/lib/domain/ifrs9");
+    const r = assessSicr({ cls: "SAIN", dpdDays: 10, currentScore: 72, initialScore: 75 });
+    expect(r.stage).toBe(1);
+    expect(r.sicrTriggered).toBe(false);
+  });
+});

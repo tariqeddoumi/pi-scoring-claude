@@ -151,6 +151,13 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
         </CardContent>
       </Card>
 
+      {data.disbursement.alert && (
+        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
+          <span className="font-medium">Décaissements en avance de phase</span> — {data.disbursement.reason}{" "}
+          Vigilance renforcée recommandée (visite de chantier, justification de l&apos;emploi des fonds).
+        </div>
+      )}
+
       {/* ===================== Journal du projet (tous événements) ===================== */}
       <ProjectEventsPanel projectId={project.id} timeline={timelineView} canWrite={canWrite} />
 
