@@ -10,6 +10,7 @@ import type { RiskLevel } from "@/lib/domain/visitReports";
 import { VisitReportForm } from "@/components/VisitReportForm";
 import { SyncToScoringButton } from "@/components/SyncToScoringButton";
 import { ProjectEventsPanel } from "@/components/ProjectEventsPanel";
+import { ProjectSubnav } from "@/components/ProjectSubnav";
 import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
@@ -83,9 +84,11 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
     <div className="space-y-6">
       <div>
         <Link href={`/projects/${project.id}`} className="text-sm text-muted-foreground hover:underline">← {project.name}</Link>
-        <h1 className="text-2xl font-bold">Suivi de projet</h1>
+        <h1 className="text-2xl font-bold">Suivi & événements</h1>
         <p className="text-muted-foreground text-sm">{project.reference} · {tranches.length} tranche(s) · {sales.totalUnits} lot(s) actif(s) · {reports.length} rapport(s) de visite</p>
       </div>
+
+      <ProjectSubnav projectId={project.id} active="suivi" />
 
       {/* ===================== Rapports de visite & avancement chantier ===================== */}
       <Card>
