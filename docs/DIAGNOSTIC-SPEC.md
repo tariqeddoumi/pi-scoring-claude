@@ -65,6 +65,25 @@ RWA sur **EAD nette des provisions spécifiques**, exigence de fonds propres au
 **ratio de solvabilité BAM 12 %**. Affiché sur la fiche projet comme approche
 retenue ; le slotting IRB devient une lecture interne indicative.
 
+## 2bis. Finalisation ergonomie (comparaison aux bonnes pratiques)
+
+Cible « bonnes pratiques » d'un outil de scoring + suivi rapproché : un dossier
+= une vue à 360° (synthèse en 10 secondes), trois espaces stables (fiche /
+saisie-scoring / suivi-événements), un guidage « que faire maintenant ? » par
+profil, et une jauge de complétude avant soumission. Réalisé :
+
+- **Sous-navigation unifiée** `Fiche du dossier | Saisie & scoring | Suivi &
+  événements` sur les trois pages du dossier (`ProjectSubnav`).
+- **Synthèse du dossier** en tête de fiche : score/décision, classe BKAM,
+  provision, étape du circuit, fraîcheur du score.
+- **Jauge de complétude** de la saisie (globale + étapes incomplètes + champs
+  critiques manquants) — `completeness.ts` (pur, testé).
+- **Guide « prochaine action »** selon rôle × étape × fraîcheur × complétude —
+  `nextAction.ts` (pur, testé) : le CA est guidé vers la saisie puis la
+  soumission, le DCA vers son avis, la contre-étude vers le re-scoring puis la
+  validation, le décideur vers la décision, et après approbation vers le suivi
+  rapproché ; les non-acteurs voient une mention d'attente claire.
+
 ## 3. Écarts restants (backlog priorisé)
 
 1. **DPD automatique depuis l'échéancier** : `Installment` existe mais

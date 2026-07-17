@@ -2,6 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness } from "@/server/queries";
 import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
+import { computeCompleteness } from "@/lib/domain/completeness";
+import { nextActionFor } from "@/lib/domain/nextAction";
+import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS } from "@/lib/wizardFields";
+import { ProjectSubnav } from "@/components/ProjectSubnav";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
@@ -119,18 +123,79 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {(freshness.needsRescoring || freshness.status === "DUE_SOON") && (
-        <div className={`rounded-md border p-3 text-sm ${
-          freshness.needsRescoring
-            ? "border-amber-300 bg-amber-50 text-amber-900"
-            : "border-blue-200 bg-blue-50 text-blue-900"
-        }`}>
-          <span className="font-medium">{FRESHNESS_LABELS[freshness.status]}</span> — {freshness.reason}
-          {freshness.nextReviewAt && (
-            <span className="text-muted-foreground"> (échéance : {formatDate(freshness.nextReviewAt)})</span>
-          )}
-        </div>
-      )}
+      <ProjectSubnav projectId={p.id} active="fiche" />
+
+      {/* ================= Synthèse du dossier (lecture 10 secondes) ================= */}
+      {(() => {
+        const steps = p.assetType === "EXPLOITATION" ? EXPLOITATION_WIZARD_STEPS : WIZARD_STEPS;
+        const completeness = computeCompleteness(steps, inputs);
+        const action = actor
+          ? nextActionFor({
+              state: currentState,
+              role: actor.role.name as RoleName,
+              needsRescoring: freshness.needsRescoring,
+              completenessPct: completeness.pct,
+              hasScore: Boolean(run),
+            })
+          : null;
+        return (
+          <Card>
+            <CardContent className="space-y-3 pt-4">
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+                <Stat label="Score final" value={run?.scoreFinal != null ? `${run.scoreFinal}/100` : "—"} hint={run?.decision ? DECISION_LABELS[run.decision] : "aucun scoring"} />
+                <Stat label="Classe BKAM" value={cls ? CLASS_LABELS[cls.resultClass] : "—"} hint={cls?.isWatchList ? "watch list" : undefined} />
+                <Stat label="Provision" value={prov ? formatMAD(prov.provisionAmount) : "—"} />
+                <Stat label="Étape du circuit" value={WORKFLOW_LABELS[currentState]} />
+                <Stat
+                  label="Fraîcheur du score"
+                  value={FRESHNESS_LABELS[freshness.status]}
+                  hint={freshness.nextReviewAt ? `échéance ${formatDate(freshness.nextReviewAt)}` : undefined}
+                />
+              </div>
+
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium whitespace-nowrap">Saisie du dossier</span>
+                <div className="h-2 flex-1 rounded-full bg-slate-200 overflow-hidden">
+                  <div
+                    className={`h-full ${completeness.pct === 100 ? "bg-emerald-500" : completeness.pct >= 60 ? "bg-amber-500" : "bg-red-500"}`}
+                    style={{ width: `${completeness.pct}%` }}
+                  />
+                </div>
+                <span className="text-sm tabular-nums font-medium">{completeness.pct} %</span>
+                {completeness.missingCritical.length > 0 && (
+                  <Badge className="bg-red-100 text-red-800 border-red-300">
+                    {completeness.missingCritical.length} champ(s) critique(s) manquant(s)
+                  </Badge>
+                )}
+              </div>
+              {completeness.pct < 100 && (
+                <p className="text-xs text-muted-foreground">
+                  Étapes incomplètes : {completeness.steps.filter((s) => s.missingKeys.length > 0).map((s) => `${s.title} (${s.filled}/${s.total})`).join(" · ")}
+                </p>
+              )}
+
+              {action && (
+                <div className={`rounded-md border p-3 text-sm flex flex-wrap items-center gap-3 ${
+                  action.actionable ? "border-blue-300 bg-blue-50 text-blue-900" : "border-border bg-muted/40 text-muted-foreground"
+                }`}>
+                  <span>
+                    <span className="font-medium">{action.actionable ? "À vous de jouer : " : ""}{action.title}</span>
+                    {" — "}{action.description}
+                  </span>
+                  {action.target && (
+                    <Link
+                      href={`/projects/${p.id}/${action.target}`}
+                      className="ml-auto shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm hover:opacity-90"
+                    >
+                      {action.target === "scoring" ? "Ouvrir la saisie & scoring" : "Ouvrir le suivi"}
+                    </Link>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })()}
 
       <RunScoringButton projectId={p.id} />
 
