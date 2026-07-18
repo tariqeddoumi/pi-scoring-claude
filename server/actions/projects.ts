@@ -230,6 +230,7 @@ export async function upsertProject(raw: Record<string, unknown>) {
     startDate: toDate(d.startDate),
     expectedDeliveryDate: toDate(d.expectedDeliveryDate),
     description: d.description?.trim() || null,
+    coreBankingRef: d.coreBankingRef?.trim() || null,
   };
 
   let projectId = d.id;

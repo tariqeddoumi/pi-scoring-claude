@@ -20,6 +20,7 @@ import { computeRiskMetrics, DEFAULT_CALIBRATION, type SlottingCategory, type Ri
 import { computeEcl } from "@/lib/domain/ifrs9";
 import { classSeverity } from "@/lib/domain/groups";
 import { projectEad, disbursementVsProgress } from "@/lib/domain/facility";
+import { reconcileDisbursements } from "@/lib/domain/disbursementPlan";
 import { applyStress, STRESS_SCENARIOS, type StressShock } from "@/lib/domain/stress";
 import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { runScoring, pdProxy } from "@/server/engines/scoringEngine";
@@ -339,6 +340,24 @@ export async function getProjectMonitoring(id: string) {
     })),
   ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
+  // Planning des déblocages (BP initial) : jalons + rapprochement des
+  // déblocages réels rattachés manuellement.
+  const milestones = await prisma.disbursementMilestone.findMany({
+    where: { projectId: id },
+    orderBy: { seq: "asc" },
+  });
+  const disbursementEvents = events
+    .filter((e) => e.type === "deblocage")
+    .map((e) => ({
+      id: e.id,
+      eventDate: e.eventDate,
+      amount: e.amount,
+      milestoneId: e.milestoneId,
+      title: e.title,
+      source: e.source,
+    }));
+  const disbursementPlan = reconcileDisbursements(milestones, disbursementEvents);
+
   return {
     project,
     tranches,
@@ -352,6 +371,8 @@ export async function getProjectMonitoring(id: string) {
     events,
     timeline,
     disbursement,
+    milestones,
+    disbursementPlan,
   };
 }
 
@@ -474,7 +495,7 @@ export async function getProjectForEdit(id: string) {
       loanAmount: true, ownEquity: true,
       groupId: true, address: true, landAreaSqm: true, builtAreaSqm: true,
       landTitleRef: true, landStatus: true, buildPermitRef: true, buildPermitDate: true,
-      startDate: true, expectedDeliveryDate: true, description: true,
+      startDate: true, expectedDeliveryDate: true, description: true, coreBankingRef: true,
     },
   });
 }

@@ -6,6 +6,7 @@ import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS } from "@/lib/wizardFields";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
+import { DossierAiPanel } from "@/components/DossierAiPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function ScoringWizardPage({ params }: { params: Promise<{ 
         </p>
       </div>
       <ProjectSubnav projectId={p.id} active="scoring" />
+      <DossierAiPanel projectId={p.id} />
       <ScoringWizard projectId={p.id} initial={initial} steps={steps} />
       <ScoreTimeline runs={history} />
     </div>

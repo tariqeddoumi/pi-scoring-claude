@@ -11,6 +11,8 @@ import { VisitReportForm } from "@/components/VisitReportForm";
 import { SyncToScoringButton } from "@/components/SyncToScoringButton";
 import { ProjectEventsPanel } from "@/components/ProjectEventsPanel";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
+import { DisbursementPlanCard } from "@/components/DisbursementPlanCard";
+import { SyncCoreBankingButton } from "@/components/SyncCoreBankingButton";
 import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
@@ -160,6 +162,26 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
           Vigilance renforcée recommandée (visite de chantier, justification de l&apos;emploi des fonds).
         </div>
       )}
+
+      {/* ===================== Planning des déblocages (BP initial) ===================== */}
+      <DisbursementPlanCard
+        projectId={project.id}
+        rows={data.disbursementPlan.rows.map((r) => ({
+          ...r,
+          plannedDate: r.plannedDate ? new Date(r.plannedDate).toISOString() : null,
+        }))}
+        unlinked={data.disbursementPlan.unlinked.map((e) => ({
+          id: e.id,
+          eventDate: new Date(e.eventDate).toISOString(),
+          amount: e.amount,
+          title: e.title,
+          source: e.source,
+        }))}
+        totals={data.disbursementPlan.totals}
+        canWrite={canWrite}
+      />
+
+      {canWrite && <SyncCoreBankingButton projectId={project.id} />}
 
       {/* ===================== Journal du projet (tous événements) ===================== */}
       <ProjectEventsPanel projectId={project.id} timeline={timelineView} canWrite={canWrite} />

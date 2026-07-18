@@ -44,6 +44,7 @@ export interface ProjectFormInitial {
   startDate?: Date | string | null;
   expectedDeliveryDate?: Date | string | null;
   description?: string | null;
+  coreBankingRef?: string | null;
 }
 
 const str = (v: unknown) => (v == null ? "" : String(v));
@@ -83,6 +84,7 @@ export function ProjectForm({ options, initial }: { options: Options; initial?: 
     startDate: day(initial?.startDate),
     expectedDeliveryDate: day(initial?.expectedDeliveryDate),
     description: str(initial?.description),
+    coreBankingRef: str(initial?.coreBankingRef),
   });
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -198,6 +200,9 @@ export function ProjectForm({ options, initial }: { options: Options; initial?: 
               <label className="space-y-1 text-sm"><span className="font-medium">Crédit sollicité (MAD)</span><input type="number" min={0} value={form.loanAmount} onChange={set("loanAmount")} className={inp} /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Fonds propres (MAD)</span><input type="number" min={0} value={form.ownEquity} onChange={set("ownEquity")} className={inp} /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Mode de vente</span><Select k="saleMode" items={SALE_MODES.items} /></label>
+              <label className="space-y-1 text-sm"><span className="font-medium">Référence SI (T24/Evolan)</span>
+                <input value={form.coreBankingRef} onChange={set("coreBankingRef")} className={inp} placeholder="N° dossier dans le SI" />
+                <span className="block text-xs text-muted-foreground">Clé de synchronisation des déblocages, encours et impayés.</span></label>
             </div>
           </Section>
 
