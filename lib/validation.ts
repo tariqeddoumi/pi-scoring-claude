@@ -254,6 +254,7 @@ export const projectUpsertSchema = z.object({
   startDate: z.string().optional(),
   expectedDeliveryDate: z.string().optional(),
   description: z.string().max(4000).optional(),
+  coreBankingRef: z.string().max(60).optional(),
 });
 
 export type ProjectUpsertValues = z.infer<typeof projectUpsertSchema>;

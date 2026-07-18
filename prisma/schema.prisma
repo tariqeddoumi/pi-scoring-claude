@@ -351,6 +351,10 @@ model RealEstateProject {
   // Description libre (consistance du programme, points d'attention…)
   description   String?
 
+  // Référence du dossier dans le SI bancaire (T24 / Evolan) — clé de
+  // synchronisation des déblocages, encours, impayés et restructurations.
+  coreBankingRef String?
+
   status        String  @default("PROSPECT")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -367,6 +371,7 @@ model RealEstateProject {
   attachments       Attachment[]
   committeeDecisions CommitteeDecision[]
   tranches          Tranche[]
+  disbursementMilestones DisbursementMilestone[]
   visitReports      VisitReport[]
   bpRevisions       BusinessPlanRevision[]
   events            ProjectEvent[]
@@ -390,11 +395,36 @@ model ProjectEvent {
   note           String?
   affectsScoring Boolean  @default(false) // matériel pour scoring/classification
   resolved       Boolean  @default(false)
+  // Rattachement MANUEL d'un déblocage au planning du business plan initial.
+  milestoneId    String?
+  milestone      DisbursementMilestone? @relation(fields: [milestoneId], references: [id])
+  // Origine de l'événement : MANUAL (saisie) ou SI (T24/Evolan).
+  source         String   @default("MANUAL")
   createdById    String
   createdBy      User     @relation("ProjectEventAuthor", fields: [createdById], references: [id])
   createdAt      DateTime @default(now())
 
   @@index([projectId, eventDate])
+}
+
+// Planning des déblocages du BUSINESS PLAN INITIAL : jalons prévisionnels
+// (montant, date) auxquels les déblocages réels (événements « deblocage »,
+// saisis ou synchronisés du SI) sont rattachés MANUELLEMENT pour mesurer le
+// respect du plan de tirage.
+model DisbursementMilestone {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  seq           Int      // ordre dans le plan
+  label         String   // ex. "Déblocage 1 — acquisition foncier"
+  plannedDate   DateTime?
+  plannedAmount Float
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  events        ProjectEvent[]
+
+  @@index([projectId])
 }
 
 // Tranche (phase de construction / commercialisation) d'un programme.
@@ -962,6 +992,7 @@ model Facility {
   projectId        String
   project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   label            String   // ex. "Tranche 1 — gros œuvre"
+  externalRef      String?  // référence de la facilité dans le SI (T24/Evolan)
   authorizedAmount Float    // montant autorisé (MAD)
   drawnAmount      Float    @default(0) // encours tiré (MAD)
   ccf              Float    @default(1) // credit conversion factor sur le non-tiré (0..1)
