@@ -7,7 +7,7 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatMAD, formatNumber } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
-import { LEGAL_FORMS } from "@/lib/domain/referentiels";
+import { LEGAL_FORMS, CITIES } from "@/lib/domain/referentiels";
 import { PromoterLinksPanel, type PromoterLinkView } from "@/components/PromoterLinksPanel";
 
 export const dynamic = "force-dynamic";
@@ -91,7 +91,7 @@ export default async function PromoterPage({ params }: { params: Promise<{ id: s
           <CardHeader><CardTitle>Coordonnées & relation</CardTitle></CardHeader>
           <CardContent className="grid grid-cols-2 gap-3">
             <Field label="Adresse" value={p.address} />
-            <Field label="Ville" value={p.city} />
+            <Field label="Ville" value={CITIES.labelOf(p.city)} />
             <Field label="Email" value={p.contactEmail} />
             <Field label="Téléphone" value={p.contactPhone} />
             <Field label="Site web" value={p.website} />

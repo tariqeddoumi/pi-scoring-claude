@@ -6,7 +6,7 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatMAD } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
-import { SEGMENTS } from "@/lib/domain/referentiels";
+import { SEGMENTS, CITIES } from "@/lib/domain/referentiels";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +40,7 @@ export default async function ProjectsPage() {
                     <Td><Link className="text-primary hover:underline" href={`/projects/${p.id}`}>{p.reference}</Link></Td>
                     <Td>{p.name}</Td>
                     <Td>{p.promoter.name}</Td>
-                    <Td>{p.city ?? "—"}</Td>
+                    <Td>{CITIES.labelOf(p.city)}</Td>
                     <Td>{SEGMENTS.labelOf(p.segment)}</Td>
                     <Td>{formatMAD(p.loanAmount)}</Td>
                     <Td>{run?.scoreFinal != null ? run.scoreFinal.toFixed(0) : "—"}</Td>

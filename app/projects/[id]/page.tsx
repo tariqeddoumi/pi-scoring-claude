@@ -26,7 +26,7 @@ import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
-import { SEGMENTS, ZONES, PROJECT_STATUSES, LAND_STATUSES } from "@/lib/domain/referentiels";
+import { SEGMENTS, ZONES, PROJECT_STATUSES, LAND_STATUSES, CITIES, MOROCCO_REGIONS } from "@/lib/domain/referentiels";
 
 export const dynamic = "force-dynamic";
 
@@ -102,7 +102,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <div>
           <Link href="/projects" className="text-sm text-muted-foreground hover:underline">← Projets</Link>
           <h1 className="text-2xl font-bold">{p.name}</h1>
-          <p className="text-muted-foreground text-sm">{p.reference} · {p.promoter.name} · {p.city ?? "—"}</p>
+          <p className="text-muted-foreground text-sm">{p.reference} · {p.promoter.name} · {CITIES.labelOf(p.city)}</p>
         </div>
         <div className="flex items-center gap-2">
           {cls && <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>}
@@ -327,7 +327,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 <tr><Td className="text-muted-foreground">Promoteur</Td><Td><Link href={`/promoters/${p.promoterId}`} className="text-primary hover:underline">{p.promoter.name}</Link></Td></tr>
                 <tr><Td className="text-muted-foreground">Type</Td><Td>{p.projectType ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Segment / Zone</Td><Td>{SEGMENTS.labelOf(p.segment)} / {ZONES.labelOf(p.zone)}</Td></tr>
-                <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{p.city ?? "—"} / {p.region ?? "—"}</Td></tr>
+                <tr><Td className="text-muted-foreground">Ville / Région</Td><Td>{CITIES.labelOf(p.city)} / {MOROCCO_REGIONS.labelOf(p.region)}</Td></tr>
                 <tr><Td className="text-muted-foreground">Adresse</Td><Td>{p.address ?? "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Groupe d'intérêt</Td><Td>{p.group ? <Link href="/groups" className="text-primary hover:underline">{p.group.name}</Link> : "—"}</Td></tr>
                 <tr><Td className="text-muted-foreground">Unités</Td><Td>{p.totalUnits ?? "—"}</Td></tr>

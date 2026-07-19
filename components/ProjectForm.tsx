@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/u
 import { upsertProject } from "@/server/actions/projects";
 import {
   SEGMENTS, ZONES, ASSET_TYPES, PROJECT_TYPES, PROJECT_STATUSES, SALE_MODES,
-  LAND_STATUSES, type RefItem,
+  LAND_STATUSES, CITIES, MOROCCO_REGIONS, withLegacyValue, type RefItem,
 } from "@/lib/domain/referentiels";
 
 type Options = {
@@ -153,8 +153,10 @@ export function ProjectForm({ options, initial }: { options: Options; initial?: 
 
           <Section title="Localisation">
             <div className="grid sm:grid-cols-3 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Ville</span><input value={form.city} onChange={set("city")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Région</span><input value={form.region} onChange={set("region")} className={inp} /></label>
+              <label className="space-y-1 text-sm"><span className="font-medium">Ville</span>
+                <Select k="city" items={withLegacyValue(CITIES.items, form.city)} placeholder="— Sélectionner —" /></label>
+              <label className="space-y-1 text-sm"><span className="font-medium">Région</span>
+                <Select k="region" items={withLegacyValue(MOROCCO_REGIONS.items, form.region)} placeholder="— Sélectionner —" /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Zone (modèle)</span><Select k="zone" items={ZONES.items} placeholder="— Non renseignée —" /></label>
             </div>
             <label className="space-y-1 text-sm block"><span className="font-medium">Adresse / lieu-dit</span>

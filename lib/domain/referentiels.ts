@@ -119,6 +119,67 @@ export const TRANCHE_STATUSES = indexed([
   { value: "CLOTUREE", label: "Clôturée" },
 ] as const);
 
+// --- Régions administratives du Maroc (découpage officiel 2015) --------------
+export const MOROCCO_REGIONS = indexed([
+  { value: "tanger_tetouan_al_hoceima", label: "Tanger-Tétouan-Al Hoceïma" },
+  { value: "oriental", label: "L'Oriental" },
+  { value: "fes_meknes", label: "Fès-Meknès" },
+  { value: "rabat_sale_kenitra", label: "Rabat-Salé-Kénitra" },
+  { value: "beni_mellal_khenifra", label: "Béni Mellal-Khénifra" },
+  { value: "casablanca_settat", label: "Casablanca-Settat" },
+  { value: "marrakech_safi", label: "Marrakech-Safi" },
+  { value: "draa_tafilalet", label: "Drâa-Tafilalet" },
+  { value: "souss_massa", label: "Souss-Massa" },
+  { value: "guelmim_oued_noun", label: "Guelmim-Oued Noun" },
+  { value: "laayoune_sakia_el_hamra", label: "Laâyoune-Sakia El Hamra" },
+  { value: "dakhla_oued_ed_dahab", label: "Dakhla-Oued Ed-Dahab" },
+] as const);
+
+// --- Villes principales (extensible ici, un seul endroit) ---------------------
+export const CITIES = indexed([
+  { value: "casablanca", label: "Casablanca" },
+  { value: "rabat", label: "Rabat" },
+  { value: "sale", label: "Salé" },
+  { value: "temara", label: "Témara" },
+  { value: "kenitra", label: "Kénitra" },
+  { value: "tanger", label: "Tanger" },
+  { value: "tetouan", label: "Tétouan" },
+  { value: "al_hoceima", label: "Al Hoceïma" },
+  { value: "oujda", label: "Oujda" },
+  { value: "nador", label: "Nador" },
+  { value: "fes", label: "Fès" },
+  { value: "meknes", label: "Meknès" },
+  { value: "marrakech", label: "Marrakech" },
+  { value: "safi", label: "Safi" },
+  { value: "essaouira", label: "Essaouira" },
+  { value: "agadir", label: "Agadir" },
+  { value: "taroudant", label: "Taroudant" },
+  { value: "beni_mellal", label: "Béni Mellal" },
+  { value: "khouribga", label: "Khouribga" },
+  { value: "settat", label: "Settat" },
+  { value: "el_jadida", label: "El Jadida" },
+  { value: "mohammedia", label: "Mohammedia" },
+  { value: "berrechid", label: "Berrechid" },
+  { value: "bouskoura", label: "Bouskoura" },
+  { value: "dar_bouazza", label: "Dar Bouazza" },
+  { value: "errachidia", label: "Errachidia" },
+  { value: "ouarzazate", label: "Ouarzazate" },
+  { value: "laayoune", label: "Laâyoune" },
+  { value: "dakhla", label: "Dakhla" },
+  { value: "autre", label: "Autre ville" },
+] as const);
+
+// --- Notation interne (échelle par défaut, paramétrable ici) ------------------
+export const INTERNAL_RATINGS = indexed([
+  { value: "A", label: "A — Excellent" },
+  { value: "B+", label: "B+ — Très bon" },
+  { value: "B", label: "B — Bon" },
+  { value: "C+", label: "C+ — Correct" },
+  { value: "C", label: "C — Fragile" },
+  { value: "D", label: "D — Risqué" },
+  { value: "E", label: "E — Défaut / contentieux" },
+] as const);
+
 // --- Formes juridiques (signalétique promoteur) ------------------------------
 export const LEGAL_FORMS = indexed([
   { value: "SARL", label: "SARL" },
@@ -203,9 +264,23 @@ export const EVENT_SEVERITIES = indexed([
   { value: "CRITICAL", label: "Critique" },
 ] as const);
 
+/**
+ * Items d'un référentiel en préservant une valeur héritée hors liste : si la
+ * valeur courante (saisie libre historique) n'appartient pas au référentiel,
+ * elle est ajoutée en tête pour rester sélectionnée/affichable.
+ */
+export function withLegacyValue(
+  items: readonly RefItem[],
+  current: string | null | undefined,
+): RefItem[] {
+  if (!current || items.some((i) => i.value === current)) return [...items];
+  return [{ value: current, label: `${current} (valeur héritée)` }, ...items];
+}
+
 /** Tous les référentiels exposés (utile pour un futur écran d'administration). */
 export const REFERENTIELS = {
   SEGMENTS, ZONES, ASSET_TYPES, PROJECT_TYPES, PROJECT_STATUSES,
   SALE_MODES, STANDINGS, UNIT_TYPES, UNIT_STATUSES, TRANCHE_STATUSES,
   LEGAL_FORMS, LAND_STATUSES, PROMOTER_LINK_TYPES, EVENT_TYPES, EVENT_SEVERITIES,
+  MOROCCO_REGIONS, CITIES, INTERNAL_RATINGS,
 } as const;
