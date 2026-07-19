@@ -8,16 +8,20 @@ import { CreateDraftButton } from "@/components/CreateDraftButton";
 
 export const dynamic = "force-dynamic";
 
-export default async function ModelDraftPage() {
+export default async function ModelDraftPage({ searchParams }: {
+  searchParams: Promise<{ model?: string }>;
+}) {
   if (!(await currentUserCan(PERMISSIONS.MODEL_WRITE))) return <AccessDenied />;
-  const res = await safe(() => getModelDraft());
+  const { model } = await searchParams;
+  const modelCode = model === "PI_EXPLOITATION" ? "PI_EXPLOITATION" : "PI_PROMOTION";
+  const res = await safe(() => getModelDraft(modelCode));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const draft = res.data;
 
   return (
     <div className="space-y-4">
       <div>
-        <Link href="/admin/model" className="text-sm text-muted-foreground hover:underline">← Modèle publié</Link>
+        <Link href={`/admin/model?model=${modelCode}`} className="text-sm text-muted-foreground hover:underline">← Modèle publié</Link>
         <h1 className="text-2xl font-bold">Éditeur de modèle (brouillon)</h1>
         <p className="text-sm text-muted-foreground">Ajoutez, modifiez ou supprimez librement domaines, critères, modalités, barèmes et red flags. La publication remplace la version active (les scores passés sont conservés).</p>
       </div>
@@ -27,7 +31,7 @@ export default async function ModelDraftPage() {
       ) : (
         <div className="space-y-3">
           <p className="text-sm text-muted-foreground">Aucun brouillon en cours. Créez-en un à partir de la version publiée.</p>
-          <CreateDraftButton />
+          <CreateDraftButton modelCode={modelCode} />
         </div>
       )}
     </div>
