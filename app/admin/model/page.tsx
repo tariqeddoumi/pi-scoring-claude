@@ -15,15 +15,25 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_THRESHOLDS = { go: 75, goWithConditions: 65, watchList: 50 };
 
-export default async function ModelBuilderPage() {
+const MODEL_TABS = [
+  { code: "PI_PROMOTION", label: "Promotion (vente)" },
+  { code: "PI_EXPLOITATION", label: "Exploitation (hôtels / rapport)" },
+] as const;
+
+export default async function ModelBuilderPage({ searchParams }: {
+  searchParams: Promise<{ model?: string }>;
+}) {
   if (!(await currentUserCan(PERMISSIONS.MODEL_READ))) return <AccessDenied />;
-  const res = await safe(getActiveModel);
+  const { model } = await searchParams;
+  const modelCode = MODEL_TABS.some((t) => t.code === model) ? model! : "PI_PROMOTION";
+
+  const res = await safe(() => getActiveModel(modelCode));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const v = res.data;
-  if (!v) return <p className="text-muted-foreground">Aucun modèle publié.</p>;
+  if (!v) return <p className="text-muted-foreground">Aucun modèle publié pour {modelCode}.</p>;
 
   const canEdit = await currentUserCan(PERMISSIONS.MODEL_WRITE);
-  const draftRes = canEdit ? await safe(() => getModelDraft()) : null;
+  const draftRes = canEdit ? await safe(() => getModelDraft(modelCode)) : null;
   const draft = draftRes && draftRes.ok ? draftRes.data : null;
   const thresholds = { ...DEFAULT_THRESHOLDS, ...((v.decisionThresholds as Record<string, number> | null) ?? {}) };
   const segmentAdjustments = (v.segmentAdjustments as Record<string, number> | null) ?? {};
@@ -36,14 +46,30 @@ export default async function ModelBuilderPage() {
         <p className="text-sm text-muted-foreground">Version {v.version} · {v.status} · échelle KPI 0..{v.scoreScale}</p>
       </div>
 
+      <div className="flex gap-1 border-b border-border">
+        {MODEL_TABS.map((t) => (
+          <Link
+            key={t.code}
+            href={`/admin/model?model=${t.code}`}
+            className={`px-4 py-2 text-sm font-medium rounded-t-md border border-b-0 ${
+              modelCode === t.code
+                ? "bg-background border-border text-foreground -mb-px"
+                : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
+            }`}
+          >
+            {t.label}
+          </Link>
+        ))}
+      </div>
+
       {canEdit && (
         <Card>
           <CardHeader><CardTitle>Édition structurelle du modèle</CardTitle></CardHeader>
           <CardContent className="space-y-2">
             <p className="text-sm text-muted-foreground">Ajouter / modifier / supprimer domaines, critères, modalités, barèmes et red flags se fait sur un brouillon, publié ensuite.</p>
             {draft
-              ? <Link href="/admin/model/draft"><Button>Ouvrir le brouillon en cours</Button></Link>
-              : <CreateDraftButton />}
+              ? <Link href={`/admin/model/draft?model=${modelCode}`}><Button>Ouvrir le brouillon en cours</Button></Link>
+              : <CreateDraftButton modelCode={modelCode} />}
           </CardContent>
         </Card>
       )}

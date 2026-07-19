@@ -26,12 +26,7 @@ import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { runScoring, pdProxy } from "@/server/engines/scoringEngine";
 import { buildPdBacktest } from "@/lib/domain/pdBacktest";
 import { computeProvision } from "@/server/engines/provisioningEngine";
-import {
-  PROMOTION_SCORING_MODEL,
-  REGIME_1W_2025,
-  REGIME_1W_PROVISION_RATES,
-} from "@/lib/domain/referenceData";
-import { EXPLOITATION_SCORING_MODEL } from "@/lib/domain/exploitationModel";
+import { loadActiveModelConfig, loadActiveRegime } from "@/server/services/modelLoader";
 import { summarizeCommercialisation, type UnitView } from "@/lib/domain/commercialisation";
 import { analyzeVisitReports, type VisitReportView } from "@/lib/domain/visitReports";
 import { computeBusinessPlanDrift, type UnitBaselineView } from "@/lib/domain/businessPlan";
@@ -979,6 +974,23 @@ export interface StressLegTotals {
 
 export async function getStressTest(shock: StressShock) {
   const calib = await getActiveCalibration();
+  // Configuration PUBLIÉE en base (jamais les constantes de code) : le stress
+  // simule avec exactement le même modèle/régime/taux que le scoring officiel.
+  const [promoModel, exploModel, activeRegime] = await Promise.all([
+    loadActiveModelConfig(prisma, "PI_PROMOTION"),
+    loadActiveModelConfig(prisma, "PI_EXPLOITATION"),
+    loadActiveRegime(prisma),
+  ]);
+  const rateRows = await prisma.provisionRate.findMany({
+    where: { regimeId: activeRegime.regimeId },
+    orderBy: { effectiveFrom: "desc" },
+    include: { class: { select: { code: true } } },
+  });
+  const provisionRates: Record<string, number> = {};
+  for (const r of rateRows) {
+    if (!(r.class.code in provisionRates)) provisionRates[r.class.code] = r.rate;
+  }
+
   const projects = await prisma.realEstateProject.findMany({
     include: {
       inputs: true,
@@ -989,9 +1001,9 @@ export async function getStressTest(shock: StressShock) {
 
   const evaluate = (p: (typeof projects)[number], inputs: ProjectInputs): StressLeg => {
     const restructuring = { restructured: inputs.restructured === "yes" };
-    const classification = classify({ regime: REGIME_1W_2025, inputs, restructuring });
+    const classification = classify({ regime: activeRegime.config, inputs, restructuring });
     const scoring = runScoring({
-      model: p.assetType === "EXPLOITATION" ? EXPLOITATION_SCORING_MODEL : PROMOTION_SCORING_MODEL,
+      model: p.assetType === "EXPLOITATION" ? exploModel.config : promoModel.config,
       inputs,
       segment: p.segment,
       zone: p.zone,
@@ -1000,7 +1012,7 @@ export async function getStressTest(shock: StressShock) {
     });
     const ead = p.provisionRuns[0]?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead;
     const eligible = p.provisionRuns[0]?.eligibleGuarantees ?? 0;
-    const rate = REGIME_1W_PROVISION_RATES[classification.resultClass] ?? 0;
+    const rate = provisionRates[classification.resultClass] ?? 0;
     const provision = computeProvision({
       ead, reservedAgios: 0, eligibleGuarantees: eligible, classCode: classification.resultClass, rate,
     });
@@ -1073,9 +1085,9 @@ export async function getAuditLog(limit = 100) {
   });
 }
 
-export async function getActiveModel() {
+export async function getActiveModel(modelCode = "PI_PROMOTION") {
   return prisma.scoringModelVersion.findFirst({
-    where: { status: "PUBLISHED" },
+    where: { status: "PUBLISHED", model: { code: modelCode } },
     orderBy: { publishedAt: "desc" },
     include: {
       model: true,
