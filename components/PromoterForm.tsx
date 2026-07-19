@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
 import { upsertPromoter } from "@/server/actions/promoters";
-import { LEGAL_FORMS, type RefItem } from "@/lib/domain/referentiels";
+import { LEGAL_FORMS, CITIES, INTERNAL_RATINGS, withLegacyValue, type RefItem } from "@/lib/domain/referentiels";
 
 export interface PromoterFormInitial {
   id?: string;
@@ -139,7 +139,7 @@ export function PromoterForm({ groups, initial }: {
               <label className="space-y-1 text-sm"><span className="font-medium">Adresse (siège)</span>
                 <input value={form.address} onChange={set("address")} className={inp} /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Ville</span>
-                <input value={form.city} onChange={set("city")} className={inp} /></label>
+                <Select k="city" items={withLegacyValue(CITIES.items, form.city)} placeholder="— Sélectionner —" /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Email</span>
                 <input type="email" value={form.contactEmail} onChange={set("contactEmail")} className={inp} /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Téléphone</span>
@@ -156,7 +156,7 @@ export function PromoterForm({ groups, initial }: {
               <label className="space-y-1 text-sm"><span className="font-medium">Projets réalisés</span>
                 <input type="number" min={0} value={form.completedProjects} onChange={set("completedProjects")} className={inp} /></label>
               <label className="space-y-1 text-sm"><span className="font-medium">Notation interne</span>
-                <input value={form.internalRating} onChange={set("internalRating")} className={inp} placeholder="Ex. B+" /></label>
+                <Select k="internalRating" items={withLegacyValue(INTERNAL_RATINGS.items, form.internalRating)} placeholder="— Non notée —" /></label>
               <label className="space-y-1 text-sm sm:col-span-3"><span className="font-medium">Groupe d'intérêt</span>
                 <select value={form.groupId} onChange={set("groupId")} className={inp}>
                   <option value="">— Aucun —</option>
