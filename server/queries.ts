@@ -33,6 +33,7 @@ import { computeBusinessPlanDrift, type UnitBaselineView } from "@/lib/domain/bu
 import { EVENT_TYPES } from "@/lib/domain/referentiels";
 import { scoreFreshness } from "@/lib/domain/reviewPolicy";
 import { hasMaterialEventSince, eventsRequiringCommitteeSince } from "@/lib/domain/eventSignals";
+import { assembleMonthlyFlows, computeCashflow, stressCashflow, cashflowToScoringInputs } from "@/lib/domain/cashflow";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -469,6 +470,77 @@ export async function getScoringHistory(projectId: string) {
     select: { id: true, createdAt: true, scoreFinal: true, decision: true },
   });
   return runs;
+}
+
+/**
+ * Trésorerie mensuelle reconstituée du projet (diagnostic F07, §8.5-8.7).
+ * Assemble une trajectoire à partir des composants datés existants :
+ *  - service de dette = échéances des facilités (Installment) ;
+ *  - encaissements = ventes attendues des unités non vendues (prix prévisionnel) ;
+ *  - tirages engagés = jalons de déblocage planifiés ;
+ *  - coût restant à financer et apport restant répartis uniformément (hypothèse
+ *    explicite, substituable par un échéancier réel).
+ * Retourne la trajectoire, le besoin de financement maximal, la date de rupture,
+ * un stress combiné, et les ratios de liquidité reconstitués depuis les flux.
+ */
+export async function getProjectCashflow(projectId: string) {
+  const project = await prisma.realEstateProject.findUnique({
+    where: { id: projectId },
+    select: {
+      totalCost: true, loanAmount: true, ownEquity: true,
+      facilities: {
+        select: {
+          drawnAmount: true,
+          installments: { select: { dueDate: true, amountDue: true, amountPaid: true } },
+        },
+      },
+      tranches: {
+        select: {
+          units: { select: { status: true, plannedPrice: true, soldPrice: true, plannedSaleDate: true } },
+        },
+      },
+      disbursementMilestones: { select: { plannedDate: true, plannedAmount: true } },
+    },
+  });
+  if (!project) return null;
+
+  const drawnToDate = project.facilities.reduce((s, f) => s + (f.drawnAmount ?? 0), 0);
+  const units = project.tranches.flatMap((t) => t.units);
+  const debtInstallments = project.facilities.flatMap((f) =>
+    f.installments.map((i) => ({ date: i.dueDate, amount: Math.max(0, i.amountDue - i.amountPaid) })),
+  );
+  const expectedSales = units
+    .filter((u) => u.status !== "VENDU" && u.status !== "LIVRE")
+    .map((u) => ({ date: u.plannedSaleDate, amount: u.plannedPrice ?? 0 }));
+  const plannedDraws = project.disbursementMilestones.map((d) => ({ date: d.plannedDate, amount: d.plannedAmount }));
+
+  // Coût restant à financer ≈ coût total − déjà tiré − apport déjà injecté (proxy).
+  const remainingCost = Math.max(0, (project.totalCost ?? 0) - drawnToDate - (project.ownEquity ?? 0));
+  const remainingEquity = 0; // apport supposé déjà pris en compte dans le coût restant
+
+  const params = assembleMonthlyFlows({
+    openingCash: 0, // trésorerie de départ prudente (à raffiner si champ dédié)
+    debtInstallments,
+    expectedSales,
+    plannedDraws,
+    remainingCost,
+    remainingEquity,
+  });
+  const base = computeCashflow(params);
+  const stressed = stressCashflow(params, { priceDrop: 10, costOverrun: 10, salesDrop: 25, receiptsDeferPct: 40, rateAddBps: 200 });
+
+  return {
+    hasData: params.months.length > 0,
+    base,
+    stressed,
+    derivedInputs: cashflowToScoringInputs(base),
+    assumptions: {
+      openingCash: 0,
+      remainingCost,
+      drawnToDate,
+      note: "Coût restant réparti uniformément ; trésorerie de départ à 0 (prudent). Substituer un échéancier réel de coûts et d'apports quand disponible.",
+    },
+  };
 }
 
 /** Options pour le formulaire projet : promoteurs + chargés d'affaires. */
