@@ -620,6 +620,8 @@ export async function getPhaseChallenger(projectId: string) {
   const common = { model, inputs, segment: project.segment, zone: project.zone } as const;
   const official = runScoring({ ...common });
   const phased = runScoring({ ...common, domainWeights: phaseWeights });
+  // F13 : challenger neutralisant les coefficients segment/zone non étayés.
+  const neutralized = runScoring({ ...common, neutralizeAdjustments: true });
 
   return {
     phase,
@@ -628,6 +630,15 @@ export async function getPhaseChallenger(projectId: string) {
     officialScore: official.scoreEco,
     phasedScore: phased.scoreEco,
     delta: Math.round((phased.scoreEco - official.scoreEco) * 100) / 100,
+    // F13 : coefficients territoriaux.
+    officialAdjusted: official.scoreTechnique,
+    neutralizedAdjusted: neutralized.scoreTechnique,
+    alphaSeg: official.alphaSeg,
+    betaZone: official.betaZone,
+    unknownSegment: official.unknownSegment,
+    unknownZone: official.unknownZone,
+    segment: project.segment,
+    zone: project.zone,
     weights: model.domains.map((d) => ({
       code: d.code,
       name: d.name,

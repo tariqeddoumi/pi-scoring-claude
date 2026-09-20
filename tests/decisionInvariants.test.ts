@@ -59,6 +59,24 @@ describe("Invariants de décision (diagnostic F01/F02/F03/F09)", () => {
     expect(r.guaranteeScore).toBeNull();
   });
 
+  it("F13 : signale un segment/zone inconnu et neutralise les ajustements en challenger", () => {
+    const inputs: ProjectInputs = { ...base, cash_coverage: 1.35 };
+    // Segment/zone connus : ajustements appliqués.
+    const known = runScoring({ model: M, inputs, segment: "touristique", zone: "marrakech" });
+    expect(known.unknownSegment).toBe(false);
+    expect(known.unknownZone).toBe(false);
+    expect(known.alphaSeg).toBeLessThan(0);
+    // Neutralisation (challenger) : coefficients à zéro.
+    const neutral = runScoring({ model: M, inputs, segment: "touristique", zone: "marrakech", neutralizeAdjustments: true });
+    expect(neutral.alphaSeg).toBe(0);
+    expect(neutral.betaZone).toBe(0);
+    expect(neutral.scoreTechnique).toBeGreaterThanOrEqual(known.scoreTechnique);
+    // Segment/zone inconnus : signalés (plus de neutralité tacite).
+    const unknown = runScoring({ model: M, inputs, segment: "zone_libre_xyz", zone: "atlantide" });
+    expect(unknown.unknownSegment).toBe(true);
+    expect(unknown.unknownZone).toBe(true);
+  });
+
   it("worstCaseScore = note plancher du barème (jamais 0 neutre)", () => {
     const cash = M.domains.flatMap((d) => d.criteria).find((c) => c.inputKey === "cash_coverage")!;
     expect(worstCaseScore(cash)).toBe(1);

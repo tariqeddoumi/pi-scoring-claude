@@ -208,6 +208,10 @@ export interface ScoringResult {
   scoreEco: number; // S_eco 0..100 (avant ajustement segment/zone)
   alphaSeg: number; // ajustement segment
   betaZone: number; // ajustement zone
+  // Diagnostic F13 : segment/zone fourni mais absent du référentiel (signalé,
+  // plus assimilé tacitement à un risque neutre).
+  unknownSegment: boolean;
+  unknownZone: boolean;
   scoreAdjusted: number; // S_adj = S_eco × (1 + α + β)
   scoreTechnique: number; // alias S_adj exposé (0..100)
   totalMalus: number; // somme des malus D5
