@@ -51,6 +51,9 @@ export interface ScoringEngineParams {
   // Diagnostic F11 : pondérations de domaines de substitution (grille par phase,
   // challenger). Absent → poids officiels du modèle (comportement inchangé).
   domainWeights?: Record<string, number>;
+  // Diagnostic F13 : neutralise les ajustements segment/zone (challenger tant que
+  // les coefficients ne sont pas étayés). Absent → coefficients du modèle appliqués.
+  neutralizeAdjustments?: boolean;
 }
 
 const clamp = (v: number, min: number, max: number) =>
@@ -199,8 +202,13 @@ export function runScoring(params: ScoringEngineParams): ScoringResult {
   const guaranteeScore = subScore(model, criteria, scale, (c) => c.family === "GUARANTEE");
 
   // 4. Ajustement segment / zone
-  const alphaSeg = segment ? model.segmentAdjustments[segment] ?? 0 : 0;
-  const betaZone = zone ? model.zoneAdjustments[zone] ?? 0 : 0;
+  // F13 : un segment/zone fourni mais ABSENT du référentiel n'est plus assimilé
+  // tacitement à un risque neutre — il est signalé.
+  const unknownSegment = !!segment && model.segmentAdjustments[segment] === undefined;
+  const unknownZone = !!zone && model.zoneAdjustments[zone] === undefined;
+  const neutralize = params.neutralizeAdjustments === true;
+  const alphaSeg = neutralize || !segment ? 0 : model.segmentAdjustments[segment] ?? 0;
+  const betaZone = neutralize || !zone ? 0 : model.zoneAdjustments[zone] ?? 0;
   const scoreAdjusted = round2(clamp(scoreEco * (1 + alphaSeg + betaZone), 0, 100));
 
   // 5. D5 — malus & déclencheurs de souffrance
@@ -308,6 +316,8 @@ export function runScoring(params: ScoringEngineParams): ScoringResult {
     scoreEco,
     alphaSeg,
     betaZone,
+    unknownSegment,
+    unknownZone,
     scoreAdjusted,
     scoreTechnique: scoreAdjusted,
     totalMalus: round2(totalMalus),

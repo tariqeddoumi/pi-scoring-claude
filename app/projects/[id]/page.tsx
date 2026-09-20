@@ -605,6 +605,27 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                       <span className="font-medium"> challenger à valider sur échantillon</span> avant adoption. Elle ne
                       modifie ni le score officiel ni la décision. Décision officielle inchangée.
                     </p>
+
+                    {/* F13 — coefficients territoriaux */}
+                    <div className="border-t pt-3 space-y-2">
+                      <p className="text-sm font-medium">Coefficients territoriaux (segment / zone)</p>
+                      {(phaseChallenger.unknownSegment || phaseChallenger.unknownZone) && (
+                        <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+                          {phaseChallenger.unknownSegment && <span>Segment «&nbsp;{phaseChallenger.segment}&nbsp;» hors référentiel. </span>}
+                          {phaseChallenger.unknownZone && <span>Zone «&nbsp;{phaseChallenger.zone}&nbsp;» hors référentiel. </span>}
+                          À signaler — non assimilé tacitement à un risque neutre.
+                        </div>
+                      )}
+                      <div className="grid grid-cols-3 gap-4">
+                        <Stat label="Score ajusté officiel" value={phaseChallenger.officialAdjusted.toFixed(1)} hint={`α seg ${(phaseChallenger.alphaSeg * 100).toFixed(0)}% · β zone ${(phaseChallenger.betaZone * 100).toFixed(0)}%`} />
+                        <Stat label="Sans coefficients (challenger)" value={phaseChallenger.neutralizedAdjusted.toFixed(1)} hint="coefficients neutralisés" />
+                        <Stat label="Effet des coefficients" value={`${phaseChallenger.officialAdjusted - phaseChallenger.neutralizedAdjusted >= 0 ? "+" : ""}${(phaseChallenger.officialAdjusted - phaseChallenger.neutralizedAdjusted).toFixed(1)} pts`} />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Tant que les coefficients segment/zone ne sont pas étayés par une analyse de micro-marché, le
+                        challenger les neutralise (diagnostic F13). Score officiel inchangé.
+                      </p>
+                    </div>
                   </CardContent>
                 </Card>
               )}
