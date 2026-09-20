@@ -42,6 +42,11 @@ export async function createProjectEvent(raw: Record<string, unknown>) {
     // Sévérité et matérialité : défauts du référentiel, surcharge possible.
     severity: d.severity ?? def.severity,
     affectsScoring: d.affectsScoring ?? def.affectsScoring,
+    // Volet 3 : certains événements imposent un retour en comité + re-scoring
+    // (restructuration, consolidation, reprofilage, modification de lot…).
+    requiresCommittee: def.requiresCommittee ?? false,
+    // Volet 2 : rattachement optionnel au lot/tranche concerné.
+    trancheId: typeof raw.trancheId === "string" && raw.trancheId ? raw.trancheId : null,
     title: d.title?.trim() || null,
     eventDate,
     endDate: endDate && !isNaN(endDate.getTime()) ? endDate : null,

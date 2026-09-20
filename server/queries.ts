@@ -32,7 +32,7 @@ import { analyzeVisitReports, type VisitReportView } from "@/lib/domain/visitRep
 import { computeBusinessPlanDrift, type UnitBaselineView } from "@/lib/domain/businessPlan";
 import { EVENT_TYPES } from "@/lib/domain/referentiels";
 import { scoreFreshness } from "@/lib/domain/reviewPolicy";
-import { hasMaterialEventSince } from "@/lib/domain/eventSignals";
+import { hasMaterialEventSince, eventsRequiringCommitteeSince } from "@/lib/domain/eventSignals";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -403,13 +403,14 @@ export async function getScoreFreshness(projectId: string) {
     }),
     prisma.projectEvent.findMany({
       where: { projectId },
-      select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true },
+      select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true, requiresCommittee: true },
     }),
   ]);
   return scoreFreshness({
     lastScoredAt: lastRun?.createdAt ?? null,
     cls: (lastCls?.resultClass as RegulatoryClassCode | undefined) ?? null,
     materialEventSince: hasMaterialEventSince(events, lastRun?.createdAt ?? null),
+    committeeEventSince: eventsRequiringCommitteeSince(events, lastRun?.createdAt ?? null).length > 0,
   });
 }
 
@@ -425,7 +426,7 @@ export async function getRescoringQueue() {
       promoter: { select: { name: true } },
       scoringRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { createdAt: true } },
       classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { resultClass: true } },
-      events: { select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true } },
+      events: { select: { type: true, eventDate: true, endDate: true, resolved: true, affectsScoring: true, requiresCommittee: true } },
     },
   });
 
@@ -436,6 +437,7 @@ export async function getRescoringQueue() {
         lastScoredAt: lastRun,
         cls: (p.classificationRuns[0]?.resultClass as RegulatoryClassCode | undefined) ?? null,
         materialEventSince: hasMaterialEventSince(p.events, lastRun),
+        committeeEventSince: eventsRequiringCommitteeSince(p.events, lastRun).length > 0,
       });
       return {
         id: p.id,

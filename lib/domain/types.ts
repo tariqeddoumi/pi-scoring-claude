@@ -6,7 +6,27 @@
 
 export type CriterionType = "QUAL" | "NUM";
 export type Severity = "LOW" | "MEDIUM" | "HIGH" | "BLOCKING";
-export type Decision = "GO" | "GO_WITH_CONDITIONS" | "WATCH_LIST" | "NO_GO";
+export type Decision =
+  | "GO"
+  | "GO_WITH_CONDITIONS"
+  | "WATCH_LIST"
+  | "NO_GO"
+  // Diagnostic F02 : donnée critique absente ou qualité bloquante — le dossier
+  // n'est pas exploitable pour une décision officielle (distinct d'un NO_GO,
+  // qui est un refus fondé sur un risque mesuré).
+  | "DOSSIER_INCOMPLET";
+
+// Jalon auquel une condition/gate s'applique (diagnostic F15) : une condition
+// d'étude n'a pas le même effet qu'un verrou de tirage ou de signature.
+export type ConditionStage = "ETUDE" | "OCTROI" | "SIGNATURE" | "TIRAGE";
+
+// Famille d'un critère (diagnostic F09) : la note « économique » (capacité de
+// remboursement) doit rester distincte de la note de « sûretés » (LGD).
+export type CriterionFamily = "ECONOMIC" | "GUARANTEE";
+
+// Effet cible d'une alerte D5 (diagnostic §6.1) : hypothèse économique,
+// décision de surveillance/tirage, ou conséquence réglementaire.
+export type RedFlagEffect = "HYPOTHESIS" | "SURVEILLANCE" | "REGULATORY";
 
 export type RegulatoryClassCode =
   | "SAIN"
@@ -79,6 +99,16 @@ export interface CriterionConfig {
   gateThreshold?: number | null;
   options?: OptionConfig[];
   ranges?: RangeConfig[];
+  // --- Métadonnées v3 (diagnostic) — toutes optionnelles, rétro-compatibles ---
+  // Donnée critique : son absence rend le dossier incomplet (F01/F02).
+  critical?: boolean;
+  // Famille économique vs sûretés (F09).
+  family?: CriterionFamily;
+  // Jalon du verrou lorsque isGate (F15).
+  gateStage?: ConditionStage;
+  // Dictionnaire de calcul (F07 / §8.4) : unité et définition cible.
+  unit?: string;
+  definition?: string;
 }
 
 export interface DomainConfig {
@@ -96,6 +126,13 @@ export interface RedFlagConfig {
   impactDomains: string[];
   malus: number;
   mitigable: boolean;
+  // --- Refonte D5 v3 (diagnostic §6.1) — optionnels, rétro-compatibles ---
+  // Effet cible de l'alerte (hypothèse / surveillance / réglementaire).
+  effect?: RedFlagEffect;
+  // L'alerte impose un retour en comité (reprofilage, restructuration…).
+  requiresCommittee?: boolean;
+  // Article de rattachement (19/G/2002 ou 1/W/2025) pour la traçabilité.
+  regRef?: string;
 }
 
 export interface DecisionThresholds {
@@ -156,6 +193,14 @@ export interface RedFlagOutcome {
   mitigable: boolean;
 }
 
+// Condition/obligation nommée attachée à une décision conditionnelle (F15).
+export interface DecisionCondition {
+  code: string;
+  label: string;
+  stage: ConditionStage; // jalon de levée (étude/octroi/signature/tirage)
+  blocking: boolean; // bloque le tirage tant que non levée
+}
+
 export interface ScoringResult {
   criteria: CriterionOutcome[];
   domains: DomainOutcome[];
@@ -170,10 +215,22 @@ export interface ScoringResult {
   coeffBAM: number;
   scoreFinal: number; // 0..100
   decision: Decision;
-  internalClass: string; // Sain | Surveillance | Sensible probable | Sensible | Souffrance
+  internalClass: string; // Sain | Surveillance | Sensible probable | Sensible | Souffrance | Dossier incomplet | Défaut avéré
   gateBlocked: boolean;
   souffranceTriggered: boolean; // déclencheur automatique de souffrance
   pdProxy: number; // PD indicative issue de la transformation logistique
+  pdIndicative: boolean; // PD toujours indicative (non calibrée) — diagnostic F16
+  // --- Nouveautés v3 (diagnostic) ---
+  // Complétude des données décisionnelles (F01/F02).
+  dataIncomplete: boolean;
+  missingCriticalInputs: string[];
+  // Statut de défaut avéré propagé depuis la classe réglementaire (F03).
+  defaultAsserted: boolean;
+  // Notes séparées économique (capacité de remboursement) et sûretés (F09).
+  economicScore: number; // 0..100
+  guaranteeScore: number | null; // 0..100 (null si aucun critère sûreté)
+  // Obligations nommées d'une décision conditionnelle (F15).
+  conditions: DecisionCondition[];
   // Classe réglementaire injectée (issue du moteur de classification)
   regulatoryClass?: RegulatoryClassCode;
 }

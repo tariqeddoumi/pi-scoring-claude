@@ -35,6 +35,20 @@ export const STRESS_SCENARIOS: { key: string; label: string; shock: StressShock 
   { key: "severe", label: "Sévère combiné", shock: { preSaleDrop: 0, dpdAdd: 0, priceDrop: 15, costOverrun: 10, delayMonths: 6, salesDrop: 20, rateAddBps: 200 } },
 ];
 
+const round2 = (v: number) => Math.round(v * 100) / 100;
+
+/**
+ * Marge après choc, par IDENTITÉ COMPTABLE (diagnostic F08) et non par ajout de
+ * points. Marge m = (CA − coût)/CA = 1 − coût/CA. Un facteur `caFactor` sur le
+ * CA et `coutFactor` sur le coût donnent : m' = 1 − (1 − m)·coutFactor/caFactor.
+ * Les marges négatives sont CONSERVÉES (pas de plancher à 0 qui masquerait la
+ * profondeur de la perte).
+ */
+function stressMargin(m: number, caFactor: number, coutFactor: number): number {
+  const frac = 1 - (1 - m / 100) * (coutFactor / caFactor);
+  return round2(frac * 100);
+}
+
 /** Applique le choc aux entrées (clone, ne mute pas l'original). */
 export function applyStress(inputs: ProjectInputs, s: StressShock): ProjectInputs {
   const out: ProjectInputs = { ...inputs };
@@ -51,19 +65,29 @@ export function applyStress(inputs: ProjectInputs, s: StressShock): ProjectInput
   out.dpd_days = Math.max(0, baseDpd + Math.max(0, s.dpdAdd));
   if (s.preSaleDrop > 0) dec("sales_vs_plan", s.preSaleDrop);
 
-  // --- Prix −X% : marges ↓ (points), LTV stressée ↑, encaissements ↓ ---
+  // --- Prix −X% : identités comptables (F08) ---
+  // CA × (1−p) → marges recalculées ; valeur de sûreté × (1−p) → LTV = dette/valeur
+  // donc LTV' = LTV/(1−p) ; encaissements sécurisés fragilisés (heuristique bornée).
   const priceDrop = Math.max(0, s.priceDrop ?? 0);
-  dec("gross_margin_pct", priceDrop);
-  dec("stressed_margin_pct", priceDrop);
-  inc("ltv_stressed", priceDrop);
-  dec("pre_sale_rate", priceDrop * 0.5);
+  if (priceDrop > 0) {
+    const caFactor = 1 - priceDrop / 100;
+    if (typeof out.gross_margin_pct === "number") out.gross_margin_pct = stressMargin(out.gross_margin_pct, caFactor, 1);
+    if (typeof out.stressed_margin_pct === "number") out.stressed_margin_pct = stressMargin(out.stressed_margin_pct, caFactor, 1);
+    if (typeof out.ltv_stressed === "number" && caFactor > 0) out.ltv_stressed = round2((out.ltv_stressed as number) / caFactor);
+    dec("pre_sale_rate", priceDrop * 0.5);
+  }
 
-  // --- Coût +X% : marges ↓, LTC ↑, impasse de trésorerie ↑ ---
+  // --- Coût +X% : identités comptables (F08) ---
+  // coût × (1+c) → marges recalculées ; la banque finançant le surcoût :
+  // dette' = dette + c·coût, coût' = coût·(1+c) ⇒ LTC' = (LTC + c)/(1+c).
   const costOverrun = Math.max(0, s.costOverrun ?? 0);
-  dec("gross_margin_pct", costOverrun);
-  dec("stressed_margin_pct", costOverrun);
-  inc("ltc", costOverrun);
-  inc("funding_gap_pct", costOverrun);
+  if (costOverrun > 0) {
+    const coutFactor = 1 + costOverrun / 100;
+    if (typeof out.gross_margin_pct === "number") out.gross_margin_pct = stressMargin(out.gross_margin_pct, 1, coutFactor);
+    if (typeof out.stressed_margin_pct === "number") out.stressed_margin_pct = stressMargin(out.stressed_margin_pct, 1, coutFactor);
+    if (typeof out.ltc === "number") out.ltc = round2(((out.ltc as number) + costOverrun) / coutFactor);
+    inc("funding_gap_pct", costOverrun);
+  }
 
   // --- Retard +N mois : avancement ↓, ventes ↓, déclencheur > 1 an ---
   const delayMonths = Math.max(0, s.delayMonths ?? 0);

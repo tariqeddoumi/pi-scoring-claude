@@ -58,3 +58,55 @@ export function evaluateRule(
   // Expression vide => non déclenchée
   return false;
 }
+
+/**
+ * Énumère les clés d'entrée référencées par une expression de règle. Sert à
+ * détecter les données manquantes qui, sans cette énumération, feraient
+ * silencieusement disparaître une alerte (diagnostic F01) : une clé référencée
+ * par un red flag est décisionnelle ; son absence doit produire « Dossier
+ * incomplet » plutôt qu'un score amélioré par omission.
+ */
+export function ruleKeys(expr: RuleExpression | null | undefined): string[] {
+  if (!expr) return [];
+  const keys = new Set<string>();
+  const add = (c?: RuleClause) => {
+    if (c?.key) keys.add(c.key);
+  };
+  add(expr.clause);
+  expr.all?.forEach(add);
+  expr.any?.forEach(add);
+  return [...keys];
+}
+
+/**
+ * Une clé référencée par la règle est-elle absente des entrées ? Une donnée
+ * manquante ne peut jamais rendre une règle défavorable « non déclenchée » à
+ * bon compte : l'appelant doit traiter ce cas comme incomplet (F01).
+ */
+export function ruleHasMissingKey(
+  expr: RuleExpression | null | undefined,
+  inputs: ProjectInputs,
+): boolean {
+  return ruleKeys(expr).some((k) => inputs[k] === undefined || inputs[k] === null);
+}
+
+const NUMERIC_OPS = new Set(["gt", "gte", "lt", "lte"]);
+
+/**
+ * Clés référencées par une règle via une COMPARAISON NUMÉRIQUE (gt/gte/lt/lte).
+ * Ce sont les clés dont l'absence est dangereuse (F01) : une comparaison
+ * numérique sur une valeur manquante renvoie « false » et fait disparaître
+ * l'alerte. À l'inverse, les opérateurs booléens/égalité (isTrue, eq…)
+ * traitent légitimement l'absence comme « non affirmé ».
+ */
+export function numericRuleKeys(expr: RuleExpression | null | undefined): string[] {
+  if (!expr) return [];
+  const keys = new Set<string>();
+  const add = (c?: RuleClause) => {
+    if (c?.key && NUMERIC_OPS.has(c.op)) keys.add(c.key);
+  };
+  add(expr.clause);
+  expr.all?.forEach(add);
+  expr.any?.forEach(add);
+  return [...keys];
+}

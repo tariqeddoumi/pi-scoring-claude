@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { authorize, AuthorizationError } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { recordAudit } from "@/server/engines/auditService";
+import { canApproveOverride, isDerogationAdmissible } from "@/lib/domain/overridePolicy";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
 
 const CLASS_CODES: RegulatoryClassCode[] = ["SAIN", "SENSIBLE", "PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
@@ -36,6 +37,13 @@ export async function requestRegulatoryOverride(projectId: string, forcedClass: 
     select: { engineClass: true, resultClass: true },
   });
   const engineClass = last?.engineClass ?? last?.resultClass ?? null;
+
+  // F05 : plancher non dérogeable — une dérogation métier ne peut pas ramener un
+  // défaut avéré à une classe performante.
+  const admissible = isDerogationAdmissible(engineClass, forcedClass as RegulatoryClassCode);
+  if (!admissible.ok) {
+    return { ok: false as const, error: admissible.reason };
+  }
 
   const ov = await prisma.regulatoryOverride.create({
     data: {
@@ -69,9 +77,15 @@ export async function decideRegulatoryOverride(overrideId: string, approve: bool
     throw e;
   }
 
-  const ov = await prisma.regulatoryOverride.findUnique({ where: { id: overrideId }, select: { id: true, projectId: true, status: true } });
+  const ov = await prisma.regulatoryOverride.findUnique({ where: { id: overrideId }, select: { id: true, projectId: true, status: true, requestedById: true } });
   if (!ov) return { ok: false as const, error: "Dérogation introuvable." };
   if (ov.status !== "PENDING") return { ok: false as const, error: "Dérogation déjà décidée." };
+
+  // F05 : séparation des tâches — le demandeur ne peut pas approuver/rejeter sa
+  // propre dérogation (contrôle à deux personnes distinctes).
+  if (approve && !canApproveOverride(ov.requestedById, actor.id)) {
+    return { ok: false as const, error: "Séparation des tâches : le demandeur ne peut pas approuver sa propre dérogation." };
+  }
 
   await prisma.$transaction(async (tx) => {
     if (approve) {
