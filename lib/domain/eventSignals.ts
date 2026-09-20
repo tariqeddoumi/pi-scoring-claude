@@ -104,13 +104,36 @@ export function deriveEventInputs(
     notes.push({ key: "negative_credit_bureau", label: "Info négative Crédit Bureau", reason: "Information négative ouverte (art.5.2 → sensible)." });
   }
 
-  // Restructuration : événement (même clos) dans le journal → créance restructurée.
-  if (events.some((e) => e.type === "restructuration")) {
+  // Restructuration / consolidation / reprofilage (même clos) dans le journal →
+  // créance restructurée au sens du régime (1/W art.17-31).
+  const RESTRUCT_TYPES = ["restructuration", "consolidation_dette", "reprofilage_dette"];
+  const restructEvt = events.find((e) => RESTRUCT_TYPES.includes(e.type));
+  if (restructEvt) {
     values.restructured = "yes";
-    notes.push({ key: "restructured", label: "Créance restructurée", reason: "Restructuration au journal (régime art.17-31)." });
+    const kind =
+      restructEvt.type === "consolidation_dette" ? "Consolidation de dettes"
+      : restructEvt.type === "reprofilage_dette" ? "Reprofilage / rééchelonnement"
+      : "Restructuration";
+    notes.push({ key: "restructured", label: "Créance restructurée", reason: `${kind} au journal (régime art.17-31).` });
   }
 
   return { values, notes };
+}
+
+/**
+ * Volet 3 : événements matériels survenus depuis la dernière appréciation
+ * (comité/scoring) qui IMPOSENT un retour en comité et un nouveau scoring.
+ * « Le scoring étant une appréciation du risque, tout événement doit, à tout
+ * moment, pouvoir la remettre en cause. »
+ */
+export function eventsRequiringCommitteeSince(
+  events: (ProjectEventView & { requiresCommittee?: boolean; type: string })[],
+  since: Date | string | null | undefined,
+): ProjectEventView[] {
+  const t = since ? new Date(since).getTime() : -Infinity;
+  return events.filter(
+    (e) => e.requiresCommittee === true && new Date(e.eventDate).getTime() > t,
+  );
 }
 
 /**

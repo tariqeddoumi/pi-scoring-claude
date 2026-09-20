@@ -7,6 +7,7 @@ export const DECISION_LABELS: Record<Decision, string> = {
   GO_WITH_CONDITIONS: "Favorable sous conditions",
   WATCH_LIST: "Surveillance (Watch List)",
   NO_GO: "Défavorable (NO GO)",
+  DOSSIER_INCOMPLET: "Dossier incomplet",
 };
 
 export const DECISION_COLORS: Record<Decision, string> = {
@@ -14,6 +15,7 @@ export const DECISION_COLORS: Record<Decision, string> = {
   GO_WITH_CONDITIONS: "bg-lime-100 text-lime-800 border-lime-300",
   WATCH_LIST: "bg-amber-100 text-amber-800 border-amber-300",
   NO_GO: "bg-red-100 text-red-800 border-red-300",
+  DOSSIER_INCOMPLET: "bg-slate-200 text-slate-800 border-slate-400",
 };
 
 export const CLASS_LABELS: Record<RegulatoryClassCode, string> = {

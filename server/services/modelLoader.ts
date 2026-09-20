@@ -63,6 +63,12 @@ export async function loadActiveModelConfig(
         inputKey: c.inputKey,
         isGate: c.isGate,
         gateThreshold: c.gateThreshold,
+        // Métadonnées v3 (diagnostic) — chargées depuis la base.
+        critical: c.critical ?? false,
+        family: (c.family as CriterionConfig["family"]) ?? undefined,
+        gateStage: (c.gateStage as CriterionConfig["gateStage"]) ?? undefined,
+        unit: c.unit ?? undefined,
+        definition: c.definition ?? undefined,
         options: c.options
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((o) => ({ value: o.value, label: o.label, score: o.score })),
@@ -79,6 +85,10 @@ export async function loadActiveModelConfig(
       impactDomains: rf.impactDomains,
       malus: rf.malus,
       mitigable: rf.mitigable,
+      // Refonte D5 v3 (diagnostic) — chargée depuis la base.
+      effect: (rf.effect as any) ?? undefined,
+      requiresCommittee: rf.requiresCommittee ?? false,
+      regRef: rf.regRef ?? undefined,
     })),
   };
 

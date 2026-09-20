@@ -36,6 +36,11 @@ export interface ScoreFreshnessInput {
   cls: RegulatoryClassCode | null;
   /** Un événement matériel est survenu après lastScoredAt. */
   materialEventSince?: boolean;
+  /**
+   * Un événement imposant un retour en comité est survenu après lastScoredAt
+   * (volet 3 : restructuration, reprofilage, consolidation, modification de lot…).
+   */
+  committeeEventSince?: boolean;
   now?: Date;
 }
 
@@ -48,6 +53,8 @@ export interface ScoreFreshness {
   periodDays: number;
   /** Le score doit être recalculé maintenant. */
   needsRescoring: boolean;
+  /** Un nouveau passage en comité est requis (au-delà du simple re-scoring). */
+  needsCommittee: boolean;
   reason: string;
 }
 
@@ -64,6 +71,7 @@ export function scoreFreshness(i: ScoreFreshnessInput): ScoreFreshness {
       overdueDays: null,
       periodDays,
       needsRescoring: true,
+      needsCommittee: i.committeeEventSince ?? false,
       reason: "Aucun scoring n'a encore été exécuté.",
     };
   }
@@ -72,6 +80,20 @@ export function scoreFreshness(i: ScoreFreshnessInput): ScoreFreshness {
   const nextReviewAt = new Date(last.getTime() + periodDays * DAY_MS);
   const overdueDays = Math.floor((now.getTime() - nextReviewAt.getTime()) / DAY_MS);
 
+  // Priorité : un événement imposant un retour en comité déclenche à la fois le
+  // re-scoring ET un nouveau passage en comité (volet 3).
+  if (i.committeeEventSince) {
+    return {
+      status: "EVENT_TRIGGERED",
+      nextReviewAt,
+      overdueDays,
+      periodDays,
+      needsRescoring: true,
+      needsCommittee: true,
+      reason: "Événement structurant (restructuration, reprofilage, modification de lot…) — retour en comité et nouveau scoring requis.",
+    };
+  }
+
   if (i.materialEventSince) {
     return {
       status: "EVENT_TRIGGERED",
@@ -79,6 +101,7 @@ export function scoreFreshness(i: ScoreFreshnessInput): ScoreFreshness {
       overdueDays,
       periodDays,
       needsRescoring: true,
+      needsCommittee: false,
       reason: "Événement matériel survenu après le dernier scoring — re-scorer sans attendre l'échéance.",
     };
   }
@@ -90,6 +113,7 @@ export function scoreFreshness(i: ScoreFreshnessInput): ScoreFreshness {
       overdueDays,
       periodDays,
       needsRescoring: true,
+      needsCommittee: false,
       reason: `Revue périodique dépassée de ${overdueDays} j (périodicité ${periodDays} j).`,
     };
   }
@@ -101,6 +125,7 @@ export function scoreFreshness(i: ScoreFreshnessInput): ScoreFreshness {
       overdueDays,
       periodDays,
       needsRescoring: false,
+      needsCommittee: false,
       reason: `Revue à prévoir sous ${-overdueDays} j.`,
     };
   }
@@ -111,6 +136,7 @@ export function scoreFreshness(i: ScoreFreshnessInput): ScoreFreshness {
     overdueDays,
     periodDays,
     needsRescoring: false,
+    needsCommittee: false,
     reason: `Score à jour (prochaine revue dans ${-overdueDays} j).`,
   };
 }

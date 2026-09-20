@@ -49,6 +49,7 @@ enum Decision {
   GO_WITH_CONDITIONS
   WATCH_LIST
   NO_GO
+  DOSSIER_INCOMPLET // donnée critique absente / qualité bloquante (diagnostic F02)
 }
 
 enum ScoringRunStatus {
@@ -395,9 +396,15 @@ model ProjectEvent {
   note           String?
   affectsScoring Boolean  @default(false) // matériel pour scoring/classification
   resolved       Boolean  @default(false)
+  // Diagnostic (volet 3) : l'événement impose un retour en comité + re-scoring
+  // (reprofilage, restructuration, modification de lot…).
+  requiresCommittee Boolean @default(false)
   // Rattachement MANUEL d'un déblocage au planning du business plan initial.
   milestoneId    String?
   milestone      DisbursementMilestone? @relation(fields: [milestoneId], references: [id])
+  // Rattachement au lot/tranche concerné (vision lotissement — volet 2).
+  trancheId      String?
+  tranche        Tranche? @relation(fields: [trancheId], references: [id])
   // Origine de l'événement : MANUAL (saisie) ou SI (T24/Evolan).
   source         String   @default("MANUAL")
   createdById    String
@@ -419,12 +426,17 @@ model DisbursementMilestone {
   label         String   // ex. "Déblocage 1 — acquisition foncier"
   plannedDate   DateTime?
   plannedAmount Float
+  // Rattachement au lot/tranche (vision lotissement — volet 2) : suivi des
+  // déblocages lot par lot. Null = déblocage au niveau programme.
+  trancheId     String?
+  tranche       Tranche? @relation(fields: [trancheId], references: [id])
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   events        ProjectEvent[]
 
   @@index([projectId])
+  @@index([trancheId])
 }
 
 // Tranche (phase de construction / commercialisation) d'un programme.
@@ -445,6 +457,9 @@ model Tranche {
   updatedAt       DateTime @updatedAt
 
   units           Unit[]
+  // Vision lotissement (volet 2) : déblocages et événements rattachés au lot.
+  disbursements   DisbursementMilestone[]
+  events          ProjectEvent[]
 
   @@index([projectId])
 }
@@ -649,6 +664,16 @@ model ScoringCriterion {
   isGate      Boolean  @default(false)
   gateThreshold Float?
   orderIndex  Int      @default(0)
+  // --- Métadonnées v3 (diagnostic) ---
+  // Donnée critique : son absence rend le dossier incomplet (F01/F02).
+  critical    Boolean  @default(false)
+  // Famille : ECONOMIC (capacité de remboursement) | GUARANTEE (sûretés/LGD) — F09.
+  family      String?
+  // Jalon du verrou (ETUDE|OCTROI|SIGNATURE|TIRAGE) lorsque isGate — F15.
+  gateStage   String?
+  // Dictionnaire de calcul (F07/§8.4) : unité et définition cible.
+  unit        String?
+  definition  String?
 
   options ScoringOption[]
   ranges  ScoringRange[]
@@ -698,6 +723,13 @@ model RedFlagRule {
   malus       Float    @default(0) // points retranchés au score technique
   mitigable   Boolean  @default(false)
   mitigantHint String?
+  // --- Refonte D5 v3 (diagnostic §6.1) ---
+  // Effet cible : HYPOTHESIS | SURVEILLANCE | REGULATORY.
+  effect      String?
+  // L'alerte impose un retour en comité (reprofilage, restructuration…).
+  requiresCommittee Boolean @default(false)
+  // Article de rattachement (19/G/2002 ou 1/W/2025).
+  regRef      String?
 
   @@unique([versionId, code])
 }

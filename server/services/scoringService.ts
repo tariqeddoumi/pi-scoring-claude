@@ -150,6 +150,7 @@ async function scoreAndPersist(
   actorId: string,
   regulatoryClass: RegulatoryClassCode | undefined,
   classBlocksGo: boolean,
+  opts: { isDefault?: boolean; dataQualityBlocking?: boolean } = {},
 ): Promise<ScoreResult> {
   const project = await tx.realEstateProject.findUniqueOrThrow({
     where: { id: projectId },
@@ -166,6 +167,12 @@ async function scoreAndPersist(
     zone: project.zone,
     regulatoryClass,
     classBlocksGo,
+    // F03 : statut de défaut propagé depuis la classe réglementaire.
+    isDefault: opts.isDefault,
+    // F02 : qualité des données bloquante propagée depuis la classification.
+    dataQualityBlocking: opts.dataQualityBlocking,
+    // dpd_days est décisionnel pour la classification (F01).
+    extraCriticalKeys: ["dpd_days"],
   });
 
   const run = await tx.scoringRun.create({
@@ -377,16 +384,23 @@ export async function runEconomicScoring(projectId: string, actorId: string) {
     const latest = await tx.classificationRun.findFirst({
       where: { projectId },
       orderBy: { createdAt: "desc" },
-      select: { resultClass: true },
+      select: { resultClass: true, dataQualityStatus: true },
     });
     const regulatoryClass = latest?.resultClass;
-    const blocksGo = regulatoryClass
-      ? (await tx.regulatoryClass.findFirst({
+    const classRow = regulatoryClass
+      ? await tx.regulatoryClass.findFirst({
           where: { code: regulatoryClass, regime: { active: true } },
-          select: { blocksGo: true },
-        }))?.blocksGo ?? false
-      : false;
-    return scoreAndPersist(tx, projectId, actorId, regulatoryClass, blocksGo);
+          select: { blocksGo: true, isDefault: true },
+        })
+      : null;
+    const blocksGo = classRow?.blocksGo ?? false;
+    // F06 : à défaut de classification fraîche, ne pas présumer SAIN — marquer
+    // le dossier incomplet plutôt que d'appliquer implicitement CoeffBAM = 1.
+    const dataQualityBlocking = !latest || latest.dataQualityStatus === "INCOMPLETE_BLOCKING";
+    return scoreAndPersist(tx, projectId, actorId, regulatoryClass, blocksGo, {
+      isDefault: classRow?.isDefault ?? false,
+      dataQualityBlocking,
+    });
   });
 }
 
@@ -436,6 +450,12 @@ export async function runFullScoring(opts: RunScoringOptions) {
     // 1. Classification réglementaire (indépendante)
     const { classRun, classification } = await classifyAndPersist(tx, projectId, actorId);
 
+    // Statut de défaut de la classe retenue (F03) et qualité des données (F02).
+    const classDef = await tx.regulatoryClass.findFirst({
+      where: { code: classification.resultClass, regime: { active: true } },
+      select: { isDefault: true },
+    });
+
     // 2. Scoring économique consommant la classe validée
     const { run, scoring } = await scoreAndPersist(
       tx,
@@ -443,6 +463,10 @@ export async function runFullScoring(opts: RunScoringOptions) {
       actorId,
       classification.resultClass,
       classification.blocksGo,
+      {
+        isDefault: classDef?.isDefault ?? false,
+        dataQualityBlocking: classification.dataQuality.status === "INCOMPLETE_BLOCKING",
+      },
     );
 
     // Rattachement classification ↔ scoring (traçabilité du run complet)
