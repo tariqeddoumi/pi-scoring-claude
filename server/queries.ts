@@ -35,6 +35,8 @@ import { scoreFreshness } from "@/lib/domain/reviewPolicy";
 import { hasMaterialEventSince, eventsRequiringCommitteeSince } from "@/lib/domain/eventSignals";
 import { assembleMonthlyFlows, computeCashflow, stressCashflow, cashflowToScoringInputs } from "@/lib/domain/cashflow";
 import { computeLgd, computeLgdScenario, LGD_SCENARIOS, type RecoveryAsset } from "@/lib/domain/lgd";
+import { derivePhase, phaseWeightsFor, PHASE_LABELS, PHASE_WEIGHT_PROFILES } from "@/lib/domain/phases";
+import { loadProjectInputs } from "@/server/services/modelLoader";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -584,6 +586,56 @@ export async function getProjectLgd(projectId: string) {
     base,
     scenarios,
     assumptions: "Décote de réalisation ≥ type de sûreté, frais 5 %, délai 18 mois, actualisation 8 %/an. Substituer une expertise et un coût d'achèvement réels quand disponibles.",
+  };
+}
+
+/**
+ * Challenger de pondération PAR PHASE (diagnostic F11). Compare le score officiel
+ * (poids du modèle publié) au score obtenu avec la grille de pondération de la
+ * phase du projet (§8.2). Les poids par phase sont un CHALLENGER à valider : ce
+ * comparatif n'altère PAS le score officiel ni la décision persistée.
+ */
+export async function getPhaseChallenger(projectId: string) {
+  const project = await prisma.realEstateProject.findUnique({
+    where: { id: projectId },
+    select: {
+      segment: true, zone: true, assetType: true, status: true,
+      tranches: { select: { progressPct: true, actualDelivery: true } },
+    },
+  });
+  if (!project) return null;
+
+  const modelCode = project.assetType === "EXPLOITATION" ? "PI_EXPLOITATION" : "PI_PROMOTION";
+  const { config: model } = await loadActiveModelConfig(prisma, modelCode);
+  const inputs = await loadProjectInputs(prisma, projectId);
+
+  const progressPct = project.tranches.length
+    ? Math.max(...project.tranches.map((t) => t.progressPct ?? 0))
+    : 0;
+  const delivered = project.tranches.length > 0 && project.tranches.every((t) => t.actualDelivery != null);
+  const phase = derivePhase({ status: project.status, progressPct, delivered });
+  const domainCodes = model.domains.map((d) => d.code);
+  const phaseWeights = phaseWeightsFor(phase, domainCodes);
+
+  const common = { model, inputs, segment: project.segment, zone: project.zone } as const;
+  const official = runScoring({ ...common });
+  const phased = runScoring({ ...common, domainWeights: phaseWeights });
+
+  return {
+    phase,
+    phaseLabel: PHASE_LABELS[phase],
+    progressPct,
+    officialScore: official.scoreEco,
+    phasedScore: phased.scoreEco,
+    delta: Math.round((phased.scoreEco - official.scoreEco) * 100) / 100,
+    weights: model.domains.map((d) => ({
+      code: d.code,
+      name: d.name,
+      officialWeight: d.weight,
+      phaseWeight: phaseWeights[d.code] ?? d.weight,
+      domainScore: official.domains.find((x) => x.domainCode === d.code)?.score ?? 0,
+    })),
+    profiles: PHASE_WEIGHT_PROFILES,
   };
 }
 

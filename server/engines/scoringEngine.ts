@@ -48,6 +48,9 @@ export interface ScoringEngineParams {
   dataQualityBlocking?: boolean;
   // Clés décisionnelles additionnelles à contrôler (ex. dpd_days).
   extraCriticalKeys?: string[];
+  // Diagnostic F11 : pondérations de domaines de substitution (grille par phase,
+  // challenger). Absent → poids officiels du modèle (comportement inchangé).
+  domainWeights?: Record<string, number>;
 }
 
 const clamp = (v: number, min: number, max: number) =>
@@ -175,7 +178,17 @@ export function runScoring(params: ScoringEngineParams): ScoringResult {
   for (const domain of model.domains) {
     for (const crit of domain.criteria) criteria.push(scoreCriterion(crit, domain.code, inputs, scale));
   }
-  const domains: DomainOutcome[] = model.domains.map((d) => scoreDomain(d, criteria, scale));
+  let domains: DomainOutcome[] = model.domains.map((d) => scoreDomain(d, criteria, scale));
+
+  // F11 : pondérations de domaines de substitution (grille par phase, challenger).
+  // Le score de domaine (0..100) ne dépend pas du poids de domaine ; on ne remplace
+  // que le poids et la contribution pondérée.
+  if (params.domainWeights) {
+    domains = domains.map((d) => {
+      const w = params.domainWeights![d.domainCode];
+      return w == null ? d : { ...d, weight: w, weighted: round2(d.score * w) };
+    });
+  }
 
   // 3. Score économique S_eco (0..100) — somme pondérée des domaines D1..D4
   const totalDomainWeight = domains.reduce((s, d) => s + d.weight, 0) || 1;
