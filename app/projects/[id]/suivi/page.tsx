@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectMonitoring } from "@/server/queries";
+import { getProjectMonitoring, getProjectCashflow } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td } from "@/components/ui";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
@@ -67,6 +67,10 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
 
   const actor = await getCurrentAppUser();
   const canWrite = actor ? hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) : false;
+
+  // Trésorerie mensuelle reconstituée (F07) — best-effort, ne bloque pas la page.
+  const cfRes = await safe(() => getProjectCashflow(id));
+  const cashflow = cfRes.ok ? cfRes.data : null;
 
   // Timeline sérialisée pour le composant client (dates ISO).
   const timelineView = timeline.map((t) => ({
@@ -182,6 +186,49 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
       />
 
       {canWrite && <SyncCoreBankingButton projectId={project.id} />}
+
+      {/* ===================== Trésorerie mensuelle & impasse (F07) ===================== */}
+      {cashflow?.hasData && (
+        <Card>
+          <CardHeader><CardTitle>Trésorerie mensuelle & impasse de financement</CardTitle></CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Stat label="Besoin de financement max." value={formatMAD(cashflow.base.maxAdditionalNeed)} hint="déficit maximal sur l'horizon" />
+              <Stat label="Date de rupture" value={cashflow.base.breachMonthLabel ?? "aucune"} hint={cashflow.base.breachMonthLabel ? "1re trésorerie négative" : "pas d'impasse en base"} />
+              <Stat label="Cash coverage reconstitué" value={Number.isFinite(cashflow.base.cashCoverage) ? `${cashflow.base.cashCoverage.toFixed(2)}x` : "n/a"} hint="ressources / sorties de l'horizon" />
+              <Stat label="Impasse (stress combiné)" value={formatMAD(cashflow.stressed.maxAdditionalNeed)} hint="prix −10 %, coût +10 %, ventes −25 %, 40 % reportées, +200 bps" />
+            </div>
+
+            {cashflow.base.maxAdditionalNeed > 0 && (
+              <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                <span className="font-medium">Impasse intermédiaire détectée</span> — un besoin de {formatMAD(cashflow.base.maxAdditionalNeed)} apparaît{cashflow.base.breachMonthLabel ? ` dès ${cashflow.base.breachMonthLabel}` : ""}, alors que le solde global sur la période est de {formatMAD(cashflow.base.globalSimplifiedBalance)}. Un solde global positif ne garantit pas l&apos;absence d&apos;impasse : une recette postérieure au paiement qu&apos;elle finance ne comble pas le déficit.
+              </div>
+            )}
+
+            <Table>
+              <thead><tr><Th>Mois</Th><Th>Encaissements</Th><Th>Tirages engagés</Th><Th>Apports</Th><Th>Sorties + dette</Th><Th>Trésorerie fin de mois</Th></tr></thead>
+              <tbody>
+                {cashflow.base.months.map((m) => (
+                  <tr key={m.index} className={m.breach ? "bg-red-50" : undefined}>
+                    <Td className="font-medium">{m.label}</Td>
+                    <Td>{formatMAD(m.clientReceipts)}</Td>
+                    <Td>{formatMAD(m.committedDraws)}</Td>
+                    <Td>{formatMAD(m.equityContrib)}</Td>
+                    <Td>{formatMAD(m.outflows)}</Td>
+                    <Td className={m.breach ? "text-red-600 font-medium" : m.closing >= 0 ? "text-emerald-700" : "text-red-600"}>{formatMAD(m.closing)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </Table>
+
+            <p className="text-xs text-muted-foreground">
+              Trajectoire reconstituée depuis l&apos;échéancier de dette, les ventes attendues et les jalons de déblocage.
+              Hypothèse : {cashflow.assumptions.note} Coût restant estimé : {formatMAD(cashflow.assumptions.remainingCost)}.
+              Ratios de liquidité reconstitués : cash coverage {Number.isFinite(cashflow.base.cashCoverage) ? cashflow.base.cashCoverage.toFixed(2) : "n/a"}, impasse {formatPercent(cashflow.base.fundingGapPct, 1)}{cashflow.base.fundingGapPersistent ? " (persistante)" : ""}.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* ===================== Journal du projet (tous événements) ===================== */}
       <ProjectEventsPanel projectId={project.id} timeline={timelineView} canWrite={canWrite} />
