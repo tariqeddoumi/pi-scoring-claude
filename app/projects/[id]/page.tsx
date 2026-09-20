@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd } from "@/server/queries";
 import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { computeCompleteness } from "@/lib/domain/completeness";
 import { nextActionFor } from "@/lib/domain/nextAction";
@@ -60,6 +60,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const run = p.scoringRuns[0];
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
+  // Waterfall de recouvrement / LGD (F14) — best-effort, ne bloque pas la page.
+  const lgdRes = await safe(() => getProjectLgd(id));
+  const lgd = lgdRes.ok ? lgdRes.data : null;
   const calib = await getActiveCalibration();
   const scoreHistory = await getScoringHistory(p.id);
   const counterparty = await getCounterpartyExposure(p.promoterId);
@@ -383,6 +386,43 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </tbody>
             </Table>
           </CardContent></Card>
+
+          {lgd?.hasData && (
+            <Card className="mt-4">
+              <CardHeader><CardTitle>Recouvrement & perte en cas de défaut (LGD)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Stat label="LGD (base)" value={formatPercent(lgd.base.lgd * 100, 1)} hint={`taux de recouvrement ${formatPercent(lgd.base.recoveryRate * 100, 0)}`} />
+                  <Stat label="Recouvrement net" value={formatMAD(lgd.base.economicNetRecovery)} hint={`EAD ${formatMAD(lgd.ead)}`} />
+                  <Stat label="Valeur admissible prudentielle" value={formatMAD(lgd.base.prudentialAdmissibleValue)} hint="éligible après abattement" />
+                  <Stat label="Sûreté opposable (1er rang)" value={formatMAD(lgd.base.enforceableValue)} />
+                </div>
+
+                <div>
+                  <p className="text-sm font-medium mb-1">LGD par scénario de réalisation</p>
+                  <Table>
+                    <thead><tr><Th>Scénario</Th><Th>Recouvrement net</Th><Th>LGD</Th><Th>Perte (ELGD)</Th></tr></thead>
+                    <tbody>
+                      {lgd.scenarios.map((s) => (
+                        <tr key={s.key}>
+                          <Td className="font-medium">{s.label}</Td>
+                          <Td>{formatMAD(s.result.economicNetRecovery)}</Td>
+                          <Td className={s.result.lgd > 0.5 ? "text-red-600 font-medium" : undefined}>{formatPercent(s.result.lgd * 100, 1)}</Td>
+                          <Td>{formatMAD(s.result.expectedLossGivenDefault)}</Td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </Table>
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  Waterfall par sûreté : valeur de marché → coût d&apos;achèvement → créanciers prioritaires → quotité de
+                  partage → décote de réalisation → frais → actualisation. Chaque lot n&apos;est valorisé qu&apos;une fois
+                  (pas de double comptage avec la note économique). Hypothèses : {lgd.assumptions}
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="Classification BKAM">
