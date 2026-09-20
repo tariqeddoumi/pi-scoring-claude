@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd, getPhaseChallenger } from "@/server/queries";
 import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { computeCompleteness } from "@/lib/domain/completeness";
 import { nextActionFor } from "@/lib/domain/nextAction";
@@ -63,6 +63,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   // Waterfall de recouvrement / LGD (F14) — best-effort, ne bloque pas la page.
   const lgdRes = await safe(() => getProjectLgd(id));
   const lgd = lgdRes.ok ? lgdRes.data : null;
+  // Challenger de pondération par phase (F11) — best-effort.
+  const phaseRes = await safe(() => getPhaseChallenger(id));
+  const phaseChallenger = phaseRes.ok ? phaseRes.data : null;
   const calib = await getActiveCalibration();
   const scoreHistory = await getScoringHistory(p.id);
   const counterparty = await getCounterpartyExposure(p.promoterId);
@@ -570,6 +573,41 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 ))}
                 {(run.triggeredRedFlags as any[] ?? []).length === 0 && <p className="text-sm text-muted-foreground">Aucun red flag.</p>}
               </CardContent></Card>
+              {phaseChallenger && (
+                <Card className="lg:col-span-3">
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <CardTitle>Challenger de pondération par phase</CardTitle>
+                      <Badge className="bg-slate-100 text-slate-700 border-slate-300">Phase : {phaseChallenger.phaseLabel}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="grid grid-cols-3 gap-4">
+                      <Stat label="Score éco. officiel" value={phaseChallenger.officialScore.toFixed(1)} hint="poids du modèle publié" />
+                      <Stat label="Score éco. par phase" value={phaseChallenger.phasedScore.toFixed(1)} hint="grille §8.2 (challenger)" />
+                      <Stat label="Écart" value={`${phaseChallenger.delta >= 0 ? "+" : ""}${phaseChallenger.delta.toFixed(1)} pts`} />
+                    </div>
+                    <Table>
+                      <thead><tr><Th>Domaine</Th><Th>Score /100</Th><Th>Poids officiel</Th><Th>Poids phase</Th></tr></thead>
+                      <tbody>
+                        {phaseChallenger.weights.map((w) => (
+                          <tr key={w.code}>
+                            <Td>{w.code} — {w.name}</Td>
+                            <Td className="font-medium">{w.domainScore.toFixed(0)}</Td>
+                            <Td>{formatPercent(w.officialWeight * 100, 0)}</Td>
+                            <Td className={w.phaseWeight > w.officialWeight ? "text-emerald-700" : w.phaseWeight < w.officialWeight ? "text-red-600" : undefined}>{formatPercent(w.phaseWeight * 100, 0)}</Td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </Table>
+                    <p className="text-xs text-muted-foreground">
+                      Comparatif indicatif : la grille par phase (pré-développement / construction / écoulement) est un
+                      <span className="font-medium"> challenger à valider sur échantillon</span> avant adoption. Elle ne
+                      modifie ni le score officiel ni la décision. Décision officielle inchangée.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
               <div className="lg:col-span-3"><ScoreTimeline runs={scoreHistory} /></div>
             </div>
           ) : <p className="text-muted-foreground text-sm">Aucun run de scoring. Cliquez sur « Lancer le scoring ».</p>}
