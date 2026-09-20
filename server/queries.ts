@@ -34,6 +34,7 @@ import { EVENT_TYPES } from "@/lib/domain/referentiels";
 import { scoreFreshness } from "@/lib/domain/reviewPolicy";
 import { hasMaterialEventSince, eventsRequiringCommitteeSince } from "@/lib/domain/eventSignals";
 import { assembleMonthlyFlows, computeCashflow, stressCashflow, cashflowToScoringInputs } from "@/lib/domain/cashflow";
+import { computeLgd, computeLgdScenario, LGD_SCENARIOS, type RecoveryAsset } from "@/lib/domain/lgd";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 /** Historique des versions de calibrage (la plus récente d'abord). */
@@ -540,6 +541,49 @@ export async function getProjectCashflow(projectId: string) {
       drawnToDate,
       note: "Coût restant réparti uniformément ; trésorerie de départ à 0 (prudent). Substituer un échéancier réel de coûts et d'apports quand disponible.",
     },
+  };
+}
+
+/**
+ * Waterfall de recouvrement et LGD du projet (diagnostic F14). Assemble un actif
+ * de recouvrement par garantie (valeur de marché, rang, éligibilité) avec des
+ * paramètres de réalisation conservateurs (décote, frais, délai, actualisation),
+ * puis dérive la LGD en base et en scénarios adverse/sévère. Complète la note de
+ * sûretés (F09) par une mesure de perte, distincte de la note économique.
+ */
+export async function getProjectLgd(projectId: string) {
+  const project = await prisma.realEstateProject.findUnique({
+    where: { id: projectId },
+    select: {
+      loanAmount: true,
+      facilities: { select: { authorizedAmount: true, drawnAmount: true, ccf: true } },
+      guarantees: { include: { type: true } },
+    },
+  });
+  if (!project) return null;
+
+  const { ead } = projectEad(project.facilities, project.loanAmount ?? 0);
+  // Paramètres de réalisation conservateurs (substituables par une expertise).
+  const assets: RecoveryAsset[] = project.guarantees.map((g) => ({
+    label: g.type.label,
+    grossValue: g.marketValue,
+    saleDiscount: Math.max(0.1, g.type.haircut ?? 0.15), // décote de réalisation
+    procedureCosts: 0.05,
+    monthsToSale: 18,
+    eligible: g.type.eligible && (!g.type.requiresRank1 || g.rank === 1),
+    rank1: g.rank === 1,
+  }));
+
+  const params = { ead, assets, annualDiscountRate: 0.08 };
+  const base = computeLgd(params);
+  const scenarios = LGD_SCENARIOS.map((sc) => ({ key: sc.key, label: sc.label, result: computeLgdScenario(params, sc) }));
+
+  return {
+    hasData: assets.length > 0 && ead > 0,
+    ead,
+    base,
+    scenarios,
+    assumptions: "Décote de réalisation ≥ type de sûreté, frais 5 %, délai 18 mois, actualisation 8 %/an. Substituer une expertise et un coût d'achèvement réels quand disponibles.",
   };
 }
 
