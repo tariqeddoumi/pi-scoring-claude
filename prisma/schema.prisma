@@ -340,6 +340,11 @@ model RealEstateProject {
   gfaProvider   String?  // établissement garant (banque / assurance)
 
   // --- Foncier & autorisations ---
+  // Nature du programme (chaîne d'autorisations applicable) :
+  // LOTISSEMENT | CONSTRUCTION | MIXTE (cf. lib/domain/morocco.ts).
+  programKind     String? @default("CONSTRUCTION")
+  // Quotité de désengagement convenue pour les mainlevées partielles (0..1).
+  releaseQuotity  Float?
   landTitleRef    String? // n° du/des titre(s) foncier(s)
   landStatus      String? // statut foncier (cf. referentiels LAND_STATUSES)
   buildPermitRef  String? // n° autorisation de construire
@@ -372,6 +377,7 @@ model RealEstateProject {
   attachments       Attachment[]
   committeeDecisions CommitteeDecision[]
   tranches          Tranche[]
+  authorizations    ProjectAuthorization[]
   disbursementMilestones DisbursementMilestone[]
   visitReports      VisitReport[]
   bpRevisions       BusinessPlanRevision[]
@@ -426,6 +432,9 @@ model DisbursementMilestone {
   label         String   // ex. "Déblocage 1 — acquisition foncier"
   plannedDate   DateTime?
   plannedAmount Float
+  // Situation de travaux visée par l'architecte / le BET justifiant le tirage.
+  worksCertificateRef  String?
+  worksCertifiedPct    Float?
   // Rattachement au lot/tranche (vision lotissement — volet 2) : suivi des
   // déblocages lot par lot. Null = déblocage au niveau programme.
   trancheId     String?
@@ -496,6 +505,9 @@ model Unit {
   buyerName        String?
   deliveredAt      DateTime?
 
+  // Financement de l'acquéreur (liquidité de la vente) et dispositif d'aide.
+  buyerFinancingStatus String?
+  buyerAidScheme       String?
   // Mainlevée hypothécaire partielle
   mortgageReleased   Boolean  @default(false)
   mortgageReleasedAt DateTime?
@@ -896,6 +908,24 @@ model GuaranteeType {
   @@unique([regimeId, code])
 }
 
+// Chaîne d'autorisations d'un programme (pratique marocaine) : chaque pièce
+// conditionne un jalon (étude / octroi / signature / tirage).
+model ProjectAuthorization {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code        String   // cf. AUTHORIZATION_CHAIN (morocco.ts)
+  obtained    Boolean  @default(false)
+  obtainedAt  DateTime?
+  reference   String?  // n° de l'acte / de l'autorisation
+  note        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([projectId, code])
+  @@index([projectId])
+}
+
 model Guarantee {
   id          String   @id @default(cuid())
   projectId   String
@@ -1028,6 +1058,9 @@ model Facility {
   authorizedAmount Float    // montant autorisé (MAD)
   drawnAmount      Float    @default(0) // encours tiré (MAD)
   ccf              Float    @default(1) // credit conversion factor sur le non-tiré (0..1)
+  // Nature du concours (avance_foncier | credit_accompagnement | ...) —
+  // conditionne l'exigence d'une situation de travaux visée au déblocage.
+  nature           String?
   reservedAgios    Float    @default(0)
   status           FacilityStatus @default(ACTIVE)
   startedAt        DateTime? // date de démarrage des travaux financés
