@@ -15,6 +15,7 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { getProjectMonitoring } from "@/server/queries";
 import { deriveScoringInputs, type MonitoringSignals } from "@/lib/domain/scoringSignals";
 import { deriveEventInputs } from "@/lib/domain/eventSignals";
+import { deriveMoroccoInputs, type ProgramKind } from "@/lib/domain/morocco";
 import { scheduleDpd, totalOverdue, overdraftExcessPct } from "@/lib/domain/facility";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
@@ -223,6 +224,59 @@ export async function syncMonitoringToInputs(projectId: string) {
         reason: "Encours tiré > autorisé — renseignez la durée du dépassement (art.10-12).",
       });
     }
+  }
+
+  // 4. Signaux alignés sur la pratique marocaine : complétude de la chaîne
+  //    d'autorisations (verrou de tirage), ventes sécurisées pondérées par le
+  //    financement de l'acquéreur, et quotité de désengagement des mainlevées.
+  const projectForMorocco = await prisma.realEstateProject.findUnique({
+    where: { id: projectId },
+    select: {
+      programKind: true,
+      releaseQuotity: true,
+      authorizations: { select: { code: true, obtained: true, obtainedAt: true } },
+      facilities: { select: { drawnAmount: true } },
+      tranches: {
+        select: {
+          units: {
+            select: {
+              status: true, plannedPrice: true, soldPrice: true,
+              buyerFinancingStatus: true,
+            },
+          },
+        },
+      },
+    },
+  });
+  if (projectForMorocco) {
+    const units = projectForMorocco.tranches.flatMap((t) => t.units);
+    const outstandingDebt = projectForMorocco.facilities.reduce((s, f) => s + (f.drawnAmount ?? 0), 0);
+    const moroccoInputs = deriveMoroccoInputs({
+      kind: (projectForMorocco.programKind as ProgramKind) ?? "CONSTRUCTION",
+      authorizations: projectForMorocco.authorizations.map((a) => ({
+        code: a.code, obtained: a.obtained, obtainedAt: a.obtainedAt,
+      })),
+      units: units.map((u) => ({
+        price: u.soldPrice ?? u.plannedPrice ?? 0,
+        financingStatus: u.buyerFinancingStatus ?? "",
+        contractSecured: ["RESERVE", "COMPROMIS", "VENDU", "LIVRE"].includes(u.status),
+        sold: ["VENDU", "LIVRE"].includes(u.status),
+      })),
+      releaseQuotity: projectForMorocco.releaseQuotity,
+      outstandingDebt,
+    });
+    for (const [key, value] of Object.entries(moroccoInputs)) {
+      if (value === undefined) continue;
+      values[key] = value as string | number | boolean;
+    }
+    notes.push({
+      key: "authorization_completeness_pct",
+      label: "Chaîne d'autorisations",
+      value: `${moroccoInputs.authorization_completeness_pct} %`,
+      reason: moroccoInputs.works_authorization_blocked
+        ? "Une autorisation indispensable aux travaux financés est manquante — verrou de tirage."
+        : "Aucun verrou d'autorisation de travaux ouvert.",
+    });
   }
 
   if (Object.keys(values).length === 0) {
