@@ -45,6 +45,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/admin/model", label: "Modèle de scoring", perm: PERMISSIONS.MODEL_READ },
       { href: "/admin/regimes", label: "Régimes BKAM", perm: PERMISSIONS.REGIME_READ },
+      { href: "/admin/referentiels", label: "Référentiels métier", perm: PERMISSIONS.MODEL_READ },
     ],
   },
   {

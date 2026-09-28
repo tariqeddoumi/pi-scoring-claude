@@ -36,6 +36,8 @@ import { hasMaterialEventSince, eventsRequiringCommitteeSince } from "@/lib/doma
 import { assembleMonthlyFlows, computeCashflow, stressCashflow, cashflowToScoringInputs } from "@/lib/domain/cashflow";
 import { computeLgd, computeLgdScenario, LGD_SCENARIOS, type RecoveryAsset } from "@/lib/domain/lgd";
 import { derivePhase, phaseWeightsFor, PHASE_LABELS, PHASE_WEIGHT_PROFILES } from "@/lib/domain/phases";
+import { assessAuthorizations, type ProgramKind } from "@/lib/domain/morocco";
+import { loadMoroccoReferentials } from "@/server/services/referentialLoader";
 import { loadProjectInputs } from "@/server/services/modelLoader";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
@@ -647,6 +649,107 @@ export async function getPhaseChallenger(projectId: string) {
       domainScore: official.domains.find((x) => x.domainCode === d.code)?.score ?? 0,
     })),
     profiles: PHASE_WEIGHT_PROFILES,
+  };
+}
+
+/**
+ * Chaîne d'autorisations d'un projet, prête pour l'écran de saisie. Les pièces
+ * exigibles proviennent du référentiel ADMINISTRABLE (repli sur les défauts du
+ * code) et sont filtrées selon la nature du programme.
+ */
+export async function getProjectAuthorizations(projectId: string) {
+  const [project, refs] = await Promise.all([
+    prisma.realEstateProject.findUnique({
+      where: { id: projectId },
+      select: {
+        programKind: true,
+        releaseQuotity: true,
+        authorizations: { select: { code: true, obtained: true, obtainedAt: true, reference: true } },
+      },
+    }),
+    loadMoroccoReferentials(prisma),
+  ]);
+  if (!project) return null;
+
+  const kind = (project.programKind as ProgramKind) ?? "CONSTRUCTION";
+  const held = project.authorizations;
+  const assessment = assessAuthorizations(
+    kind,
+    held.map((a) => ({ code: a.code, obtained: a.obtained, obtainedAt: a.obtainedAt })),
+    refs.chain,
+  );
+
+  const byCode = new Map(held.map((a) => [a.code, a]));
+  const rows = assessment.required.map((a) => {
+    const cur = byCode.get(a.code);
+    return {
+      code: a.code,
+      label: a.label,
+      stage: a.stage as string,
+      regRef: a.regRef,
+      blocksWorks: a.blocksWorks === true,
+      blocksDelivery: a.blocksDelivery === true,
+      obtained: cur?.obtained ?? false,
+      obtainedAt: cur?.obtainedAt ? cur.obtainedAt.toISOString() : null,
+      reference: cur?.reference ?? null,
+    };
+  });
+
+  return {
+    programKind: kind,
+    releaseQuotity: project.releaseQuotity,
+    rows,
+    completenessPct: assessment.completenessPct,
+    worksBlocked: !assessment.worksDrawAllowed,
+    blockingWorksLabels: assessment.blockingWorks.map((a) => a.label),
+    blockingDeliveryLabels: assessment.blockingDelivery.map((a) => a.label),
+  };
+}
+
+/** Lots d'un projet avec leur financement acquéreur, pour l'écran de saisie. */
+export async function getProjectBuyerFinancing(projectId: string) {
+  const [project, refs] = await Promise.all([
+    prisma.realEstateProject.findUnique({
+      where: { id: projectId },
+      select: {
+        tranches: {
+          orderBy: { orderIndex: "asc" },
+          select: {
+            code: true,
+            units: {
+              orderBy: { reference: "asc" },
+              select: {
+                id: true, reference: true, status: true,
+                plannedPrice: true, soldPrice: true,
+                buyerFinancingStatus: true, buyerAidScheme: true,
+              },
+            },
+          },
+        },
+      },
+    }),
+    loadMoroccoReferentials(prisma),
+  ]);
+  if (!project) return null;
+
+  const units = project.tranches.flatMap((t) =>
+    t.units.map((u) => ({
+      id: u.id,
+      reference: u.reference,
+      trancheCode: t.code,
+      status: u.status as string,
+      price: u.soldPrice ?? u.plannedPrice ?? 0,
+      financingStatus: u.buyerFinancingStatus,
+      aidScheme: u.buyerAidScheme,
+    })),
+  );
+
+  return {
+    units,
+    financingOptions: refs.financingList.map((f) => ({
+      value: f.value, label: f.label, securityFactor: f.securityFactor,
+    })),
+    aidOptions: refs.aidList.map((a) => ({ value: a.value, label: a.label })),
   };
 }
 

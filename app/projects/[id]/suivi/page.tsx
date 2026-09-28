@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectMonitoring, getProjectCashflow } from "@/server/queries";
+import { getProjectMonitoring, getProjectCashflow, getProjectBuyerFinancing } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td } from "@/components/ui";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
@@ -12,6 +12,7 @@ import { SyncToScoringButton } from "@/components/SyncToScoringButton";
 import { ProjectEventsPanel } from "@/components/ProjectEventsPanel";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
 import { DisbursementPlanCard } from "@/components/DisbursementPlanCard";
+import { BuyerFinancingPanel } from "@/components/BuyerFinancingPanel";
 import { SyncCoreBankingButton } from "@/components/SyncCoreBankingButton";
 import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
 import { getCurrentAppUser } from "@/lib/supabase/server";
@@ -71,6 +72,9 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
   // Trésorerie mensuelle reconstituée (F07) — best-effort, ne bloque pas la page.
   const cfRes = await safe(() => getProjectCashflow(id));
   const cashflow = cfRes.ok ? cfRes.data : null;
+  // Financement des acquéreurs (saisie) — best-effort.
+  const finRes = await safe(() => getProjectBuyerFinancing(id));
+  const buyerFinancing = finRes.ok ? finRes.data : null;
 
   // Timeline sérialisée pour le composant client (dates ISO).
   const timelineView = timeline.map((t) => ({
@@ -228,6 +232,17 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
             </p>
           </CardContent>
         </Card>
+      )}
+
+      {/* ===================== Financement des acquéreurs ===================== */}
+      {buyerFinancing && buyerFinancing.units.length > 0 && (
+        <BuyerFinancingPanel
+          projectId={project.id}
+          units={buyerFinancing.units}
+          financingOptions={buyerFinancing.financingOptions}
+          aidOptions={buyerFinancing.aidOptions}
+          canEdit={canWrite}
+        />
       )}
 
       {/* ===================== Journal du projet (tous événements) ===================== */}

@@ -16,6 +16,7 @@ import { getProjectMonitoring } from "@/server/queries";
 import { deriveScoringInputs, type MonitoringSignals } from "@/lib/domain/scoringSignals";
 import { deriveEventInputs } from "@/lib/domain/eventSignals";
 import { deriveMoroccoInputs, type ProgramKind } from "@/lib/domain/morocco";
+import { loadMoroccoReferentials } from "@/server/services/referentialLoader";
 import { scheduleDpd, totalOverdue, overdraftExcessPct } from "@/lib/domain/facility";
 
 /** Sauvegarde des entrées du wizard (brouillon) puis option de calcul. */
@@ -249,6 +250,8 @@ export async function syncMonitoringToInputs(projectId: string) {
     },
   });
   if (projectForMorocco) {
+    // Référentiels administrables (repli sur les défauts du code).
+    const refs = await loadMoroccoReferentials(prisma);
     const units = projectForMorocco.tranches.flatMap((t) => t.units);
     const outstandingDebt = projectForMorocco.facilities.reduce((s, f) => s + (f.drawnAmount ?? 0), 0);
     const moroccoInputs = deriveMoroccoInputs({
@@ -264,7 +267,7 @@ export async function syncMonitoringToInputs(projectId: string) {
       })),
       releaseQuotity: projectForMorocco.releaseQuotity,
       outstandingDebt,
-    });
+    }, { chain: refs.chain, financing: refs.financing, natures: refs.natures });
     for (const [key, value] of Object.entries(moroccoInputs)) {
       if (value === undefined) continue;
       values[key] = value as string | number | boolean;

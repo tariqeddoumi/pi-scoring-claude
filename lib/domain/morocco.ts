@@ -18,6 +18,9 @@
 
 import type { ConditionStage } from "./types";
 
+/** Alias exporté du jalon, pour le chargement depuis un référentiel administrable. */
+export type ConditionStageLike = ConditionStage;
+
 // ---------------------------------------------------------------------
 //  A. Chaîne d'autorisations
 // ---------------------------------------------------------------------
@@ -149,8 +152,9 @@ export interface AuthorizationAssessment {
 export function assessAuthorizations(
   kind: ProgramKind,
   statuses: AuthorizationStatusView[],
+  chain: readonly AuthorizationDef[] = AUTHORIZATION_CHAIN,
 ): AuthorizationAssessment {
-  const required = AUTHORIZATION_CHAIN.filter((a) => a.appliesTo.includes(kind));
+  const required = chain.filter((a) => a.appliesTo.includes(kind));
   const obtainedSet = new Set(statuses.filter((s) => s.obtained).map((s) => s.code));
   const obtained = required.filter((a) => obtainedSet.has(a.code)).map((a) => a.code);
   const missing = required.filter((a) => !obtainedSet.has(a.code));
@@ -252,9 +256,10 @@ export interface DrawControlResult {
 export function controlDraw(
   draw: DrawRequestView,
   auth: AuthorizationAssessment,
+  natures: ReadonlyMap<string, FacilityNatureDef> = FACILITY_NATURE_DEFS,
 ): DrawControlResult {
   const reasons: string[] = [];
-  const def = FACILITY_NATURE_DEFS.get(draw.facilityNature);
+  const def = natures.get(draw.facilityNature);
 
   if (!auth.worksDrawAllowed) {
     reasons.push(
@@ -349,13 +354,16 @@ export interface SecuredSalesResult {
  * la solidité du financement de l'acquéreur. Un lot sans engagement juridique
  * n'est jamais compté comme sécurisé.
  */
-export function computeSecuredSales(units: BuyerBackedUnitView[]): SecuredSalesResult {
+export function computeSecuredSales(
+  units: BuyerBackedUnitView[],
+  financing: ReadonlyMap<string, BuyerFinancingDef> = BUYER_FINANCING_DEFS,
+): SecuredSalesResult {
   let grossCommitted = 0;
   let securedRevenue = 0;
   let atRiskUnits = 0;
   for (const u of units) {
     if (u.contractSecured === false) continue;
-    const def = BUYER_FINANCING_DEFS.get(u.financingStatus);
+    const def = financing.get(u.financingStatus);
     const factor = def?.securityFactor ?? 0.2;
     grossCommitted += u.price;
     securedRevenue += u.price * factor;
@@ -407,9 +415,18 @@ export interface MoroccoDerivedInputs {
  * reste absente (la saisie manuelle demeure maîtresse), conformément à
  * l'invariant « une omission ne doit jamais améliorer la décision ».
  */
-export function deriveMoroccoInputs(i: MoroccoSignalsInput): MoroccoDerivedInputs {
+export interface MoroccoReferentials {
+  chain?: readonly AuthorizationDef[];
+  financing?: ReadonlyMap<string, BuyerFinancingDef>;
+  natures?: ReadonlyMap<string, FacilityNatureDef>;
+}
+
+export function deriveMoroccoInputs(
+  i: MoroccoSignalsInput,
+  refs: MoroccoReferentials = {},
+): MoroccoDerivedInputs {
   const round2 = (v: number) => Math.round(v * 100) / 100;
-  const auth = assessAuthorizations(i.kind, i.authorizations);
+  const auth = assessAuthorizations(i.kind, i.authorizations, refs.chain ?? AUTHORIZATION_CHAIN);
 
   const out: MoroccoDerivedInputs = {
     authorization_completeness_pct: auth.completenessPct,
@@ -420,7 +437,7 @@ export function deriveMoroccoInputs(i: MoroccoSignalsInput): MoroccoDerivedInput
   // financement renseigné (sinon la mesure n'aurait aucun sens).
   const withFinancing = i.units.filter((u) => !!u.financingStatus);
   if (withFinancing.length > 0) {
-    const secured = computeSecuredSales(withFinancing);
+    const secured = computeSecuredSales(withFinancing, refs.financing ?? BUYER_FINANCING_DEFS);
     const totalValue =
       i.totalSaleableValue && i.totalSaleableValue > 0
         ? i.totalSaleableValue

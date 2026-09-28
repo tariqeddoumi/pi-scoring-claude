@@ -908,6 +908,27 @@ model GuaranteeType {
   @@unique([regimeId, code])
 }
 
+// Référentiel métier ADMINISTRABLE (sans redéploiement) : chaîne d'autorisations,
+// statuts de financement acquéreur, natures de concours, dispositifs d'aide.
+// `config` porte les attributs propres à chaque famille (jalon, facteur de
+// sécurisation, exigence de situation de travaux…). À défaut d'entrée en base,
+// l'application retombe sur les valeurs par défaut du code (lib/domain/morocco.ts).
+model ReferentialItem {
+  id         String   @id @default(cuid())
+  kind       String   // AUTHORIZATION | BUYER_FINANCING | FACILITY_NATURE | BUYER_AID
+  code       String
+  label      String
+  orderIndex Int      @default(0)
+  active     Boolean  @default(true)
+  config     Json?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([kind, code])
+  @@index([kind, active])
+}
+
 // Chaîne d'autorisations d'un programme (pratique marocaine) : chaque pièce
 // conditionne un jalon (étude / octroi / signature / tirage).
 model ProjectAuthorization {
