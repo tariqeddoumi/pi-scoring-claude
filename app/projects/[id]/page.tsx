@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd, getPhaseChallenger } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd, getPhaseChallenger, getProjectAuthorizations } from "@/server/queries";
 import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { computeCompleteness } from "@/lib/domain/completeness";
 import { nextActionFor } from "@/lib/domain/nextAction";
@@ -15,6 +15,7 @@ import { OverridePanel, type OverrideRow } from "@/components/OverridePanel";
 import { WorkflowPanel } from "@/components/WorkflowPanel";
 import { CommitteeDecisionForm } from "@/components/CommitteeDecisionForm";
 import { GfaVefaCard } from "@/components/GfaVefaCard";
+import { AuthorizationsCard } from "@/components/AuthorizationsCard";
 import { FacilitiesCard } from "@/components/FacilitiesCard";
 import { RiskMetricsCard } from "@/components/RiskMetricsCard";
 import { projectEad } from "@/lib/domain/facility";
@@ -66,6 +67,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   // Challenger de pondération par phase (F11) — best-effort.
   const phaseRes = await safe(() => getPhaseChallenger(id));
   const phaseChallenger = phaseRes.ok ? phaseRes.data : null;
+  // Chaîne d'autorisations (saisie) — best-effort.
+  const authRes = await safe(() => getProjectAuthorizations(id));
+  const authData = authRes.ok ? authRes.data : null;
   const calib = await getActiveCalibration();
   const scoreHistory = await getScoringHistory(p.id);
   const counterparty = await getCounterpartyExposure(p.promoterId);
@@ -74,6 +78,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   const actor = await getCurrentAppUser();
   const currentState = (p.workflowSteps[0]?.toState ?? "DRAFT") as WorkflowStateName;
   const canValidate = !!actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE);
+  const canWrite = !!actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE);
   const overrideRows: OverrideRow[] = p.regulatoryOverrides.map((o) => ({
     id: o.id, forcedClass: o.forcedClass, engineClass: o.engineClass,
     justification: o.justification, status: o.status, active: o.active,
@@ -372,6 +377,21 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="Cash-flow">{sectionTable("cashflow")}</TabsContent>
 
         <TabsContent value="Garanties">
+          {authData && (
+            <div className="mb-4">
+              <AuthorizationsCard
+                projectId={p.id}
+                programKind={authData.programKind}
+                releaseQuotity={authData.releaseQuotity}
+                rows={authData.rows}
+                completenessPct={authData.completenessPct}
+                worksBlocked={authData.worksBlocked}
+                blockingWorksLabels={authData.blockingWorksLabels}
+                blockingDeliveryLabels={authData.blockingDeliveryLabels}
+                canEdit={canWrite}
+              />
+            </div>
+          )}
           <Card><CardHeader><CardTitle>Garanties affectées</CardTitle></CardHeader><CardContent className="p-0">
             <Table>
               <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Quotité</Th><Th>Rang</Th><Th>Anc. souffrance</Th></tr></thead>

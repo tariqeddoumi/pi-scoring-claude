@@ -31,3 +31,20 @@ CREATE TABLE IF NOT EXISTS "ProjectAuthorization" (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS "ProjectAuthorization_projectId_code_key" ON "ProjectAuthorization"("projectId", "code");
 CREATE INDEX IF NOT EXISTS "ProjectAuthorization_projectId_idx" ON "ProjectAuthorization"("projectId");
+
+-- Référentiel métier ADMINISTRABLE (sans redéploiement).
+CREATE TABLE IF NOT EXISTS "ReferentialItem" (
+    "id" TEXT NOT NULL,
+    "kind" TEXT NOT NULL,
+    "code" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "orderIndex" INTEGER NOT NULL DEFAULT 0,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "config" JSONB,
+    "note" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ReferentialItem_pkey" PRIMARY KEY ("id")
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "ReferentialItem_kind_code_key" ON "ReferentialItem"("kind","code");
+CREATE INDEX IF NOT EXISTS "ReferentialItem_kind_active_idx" ON "ReferentialItem"("kind","active");
