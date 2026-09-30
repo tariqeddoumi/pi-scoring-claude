@@ -1,0 +1,1537 @@
+{
+ "version": "v4.0.0",
+ "criticalKeys": [
+  "dpd_days",
+  "cash_coverage",
+  "project_stopped_months",
+  "construction_delay_months",
+  "equity_injected_ratio",
+  "land_permits_status",
+  "pre_sale_rate",
+  "funding_gap_pct",
+  "gross_margin_pct"
+ ],
+ "thresholds": {
+  "go": 75,
+  "watchList": 50,
+  "goWithConditions": 65
+ },
+ "domains": [
+  {
+   "code": "D1",
+   "name": "Sponsor & Gouvernance",
+   "weight": 0.25,
+   "criteria": [
+    {
+     "code": "D1C1",
+     "name": "Projets similaires livrés (5 ans)",
+     "key": "promoter_completed_projects",
+     "label": "Projets similaires livrés (5 ans)",
+     "step": "Promoteur & Gouvernance",
+     "type": "NUM",
+     "weight": 0.2,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 1 → 1",
+      "1 à < 3 → 6",
+      "≥ 3 → 10"
+     ]
+    },
+    {
+     "code": "D1C2",
+     "name": "Gearing promoteur (dettes nettes / FP)",
+     "key": "promoter_gearing",
+     "label": "Gearing promoteur (%)",
+     "step": "Promoteur & Gouvernance",
+     "type": "NUM",
+     "weight": 0.25,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 100 → 10",
+      "100 à < 150 → 6",
+      "≥ 150 → 1"
+     ]
+    },
+    {
+     "code": "D1C3",
+     "name": "Gouvernance & structure juridique",
+     "key": "governance_quality",
+     "label": "Gouvernance",
+     "step": "Promoteur & Gouvernance",
+     "type": "QUAL",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Opaque → 1",
+      "Partielle → 6",
+      "Claire / structurée → 10"
+     ]
+    },
+    {
+     "code": "D1C4",
+     "name": "Concentration mono-projet (CA projet / CA total)",
+     "key": "mono_project_concentration",
+     "label": "Concentration mono-projet (%)",
+     "step": "Promoteur & Gouvernance",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 40 → 10",
+      "40 à < 60 → 6",
+      "≥ 60 → 1"
+     ]
+    },
+    {
+     "code": "D1C5",
+     "name": "Typologie promoteur",
+     "key": "promoter_type",
+     "label": "Typologie promoteur",
+     "step": "Promoteur & Gouvernance",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Opportuniste → 2",
+      "Régional → 6",
+      "Structuré → 10"
+     ]
+    },
+    {
+     "code": "D1C6",
+     "name": "Apport effectif (injecté / prévu)",
+     "key": "equity_injected_ratio",
+     "label": "Apport effectif injecté / prévu (%)",
+     "step": "Promoteur & Gouvernance",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": true,
+     "gateStage": "SIGNATURE",
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 80 → 1",
+      "80 à < 100 → 6",
+      "≥ 100 → 10"
+     ]
+    }
+   ]
+  },
+  {
+   "code": "D2",
+   "name": "Qualité intrinsèque du projet",
+   "weight": 0.2,
+   "criteria": [
+    {
+     "code": "D2C1",
+     "name": "Foncier & autorisations",
+     "key": "land_permits_status",
+     "label": "Foncier & autorisations",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": true,
+     "gateStage": "TIRAGE",
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Titre non purgé / autorisations absentes → 1",
+      "Partielles → 6",
+      "Titre purgé + autorisations définitives → 10"
+     ]
+    },
+    {
+     "code": "D2C2",
+     "name": "Marché & positionnement",
+     "key": "market_positioning",
+     "label": "Marché & positionnement",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "QUAL",
+     "weight": 0.2,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Sur-positionné / sur-offre → 2",
+      "Correct → 6",
+      "Aligné / forte demande → 10"
+     ]
+    },
+    {
+     "code": "D2C3",
+     "name": "Complexité technique",
+     "key": "technical_complexity",
+     "label": "Complexité technique",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "QUAL",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Élevée → 2",
+      "Moyenne → 6",
+      "Standard → 10"
+     ]
+    },
+    {
+     "code": "D2C4",
+     "name": "Avancement vs planning",
+     "key": "progress_vs_plan",
+     "label": "Avancement vs planning (%)",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 80 → 1",
+      "80 à < 100 → 6",
+      "≥ 100 → 10"
+     ]
+    },
+    {
+     "code": "D2C5",
+     "name": "Litiges clients / SAV",
+     "key": "sav_litigation",
+     "label": "Litiges clients / SAV",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Élevé → 2",
+      "Moyen → 6",
+      "Faible → 10"
+     ]
+    },
+    {
+     "code": "D2C6",
+     "name": "Sensibilité macro / subvention",
+     "key": "macro_sensitivity",
+     "label": "Sensibilité macro / subvention",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Élevée → 2",
+      "Moyenne → 6",
+      "Faible → 10"
+     ]
+    },
+    {
+     "code": "D2C7",
+     "name": "Coût foncier / CA",
+     "key": "land_cost_ratio",
+     "label": "Coût foncier / CA (%)",
+     "step": "Qualité du projet (Foncier / Autorisations)",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 25 → 10",
+      "25 à < 35 → 6",
+      "≥ 35 → 1"
+     ]
+    },
+    {
+     "code": "D2C8",
+     "name": "Chaîne d'autorisations (complétude)",
+     "key": "authorization_completeness_pct",
+     "label": "Chaîne d'autorisations — complétude (%)",
+     "step": "Pratique marocaine (modèle v4)",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": "TIRAGE",
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 50 % → 1",
+      "50 à < 100 % → 6",
+      "≥ 100 % → 10"
+     ]
+    }
+   ]
+  },
+  {
+   "code": "D3",
+   "name": "Commercial & Cash-flow",
+   "weight": 0.31,
+   "criteria": [
+    {
+     "code": "D3C1",
+     "name": "Préventes sécurisées (encaissées / CA)",
+     "key": "pre_sale_rate",
+     "label": "Préventes sécurisées (%)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": true,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 25 → 1",
+      "25 à < 40 → 6",
+      "≥ 40 → 10"
+     ]
+    },
+    {
+     "code": "D3C2",
+     "name": "Ventes vs planning",
+     "key": "sales_vs_plan",
+     "label": "Ventes vs planning (%)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 80 → 1",
+      "80 à < 100 → 6",
+      "≥ 100 → 10"
+     ]
+    },
+    {
+     "code": "D3C3",
+     "name": "DSO (jours)",
+     "key": "dso_days",
+     "label": "DSO (jours)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 120 → 10",
+      "120 à < 240 → 6",
+      "≥ 240 → 1"
+     ]
+    },
+    {
+     "code": "D3C4",
+     "name": "Cash coverage (cash / échéances)",
+     "key": "cash_coverage",
+     "label": "Cash coverage (x)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.2,
+     "gate": false,
+     "gateStage": null,
+     "critical": true,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 1 → 1",
+      "1 à < 1,2 → 6",
+      "≥ 1,2 → 10"
+     ]
+    },
+    {
+     "code": "D3C5",
+     "name": "Impasse brute",
+     "key": "funding_gap_pct",
+     "label": "Impasse brute (%)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": true,
+     "family": "ECONOMIC",
+     "scale": [
+      "≤ 0 — aucune impasse → 10",
+      "> 0 à < 10 → 6",
+      "≥ 10 → 1"
+     ]
+    },
+    {
+     "code": "D3C6",
+     "name": "Rotation stock (mois)",
+     "key": "stock_rotation_months",
+     "label": "Rotation stock (mois)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 18 → 10",
+      "18 à < 30 → 6",
+      "≥ 30 → 1"
+     ]
+    },
+    {
+     "code": "D3C7",
+     "name": "Marge brute stressée (prix -10%)",
+     "key": "stressed_margin_pct",
+     "label": "Marge stressée -10% (%)",
+     "step": "Commercialisation & Cash-flow",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 10 → 1",
+      "10 à < 15 → 6",
+      "≥ 15 → 10"
+     ]
+    },
+    {
+     "code": "D3C8",
+     "name": "Ventes sécurisées (financement acquéreur)",
+     "key": "secured_sales_rate",
+     "label": "Ventes sécurisées par le financement acquéreur (%)",
+     "step": "Pratique marocaine (modèle v4)",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 25 % → 1",
+      "25 à < 40 % → 6",
+      "≥ 40 % → 10"
+     ]
+    }
+   ]
+  },
+  {
+   "code": "D4",
+   "name": "Structuration financière & LGD",
+   "weight": 0.24,
+   "criteria": [
+    {
+     "code": "D4C1",
+     "name": "Marge brute (CA - coûts directs)/CA",
+     "key": "gross_margin_pct",
+     "label": "Marge brute (%)",
+     "step": "Structuration financière & LGD",
+     "type": "NUM",
+     "weight": 0.2,
+     "gate": false,
+     "gateStage": null,
+     "critical": true,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 15 → 1",
+      "15 à < 25 → 6",
+      "≥ 25 → 10"
+     ]
+    },
+    {
+     "code": "D4C2",
+     "name": "LTC (dette / coût total)",
+     "key": "ltc",
+     "label": "LTC (%)",
+     "step": "Structuration financière & LGD",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 60 → 10",
+      "60 à < 80 → 6",
+      "≥ 80 → 1"
+     ]
+    },
+    {
+     "code": "D4C3",
+     "name": "LTV stressée (dette / valeur×0,90)",
+     "key": "ltv_stressed",
+     "label": "LTV stressée (%)",
+     "step": "Structuration financière & LGD",
+     "type": "NUM",
+     "weight": 0.2,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "GUARANTEE",
+     "scale": [
+      "< 70 → 10",
+      "70 à < 85 → 6",
+      "≥ 85 → 1"
+     ]
+    },
+    {
+     "code": "D4C4",
+     "name": "Couverture garanties réalisable",
+     "key": "guarantee_coverage",
+     "label": "Couverture garanties (%)",
+     "step": "Structuration financière & LGD",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "GUARANTEE",
+     "scale": [
+      "< 90 → 1",
+      "90 à < 120 → 6",
+      "≥ 120 → 10"
+     ]
+    },
+    {
+     "code": "D4C5",
+     "name": "Rang bancaire 1er rang",
+     "key": "first_rank",
+     "label": "Rang bancaire 1er rang",
+     "step": "Structuration financière & LGD",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "GUARANTEE",
+     "scale": [
+      "Non 1er rang → 1",
+      "1er rang → 10"
+     ]
+    },
+    {
+     "code": "D4C6",
+     "name": "Interest coverage (EBITDA / charges fin.)",
+     "key": "interest_coverage",
+     "label": "Interest coverage (x)",
+     "step": "Structuration financière & LGD",
+     "type": "NUM",
+     "weight": 0.15,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 1,5 → 1",
+      "1,5 à < 3 → 6",
+      "≥ 3 → 10"
+     ]
+    },
+    {
+     "code": "D4C7",
+     "name": "Quotité de désengagement vs équilibre",
+     "key": "release_quotity_gap_pts",
+     "label": "Quotité de désengagement − équilibre (pts)",
+     "step": "Pratique marocaine (modèle v4)",
+     "type": "NUM",
+     "weight": 0.05,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "GUARANTEE",
+     "scale": [
+      "< −10 pts → 1",
+      "−10 à < 0 pt → 6",
+      "≥ 0 pt → 10"
+     ]
+    }
+   ]
+  }
+ ],
+ "alerts": [
+  {
+   "code": "RF_ACQUEREURS_NON_FINANCES",
+   "name": "Financement acquéreur majoritairement non sécurisé",
+   "severity": "MEDIUM",
+   "malus": 10,
+   "committee": false,
+   "key": "buyers_financing_at_risk",
+   "label": "Financement acquéreur majoritairement non sécurisé",
+   "step": "Pratique marocaine (modèle v4)"
+  },
+  {
+   "code": "RF_AUTORISATION_TIRAGE",
+   "name": "Autorisation indispensable aux travaux non levée",
+   "severity": "HIGH",
+   "malus": 15,
+   "committee": false,
+   "key": "works_authorization_blocked",
+   "label": "Autorisation indispensable aux travaux non levée",
+   "step": "Pratique marocaine (modèle v4)"
+  },
+  {
+   "code": "RF_CASH_LT_ECH",
+   "name": "Cash coverage < 1,0x",
+   "severity": "HIGH",
+   "malus": 25,
+   "committee": false,
+   "key": "cash_coverage",
+   "label": "Cash coverage (x)",
+   "step": "Commercialisation & Cash-flow"
+  },
+  {
+   "code": "RF_DIVISION_RISQUES",
+   "name": "Limite de division des risques dépassée",
+   "severity": "MEDIUM",
+   "malus": 0,
+   "committee": true,
+   "key": "division_limit_breach",
+   "label": "Limite de division des risques dépassée",
+   "step": "Pratique marocaine (modèle v4)"
+  },
+  {
+   "code": "RF_FP_NEG",
+   "name": "Fonds propres négatifs",
+   "severity": "HIGH",
+   "malus": 25,
+   "committee": false,
+   "key": "equity_negative",
+   "label": "Fonds propres négatifs",
+   "step": "Structuration financière & LGD"
+  },
+  {
+   "code": "RF_IMPASSE_PERSIST",
+   "name": "Impasse de trésorerie persistante",
+   "severity": "HIGH",
+   "malus": 20,
+   "committee": false,
+   "key": "funding_gap_persistent",
+   "label": "Impasse persistante",
+   "step": "Commercialisation & Cash-flow"
+  },
+  {
+   "code": "RF_IMPAYE_90J",
+   "name": "Impayé ≥ 90 jours (souffrance automatique)",
+   "severity": "BLOCKING",
+   "malus": 0,
+   "committee": false,
+   "key": "dpd_days",
+   "label": "Retard de paiement (jours)",
+   "step": "Vulnérabilité réglementaire BAM"
+  },
+  {
+   "code": "RF_LITIGE",
+   "name": "Action en justice / contentieux (CTX)",
+   "severity": "BLOCKING",
+   "malus": 0,
+   "committee": false,
+   "key": "legal_exposure",
+   "label": "Exposition contentieuse",
+   "step": "Vulnérabilité réglementaire BAM"
+  },
+  {
+   "code": "RF_MAINLEVEE_SOUS_TARIFEE",
+   "name": "Prix de mainlevée sous-tarifé",
+   "severity": "HIGH",
+   "malus": 15,
+   "committee": true,
+   "key": "release_underpriced",
+   "label": "Prix de mainlevée sous-tarifé",
+   "step": "Pratique marocaine (modèle v4)"
+  },
+  {
+   "code": "RF_NON_1ER_RANG",
+   "name": "Garantie non 1er rang",
+   "severity": "MEDIUM",
+   "malus": 25,
+   "committee": false,
+   "key": "first_rank",
+   "label": "Rang bancaire 1er rang",
+   "step": "Structuration financière & LGD"
+  },
+  {
+   "code": "RF_PROJET_ARRET_12M",
+   "name": "Projet à l'arrêt ≥ 12 mois (souffrance automatique)",
+   "severity": "BLOCKING",
+   "malus": 0,
+   "committee": false,
+   "key": "project_stopped_months",
+   "label": "Arrêt du projet (mois)",
+   "step": "Vulnérabilité réglementaire BAM"
+  },
+  {
+   "code": "RF_RESTRUCT",
+   "name": "Première restructuration",
+   "severity": "MEDIUM",
+   "malus": 25,
+   "committee": true,
+   "key": "restructured",
+   "label": "Restructuré",
+   "step": "Vulnérabilité réglementaire BAM"
+  },
+  {
+   "code": "RF_RETARD_6M",
+   "name": "Retard chantier ≥ 6 mois",
+   "severity": "HIGH",
+   "malus": 15,
+   "committee": true,
+   "key": "construction_delay_months",
+   "label": "Retard chantier (mois)",
+   "step": "Vulnérabilité réglementaire BAM"
+  }
+ ],
+ "steps": [
+  {
+   "title": "Promoteur & Gouvernance",
+   "keys": [
+    {
+     "key": "promoter_completed_projects",
+     "label": "Projets similaires livrés (5 ans)",
+     "type": "number"
+    },
+    {
+     "key": "promoter_gearing",
+     "label": "Gearing promoteur (%)",
+     "type": "number"
+    },
+    {
+     "key": "governance_quality",
+     "label": "Gouvernance",
+     "type": "select"
+    },
+    {
+     "key": "mono_project_concentration",
+     "label": "Concentration mono-projet (%)",
+     "type": "number"
+    },
+    {
+     "key": "promoter_type",
+     "label": "Typologie promoteur",
+     "type": "select"
+    },
+    {
+     "key": "equity_injected_ratio",
+     "label": "Apport effectif injecté / prévu (%)",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "title": "Qualité du projet (Foncier / Autorisations)",
+   "keys": [
+    {
+     "key": "land_permits_status",
+     "label": "Foncier & autorisations",
+     "type": "select"
+    },
+    {
+     "key": "market_positioning",
+     "label": "Marché & positionnement",
+     "type": "select"
+    },
+    {
+     "key": "technical_complexity",
+     "label": "Complexité technique",
+     "type": "select"
+    },
+    {
+     "key": "progress_vs_plan",
+     "label": "Avancement vs planning (%)",
+     "type": "number"
+    },
+    {
+     "key": "sav_litigation",
+     "label": "Litiges clients / SAV",
+     "type": "select"
+    },
+    {
+     "key": "macro_sensitivity",
+     "label": "Sensibilité macro / subvention",
+     "type": "select"
+    },
+    {
+     "key": "land_cost_ratio",
+     "label": "Coût foncier / CA (%)",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "title": "Commercialisation & Cash-flow",
+   "keys": [
+    {
+     "key": "pre_sale_rate",
+     "label": "Préventes sécurisées (%)",
+     "type": "number"
+    },
+    {
+     "key": "sales_vs_plan",
+     "label": "Ventes vs planning (%)",
+     "type": "number"
+    },
+    {
+     "key": "dso_days",
+     "label": "DSO (jours)",
+     "type": "number"
+    },
+    {
+     "key": "cash_coverage",
+     "label": "Cash coverage (x)",
+     "type": "number"
+    },
+    {
+     "key": "funding_gap_pct",
+     "label": "Impasse brute (%)",
+     "type": "number"
+    },
+    {
+     "key": "stock_rotation_months",
+     "label": "Rotation stock (mois)",
+     "type": "number"
+    },
+    {
+     "key": "stressed_margin_pct",
+     "label": "Marge stressée -10% (%)",
+     "type": "number"
+    },
+    {
+     "key": "funding_gap_persistent",
+     "label": "Impasse persistante",
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "title": "Structuration financière & LGD",
+   "keys": [
+    {
+     "key": "gross_margin_pct",
+     "label": "Marge brute (%)",
+     "type": "number"
+    },
+    {
+     "key": "ltc",
+     "label": "LTC (%)",
+     "type": "number"
+    },
+    {
+     "key": "ltv_stressed",
+     "label": "LTV stressée (%)",
+     "type": "number"
+    },
+    {
+     "key": "guarantee_coverage",
+     "label": "Couverture garanties (%)",
+     "type": "number"
+    },
+    {
+     "key": "first_rank",
+     "label": "Rang bancaire 1er rang",
+     "type": "select"
+    },
+    {
+     "key": "interest_coverage",
+     "label": "Interest coverage (x)",
+     "type": "number"
+    },
+    {
+     "key": "equity_negative",
+     "label": "Fonds propres négatifs",
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "title": "Pratique marocaine (modèle v4)",
+   "keys": [
+    {
+     "key": "authorization_completeness_pct",
+     "label": "Chaîne d'autorisations — complétude (%)",
+     "type": "number"
+    },
+    {
+     "key": "works_authorization_blocked",
+     "label": "Autorisation indispensable aux travaux non levée",
+     "type": "bool"
+    },
+    {
+     "key": "secured_sales_rate",
+     "label": "Ventes sécurisées par le financement acquéreur (%)",
+     "type": "number"
+    },
+    {
+     "key": "buyers_financing_at_risk",
+     "label": "Financement acquéreur majoritairement non sécurisé",
+     "type": "bool"
+    },
+    {
+     "key": "release_quotity_gap_pts",
+     "label": "Quotité de désengagement − équilibre (pts)",
+     "type": "number"
+    },
+    {
+     "key": "release_underpriced",
+     "label": "Prix de mainlevée sous-tarifé",
+     "type": "bool"
+    },
+    {
+     "key": "division_limit_breach",
+     "label": "Limite de division des risques dépassée",
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "title": "Crédit & dépassements (1/W art.10-12)",
+   "keys": [
+    {
+     "key": "credit_type",
+     "label": "Type de crédit",
+     "type": "select"
+    },
+    {
+     "key": "days_after_maturity",
+     "label": "Impayé in fine après terme (jours)",
+     "type": "number"
+    },
+    {
+     "key": "bullet_unpaid",
+     "label": "Principal in fine non remboursé",
+     "type": "bool"
+    },
+    {
+     "key": "authorized_amount",
+     "label": "Montant autorisé (MAD)",
+     "type": "number"
+    },
+    {
+     "key": "overdraft_excess_pct",
+     "label": "Dépassement d'autorisation (%)",
+     "type": "number"
+    },
+    {
+     "key": "overdraft_excess_days",
+     "label": "Ancienneté du dépassement (jours)",
+     "type": "number"
+    },
+    {
+     "key": "debit_no_credit_movements_days",
+     "label": "Compte débiteur sans mouvements créditeurs (jours)",
+     "type": "number"
+    }
+   ]
+  },
+  {
+   "title": "Vulnérabilité réglementaire BAM",
+   "keys": [
+    {
+     "key": "dpd_days",
+     "label": "Retard de paiement (jours)",
+     "type": "number"
+    },
+    {
+     "key": "unreliable_construction_progress_info",
+     "label": "Information d'avancement non fiable / absente",
+     "type": "bool"
+    },
+    {
+     "key": "unreliable_commercialization_info",
+     "label": "Information de commercialisation non fiable / absente",
+     "type": "bool"
+    },
+    {
+     "key": "construction_delay_months",
+     "label": "Retard chantier (mois)",
+     "type": "number"
+    },
+    {
+     "key": "project_stopped_months",
+     "label": "Arrêt du projet (mois)",
+     "type": "number"
+    },
+    {
+     "key": "restructured",
+     "label": "Restructuré",
+     "type": "select"
+    },
+    {
+     "key": "restructuring_count",
+     "label": "Nombre de restructurations",
+     "type": "number"
+    },
+    {
+     "key": "restructuring_deferral_months",
+     "label": "Différé accordé (mois)",
+     "type": "number"
+    },
+    {
+     "key": "legal_exposure",
+     "label": "Exposition contentieuse",
+     "type": "select"
+    },
+    {
+     "key": "commercialization_below_50_1y",
+     "label": "Commercialisation < 50% à 1 an",
+     "type": "bool"
+    },
+    {
+     "key": "construction_delay_over_1y",
+     "label": "Retard construction > 1 an",
+     "type": "bool"
+    },
+    {
+     "key": "project_stopped_over_1y",
+     "label": "Projet à l'arrêt > 1 an",
+     "type": "bool"
+    },
+    {
+     "key": "finished_2y_no_sales",
+     "label": "Finalisé ≥ 2 ans, ventes figées",
+     "type": "bool"
+    },
+    {
+     "key": "judicial_recovery",
+     "label": "Redressement judiciaire",
+     "type": "bool"
+    },
+    {
+     "key": "debt_equity_ratio",
+     "label": "Dettes financières / FP (x)",
+     "type": "number"
+    },
+    {
+     "key": "revenue_drop_pct",
+     "label": "Baisse du CA sur 1 an (%)",
+     "type": "number"
+    }
+   ]
+  }
+ ],
+ "events": [
+  {
+   "value": "deblocage",
+   "label": "Déblocage / tirage",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "remboursement",
+   "label": "Remboursement",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "incident_paiement",
+   "label": "Incident de paiement (impayé)",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": "1/W art.5.1 ; 19/G art.6"
+  },
+  {
+   "value": "regularisation",
+   "label": "Régularisation d'impayé",
+   "severity": "INFO",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "avenant_credit",
+   "label": "Avenant au crédit",
+   "severity": "WARNING",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": ""
+  },
+  {
+   "value": "restructuration",
+   "label": "Restructuration de la créance",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": "1/W art.17-31"
+  },
+  {
+   "value": "consolidation_dette",
+   "label": "Consolidation de dettes",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": "1/W art.17-31"
+  },
+  {
+   "value": "reprofilage_dette",
+   "label": "Reprofilage / rééchelonnement de la dette",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": "1/W art.17-31"
+  },
+  {
+   "value": "arret_chantier",
+   "label": "Arrêt de chantier",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": "1/W art.12.7"
+  },
+  {
+   "value": "reprise_chantier",
+   "label": "Reprise de chantier",
+   "severity": "INFO",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "probleme_administratif",
+   "label": "Problème administratif / blocage autorisation",
+   "severity": "WARNING",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": "1/W art.5.3"
+  },
+  {
+   "value": "obtention_autorisation",
+   "label": "Obtention d'autorisation / permis",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "reception_travaux",
+   "label": "Réception des travaux (tranche/projet)",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "lancement_commercialisation",
+   "label": "Lancement de la commercialisation",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "evenement_commercial",
+   "label": "Événement commercial notable",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "modification_lot",
+   "label": "Modification d'un lot / d'une tranche (programme, prix, phasage)",
+   "severity": "WARNING",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": "Politique interne — reprofilage du financement"
+  },
+  {
+   "value": "changement_garantie",
+   "label": "Constitution / changement de garantie",
+   "severity": "WARNING",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": ""
+  },
+  {
+   "value": "mainlevee",
+   "label": "Mainlevée (totale/partielle)",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  },
+  {
+   "value": "litige",
+   "label": "Litige / action en justice",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": "1/W art.12.8"
+  },
+  {
+   "value": "saisie_atd",
+   "label": "Saisie-arrêt / ATD",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": "1/W art.5.1"
+  },
+  {
+   "value": "redressement_judiciaire",
+   "label": "Redressement / liquidation judiciaire",
+   "severity": "CRITICAL",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": "1/W art.11.6"
+  },
+  {
+   "value": "info_negative_bureau",
+   "label": "Information négative Crédit Bureau / SCIP",
+   "severity": "WARNING",
+   "affectsScoring": true,
+   "committee": false,
+   "regRef": "1/W art.5.2"
+  },
+  {
+   "value": "changement_actionnariat",
+   "label": "Changement d'actionnariat / gouvernance",
+   "severity": "WARNING",
+   "affectsScoring": true,
+   "committee": true,
+   "regRef": ""
+  },
+  {
+   "value": "autre",
+   "label": "Autre événement",
+   "severity": "INFO",
+   "affectsScoring": false,
+   "committee": false,
+   "regRef": ""
+  }
+ ],
+ "review": {
+  "SAIN": 365,
+  "SENSIBLE": 90,
+  "PRE_DOUTEUX": 30,
+  "DOUTEUX": 30,
+  "COMPROMIS": 30,
+  "CTX": 30
+ },
+ "auth": [
+  {
+   "code": "note_renseignement",
+   "label": "Note de renseignements urbanistiques",
+   "stage": "ETUDE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": false,
+   "regRef": "Urbanisme — agence urbaine"
+  },
+  {
+   "code": "titre_foncier_purge",
+   "label": "Titre foncier purgé (sans inscription contraignante)",
+   "stage": "OCTROI",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": true,
+   "blocksDelivery": false,
+   "regRef": "ANCFCC — conservation foncière"
+  },
+  {
+   "code": "autorisation_lotir",
+   "label": "Autorisation de lotir",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "MIXTE"
+   ],
+   "blocksWorks": true,
+   "blocksDelivery": false,
+   "regRef": "Loi 25-90 relative aux lotissements"
+  },
+  {
+   "code": "permis_construire",
+   "label": "Permis de construire",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": true,
+   "blocksDelivery": false,
+   "regRef": "Loi 12-90 relative à l'urbanisme"
+  },
+  {
+   "code": "autorisation_morcellement",
+   "label": "Autorisation de morcellement / éclatement du titre",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": false,
+   "regRef": "ANCFCC — morcellement du titre mère"
+  },
+  {
+   "code": "reception_provisoire",
+   "label": "Réception provisoire des travaux",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": true,
+   "regRef": ""
+  },
+  {
+   "code": "permis_habiter",
+   "label": "Permis d'habiter",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": true,
+   "regRef": "Loi 12-90"
+  },
+  {
+   "code": "certificat_conformite",
+   "label": "Certificat de conformité",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": true,
+   "regRef": ""
+  },
+  {
+   "code": "reception_definitive",
+   "label": "Réception définitive",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": false,
+   "regRef": ""
+  }
+ ],
+ "financing": [
+  {
+   "code": "fonds_propres",
+   "label": "Autofinancement (fonds propres acquéreur)",
+   "factor": 1
+  },
+  {
+   "code": "credit_debloque",
+   "label": "Crédit acquéreur débloqué",
+   "factor": 1
+  },
+  {
+   "code": "credit_accorde",
+   "label": "Crédit accordé (accord de principe / offre)",
+   "factor": 0.8
+  },
+  {
+   "code": "credit_en_cours",
+   "label": "Demande de crédit en cours d'instruction",
+   "factor": 0.4
+  },
+  {
+   "code": "credit_refuse",
+   "label": "Crédit refusé",
+   "factor": 0
+  },
+  {
+   "code": "non_instruit",
+   "label": "Financement non instruit",
+   "factor": 0.2
+  }
+ ],
+ "workflow": [
+  {
+   "state": "DRAFT",
+   "label": "Brouillon (chargé d'affaires)",
+   "transitions": [
+    "Soumettre"
+   ]
+  },
+  {
+   "state": "SUBMITTED",
+   "label": "Soumis",
+   "transitions": [
+    "Prendre pour avis (DCA)",
+    "Prendre en contre-étude",
+    "Rejeter"
+   ]
+  },
+  {
+   "state": "BRANCH_REVIEW",
+   "label": "Avis directeur de centre d'affaires",
+   "transitions": [
+    "Avis favorable — transmettre à la contre-étude",
+    "Renvoyer au chargé d'affaires",
+    "Avis défavorable — rejeter"
+   ]
+  },
+  {
+   "state": "ANALYST_REVIEW",
+   "label": "Contre-étude (Risque)",
+   "transitions": [
+    "Score validé — transmettre à la décision",
+    "Renvoyer au chargé d'affaires",
+    "Rejeter"
+   ]
+  },
+  {
+   "state": "MANAGER_VALIDATION",
+   "label": "Décision (délégation)",
+   "transitions": [
+    "Passer en comité",
+    "Approuver",
+    "Rejeter"
+   ]
+  },
+  {
+   "state": "COMMITTEE",
+   "label": "Comité de crédit",
+   "transitions": [
+    "Décision favorable",
+    "Décision défavorable"
+   ]
+  },
+  {
+   "state": "APPROVED",
+   "label": "Approuvé",
+   "transitions": []
+  },
+  {
+   "state": "REJECTED",
+   "label": "Rejeté",
+   "transitions": [
+    "Reprendre le dossier"
+   ]
+  }
+ ],
+ "roles": [
+  {
+   "role": "ADMIN",
+   "label": "Administrateur",
+   "perms": [
+    "project.read",
+    "project.write",
+    "scoring.run",
+    "scoring.validate",
+    "workflow.endorse",
+    "model.read",
+    "model.write",
+    "regime.read",
+    "regime.write",
+    "import.run",
+    "export.run",
+    "audit.read",
+    "admin.users"
+   ]
+  },
+  {
+   "role": "RISK_ANALYST",
+   "label": "Contre-étude (Risque)",
+   "perms": [
+    "project.read",
+    "project.write",
+    "scoring.run",
+    "model.read",
+    "regime.read",
+    "import.run",
+    "export.run",
+    "audit.read"
+   ]
+  },
+  {
+   "role": "RELATIONSHIP_MANAGER",
+   "label": "Chargé d'affaires",
+   "perms": [
+    "project.read",
+    "project.write",
+    "scoring.run",
+    "export.run"
+   ]
+  },
+  {
+   "role": "BRANCH_DIRECTOR",
+   "label": "Directeur de centre d'affaires",
+   "perms": [
+    "project.read",
+    "project.write",
+    "scoring.run",
+    "workflow.endorse",
+    "export.run"
+   ]
+  },
+  {
+   "role": "REGIONAL_DIRECTOR",
+   "label": "Directeur de région",
+   "perms": [
+    "project.read",
+    "scoring.run",
+    "scoring.validate",
+    "workflow.endorse",
+    "model.read",
+    "regime.read",
+    "export.run",
+    "audit.read"
+   ]
+  },
+  {
+   "role": "MANAGER",
+   "label": "Comité de crédit",
+   "perms": [
+    "project.read",
+    "scoring.run",
+    "scoring.validate",
+    "model.read",
+    "regime.read",
+    "export.run",
+    "audit.read"
+   ]
+  },
+  {
+   "role": "AUDITOR",
+   "label": "Auditeur",
+   "perms": [
+    "project.read",
+    "model.read",
+    "regime.read",
+    "audit.read",
+    "export.run"
+   ]
+  }
+ ]
+}
