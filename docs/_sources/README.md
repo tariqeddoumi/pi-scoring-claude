@@ -5,6 +5,7 @@
 | `export_guide_data.ts` | Exporte du code et du modèle publié les faits du guide : libellés d'écran, étapes du wizard, barèmes, données décisionnelles, alertes, événements, périodicités de revue, circuit et rôles → `guide_data.json` |
 | `guide_content.js` | Contenu métier : pièces justificatives (P01 à P33), méthode de calcul et points d'attention pour chaque donnée |
 | `gen_guide_docx.js` | Génère `docs/Guide_Charge_Affaires_Promotion_Immobiliere.docx` |
+| `gen_grilles_docx.js` | Génère `docs/Grilles_Scoring_PI_PROMOTION_v4.docx` directement depuis `prisma/models/PI_PROMOTION_v4.0.0.json` (grilles détaillées, alertes, coefficients, seuils, exemple chiffré vérifié contre les cas de référence) |
 | `gen_guide_pptx.js` | Génère `docs/Guide_Charge_Affaires_Formation.pptx` |
 
 Régénération (depuis la racine du dépôt) :
