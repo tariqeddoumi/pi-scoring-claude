@@ -4,20 +4,26 @@ Option Explicit
 ' modScoring - scoring d'un dossier, d'un portefeuille, autotests, journal
 '=====================================================================
 
-' Lit le resultat courant du classeur. Tableau (0..12) :
+' Lit le resultat courant du classeur. Tableau (0..14) :
 ' 0 score final, 1 decision, 2 classe interne, 3 malus D5, 4 dossier complet (Oui/Non),
-' 5..8 scores D1..D4, 9 score eco., 10 note suretes, 11 PD indicative, 12 alertes.
+' 5..8 scores D1..D4, 9 score eco., 10 note suretes, 11 PD indicative, 12 alertes,
+' 13 donnees decisionnelles manquantes (libelles), 14 conditions a lever (jalon).
 Public Function LireResultat() As Variant
     Dim d As Variant
     Dim complet As String
     d = NomPlage("Res_DomScores").Value2
-    If NomPlage("Res_Incomplet").Value2 = True Then complet = "Non" Else complet = "Oui"
+    If EstVrai(NomPlage("Res_Incomplet").Value2) Then
+        complet = "Non"
+    Else
+        complet = "Oui"
+    End If
     LireResultat = Array( _
         NomPlage("Res_ScoreFinal").Value2, NomPlage("Res_Decision").Value2, _
         NomPlage("Res_ClasseInt").Value2, NomPlage("Res_Malus").Value2, complet, _
         d(1, 1), d(2, 1), d(3, 1), d(4, 1), _
         NomPlage("Res_ScoreEco").Value2, NomPlage("Res_GuarScore").Value2, _
-        NomPlage("Res_PD").Value2, NomPlage("Res_Alertes").Value2)
+        NomPlage("Res_PD").Value2, NomPlage("Res_Alertes").Value2, _
+        NomPlage("Res_Manquantes").Value2, NomPlage("Res_Conditions").Value2)
 End Function
 
 ' Copie une ligne (Portefeuille ou Tests) vers l'onglet Saisie.
@@ -67,9 +73,15 @@ Public Sub ScorerDossier()
     res = LireResultat()
     Journaliser CStr(ThisWorkbook.Worksheets("Saisie").Range("C4").Value), res
     ThisWorkbook.Worksheets("Resultat").Activate
-    MsgBox "Decision : " & res(1) & vbCrLf & "Score final : " & Format(res(0), "0.00") & vbCrLf & _
-           "Classe interne : " & res(2) & vbCrLf & "Malus D5 : " & res(3) & vbCrLf & _
-           "Dossier complet : " & res(4), vbInformation, "Scoring - modele " & CStr(NomPlage("P_Version").Value)
+    Dim txt As String
+    txt = "Decision : " & res(1) & vbCrLf & "Score final : " & Format(res(0), "0.00") & vbCrLf & _
+          "Classe interne : " & res(2) & vbCrLf & "Malus D5 : " & res(3) & vbCrLf & _
+          "Dossier complet : " & res(4)
+    If Len(CStr(res(13))) > 0 Then txt = txt & vbCrLf & vbCrLf & "Donnees manquantes : " & res(13)
+    If Len(CStr(res(14))) > 0 Then txt = txt & vbCrLf & vbCrLf & "Conditions : " & res(14)
+    If Len(CStr(res(12))) > 0 Then txt = txt & vbCrLf & vbCrLf & "Alertes : " & res(12)
+    If EstVrai(NomPlage("Res_Comite").Value2) Then txt = txt & vbCrLf & vbCrLf & "Retour en comite requis."
+    MsgBox txt, vbInformation, "Scoring - modele " & CStr(NomPlage("P_Version").Value)
 End Sub
 
 ' Score toutes les lignes de l'onglet Portefeuille. L'onglet Saisie est restaure a la fin.
@@ -100,7 +112,7 @@ Public Sub ScorerPortefeuille()
             ChargerLigne ws, r, nCles
             Application.Calculate
             res = LireResultat()
-            For i = 0 To 12
+            For i = 0 To 14
                 ws.Cells(r, colRes + i).Value = res(i)
             Next i
             Journaliser CStr(ws.Cells(r, 1).Value), res
@@ -210,3 +222,27 @@ Private Function Egal(ByVal a As Variant, ByVal b As Variant, ByVal tol As Doubl
         Egal = (CStr(a) = CStr(b))
     End If
 End Function
+
+' Nouveau dossier : vide la saisie et les calculateurs apres confirmation.
+' Les parametres de l'etablissement (fonds propres, limites) sont conserves.
+Public Sub NouveauDossier()
+    If MsgBox("Vider le dossier en cours (saisie et calculateurs) ?" & vbCrLf & _
+              "Le journal et les parametres ne sont pas modifies.", vbYesNo + vbQuestion, "Nouveau dossier") <> vbYes Then Exit Sub
+    ViderDossier
+    ThisWorkbook.Worksheets("Saisie").Activate
+    ThisWorkbook.Worksheets("Saisie").Range("C4").Select
+End Sub
+
+' Vide la saisie (identite + donnees) et les zones de saisie des calculateurs.
+Public Sub ViderDossier()
+    Dim noms As Variant
+    Dim i As Long
+    ThisWorkbook.Worksheets("Saisie").Range("C4:C9").ClearContents
+    NomPlage("In_Saisie").ClearContents
+    noms = Array("Calc_Auth", "Calc_Valeur", "Calc_Lots", "Calc_Mainlevee", "Calc_Concours", "Calc_Arret")
+    For i = LBound(noms) To UBound(noms)
+        NomPlage(CStr(noms(i))).ClearContents
+    Next i
+    ThisWorkbook.Worksheets("Calculateurs").Range("B5").Value = "CONSTRUCTION"
+    Application.Calculate
+End Sub

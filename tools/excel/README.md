@@ -1,25 +1,33 @@
-# Outil Excel / VBA — Modèle PI_PROMOTION v4.0.0
+# Outil Excel / VBA — Modèle PI_PROMOTION v4.0.0 (outil 4.1)
 
-Classeur qui implémente le modèle de scoring de promotion immobilière v4.0.0 (mêmes
-critères, barèmes, alertes, seuils et invariants de décision que l'application).
+Classeur qui implémente le modèle de scoring de promotion immobilière publié
+(mêmes critères, barèmes, alertes, seuils et invariants de décision que
+l'application).
 
 ## Contenu
 
 | Fichier | Rôle |
 |---|---|
-| `PI_Promotion_Modele_v4.xlsx` | Classeur : Saisie, Resultat, Calculateurs, Portefeuille, Stress, Tests, Historique, paramètres `P_*` |
-| `vba/*.bas` | 5 modules VBA (outils, scoring, stress, validation du modèle, installation des boutons) |
-| `build_workbook.py` | Régénère le classeur depuis les JSON de `_build/` |
-| `_build/*.json` | Modèle v4 extrait de la base (`meta`, `criteres`, `baremes`, `alertes`) et 20 cas de référence (`vectors.json`) issus du moteur de production |
-| `_build/gen_vectors.ts` | Génère `vectors.json` avec le moteur TypeScript de production |
-| `_build/verify.py`, `verify_calc.py` | Recalculent le classeur avec la bibliothèque Python `formulas` et le comparent aux cas de référence |
+| `PI_Promotion_Modele_v4.xlsx` | Classeur : Saisie (avec un dossier d'exemple), Resultat, Calculateurs, Portefeuille, Stress, Tests, Historique, paramètres `P_*` |
+| `vba/*.bas` | 5 modules VBA (outils, scoring, stress, gouvernance du modèle, installation des boutons) — ASCII, sans bibliothèque externe |
+| `build_workbook.py` | Régénère le classeur |
+| `_build/gen_vectors.ts` | 20 cas de référence calculés par le moteur de production → `vectors.json` |
+| `_build/gen_stress.ts` | Stress attendu sur le dossier d'exemple, moteur de l'application → `stress_expected.json` |
+| `_build/gen_refs.ts` | Référentiels métier exportés du code de l'application → `referentiels.json` |
+| `_build/libreoffice/` | Banc de vérification : recalcul des formules et exécution réelle des macros sous LibreOffice |
+| `_build/verify.py` | Vérification alternative des formules (bibliothèque Python `formulas`) |
+
+**Sources uniques** : le modèle est lu dans `prisma/models/PI_PROMOTION_v4.0.0.json`
+(instantané exact de la base de production) ; les référentiels et les cas de
+référence sont produits par le code de l'application. Aucune donnée n'est
+recopiée à la main.
 
 ## Architecture
 
-Le moteur est **dans les formules Excel** (SUMPRODUCT, noms définis). Le VBA ne fait
-qu'orchestrer : charger un dossier, recalculer, lire le résultat, boucler, journaliser.
-Il n'y a donc qu'un seul moteur, et barèmes, poids, seuils et alertes se modifient dans
-les onglets `P_*` sans toucher au code.
+Le moteur est **dans les formules Excel**. Le VBA ne fait qu'orchestrer :
+charger un dossier, recalculer, lire le résultat, boucler, journaliser. Il n'y a
+donc qu'un seul moteur ; barèmes, poids, seuils et alertes se modifient dans les
+onglets `P_*` sans toucher au code.
 
 ## Installation (2 minutes)
 
@@ -33,39 +41,69 @@ les onglets `P_*` sans toucher au code.
 
 ## Utilisation
 
-- **Saisie** : cellules jaunes (colonne E). Booléens : « Oui » / « Non ». Une valeur saisie prime sur une valeur calculée.
-- **Calculateurs** : autorisations, ventes sécurisées par financement acquéreur, mainlevée vs équilibre, division des risques. Ils alimentent 7 clés dérivées (colonne F de Saisie).
-- **Resultat** : score, décision, classe interne, PD indicative, détail par domaine, critère et alerte.
-- **Portefeuille** : une ligne par dossier → `ScorerPortefeuille`.
-- **Stress** : 7 scénarios modifiables → `LancerStress`.
-- **P_\*** : paramètres du modèle (bleus). Après modification : `ValiderModele`, puis `SnapshotModele`.
+- **Nouveau dossier** : le classeur s'ouvre sur un dossier d'exemple. Le bouton
+  « Nouveau dossier » (`NouveauDossier`) vide la saisie et les calculateurs ; les
+  paramètres de l'établissement (fonds propres, limites) sont conservés.
+- **Saisie** : cellules jaunes. Un champ **vide = donnée absente** (jamais 0, jamais
+  « Non »). Booléens : « Oui » / « Non ». Une valeur saisie prime sur une valeur calculée.
+- **Calculateurs** : A. chaîne d'autorisations · B. ventes sécurisées par le financement
+  de l'acquéreur · C. mainlevée / quotité de désengagement · D. division des risques ·
+  E. arrêt de chantier. Ils alimentent 8 données dérivées (colonne F de la Saisie).
+- **Resultat** : score, décision, classe interne, notes économique et de sûretés,
+  **données décisionnelles manquantes en clair**, **conditions à lever avec leur jalon**,
+  alertes, retour en comité, détail par critère et par domaine.
+- **Portefeuille** : une ligne par dossier → `ScorerPortefeuille` (15 colonnes de résultat,
+  dont données manquantes et conditions).
+- **Stress** : 7 scénarios → `LancerStress` (mêmes chocs que l'application).
+- **P_\*** : paramètres du modèle. Après modification : `ValiderModele`, puis `SnapshotModele`.
 
-## Vérifications réalisées
+## Vérifications (outil 4.1)
 
-- 20 cas de référence issus du moteur de production recalculés par un moteur de formules indépendant : **20/20 identiques** (score, décision, classe, malus, dossier incomplet, scores de domaine, notes économique et sûretés ; tolérance 0,02).
-- Calculateurs vérifiés sur un scénario de valeurs connues.
-- Contrôles de `ValiderModele` rejoués : 0 erreur.
-- Code VBA : analyse statique (noms, feuilles, clés, blocs, boutons).
+| Contrôle | Résultat |
+|---|---|
+| Formules recalculées par **LibreOffice Calc** sur les 20 cas de référence du moteur de production | 20 / 20 |
+| Macros **exécutées** sous LibreOffice (mode de compatibilité VBA) : autotests, dossier, portefeuille, stress, validation, listes, instantané, nouveau dossier, boutons | toutes exécutées sans erreur |
+| Autotests lancés par la macro | 20 / 20 |
+| Stress VBA comparé au moteur de stress de l'application (7 scénarios) | identique |
+| `ValiderModele` | 0 erreur |
 
-## Limites — à lire
+Corrections apportées au VBA de l'outil 4.0 grâce à cette exécution réelle :
 
-- **Les macros VBA n'ont pas été exécutées dans Excel** (pas d'Excel dans l'environnement de construction). Si la compilation VBA signale une erreur, corriger d'abord ce point ; les autotests sont la première étape de recette.
+- `modStress` ne compilait pas sous LibreOffice (instructions `If … Then … Else …`
+  sur une seule ligne avec appels de procédure) → réécrites en blocs `If … End If` ;
+- la recherche des clés reposait sur `Application.Match`, dont le comportement
+  « non trouvé » varie selon le tableur → remplacée par une recherche explicite ;
+- la lecture de l'indicateur « dossier incomplet » comparait une cellule à `True`
+  (-1) → lecture robuste des valeurs logiques (`EstVrai`) ;
+- `SnapshotModele` dépendait de la constante `xlOpenXMLWorkbook` → valeur explicite ;
+- l'installation des boutons s'arrêtait au premier échec → chaque bouton est
+  tenté et les échecs éventuels sont listés.
+
+**Limite restante** : LibreOffice n'est pas Excel. Les macros ont été exécutées
+sous LibreOffice ; la première exécution sous Excel (étapes 3 et 6 de
+l'installation) reste la recette de référence.
+
+## Limites d'usage
+
 - Le livrable est un `.xlsx` + des `.bas` : un `.xlsm` ne peut pas être fabriqué de façon fiable hors d'Excel.
-- La **classe réglementaire BAM est saisie** ; seule une suggestion fondée sur le retard de paiement (90 / 180 / 360 j) est affichée. Déclencheurs qualitatifs de la circulaire 1/W, restructuration et contagion de groupe : hors classeur.
-- Absents du classeur : trésorerie mensuelle, LGD par waterfall, IFRS 9, workflow d'approbation, historique multi-utilisateurs.
-- La **PD est indicative** (non calibrée) : ne pas l'utiliser pour des pertes attendues ni du capital.
-- Un classeur est individuel : le journal est un aide-mémoire, pas une piste d'audit opposable.
-- **Divergence** : à chaque nouvelle version publiée du modèle, régénérer le classeur ; l'application reste la source de vérité.
+- La **classe réglementaire BAM est saisie** ; seule une suggestion fondée sur le retard de paiement est affichée.
+- Absents du classeur : trésorerie mensuelle, LGD, IFRS 9, workflow d'approbation, historique multi-utilisateurs.
+- La **PD est indicative** (non calibrée).
+- Classeur individuel : le journal est un aide-mémoire, pas une piste d'audit opposable. La décision officielle se prend dans l'application.
+- À chaque nouvelle version publiée du modèle, régénérer le classeur.
 
 ## Régénération
 
 ```bash
+# depuis la racine du dépôt
+npx tsx tools/excel/_build/gen_refs.ts      # référentiels métier
+npx tsx tools/excel/_build/gen_vectors.ts   # 20 cas de référence
+npx tsx tools/excel/_build/gen_stress.ts    # stress attendu (dossier d'exemple)
+python3 tools/excel/build_workbook.py       # écrit tools/excel/PI_Promotion_Modele_v4.xlsx
+
+# vérification sous LibreOffice (paquets libreoffice-calc et python3-uno)
 cd tools/excel
-# 1. (re)générer les 20 cas de référence avec le moteur de production, depuis la racine du dépôt
-npx tsx tools/excel/_build/gen_vectors.ts
-# 2. reconstruire le classeur (écrit dans _build/)
-python3 build_workbook.py
-# 3. vérifier (nécessite : pip install formulas openpyxl xlsxwriter)
-python3 _build/verify.py
-cp _build/PI_Promotion_Modele_v4.xlsx PI_Promotion_Modele_v4.xlsx
+python3 _build/libreoffice/verifier_formules.py PI_Promotion_Modele_v4.xlsx _build/vectors.json
+cp PI_Promotion_Modele_v4.xlsx /tmp/essai.xlsx   # les macros modifient le fichier chargé
+LO_VISIBLE=1 python3 _build/libreoffice/verifier_macros.py /tmp/essai.xlsx vba _build/stress_expected.json
 ```

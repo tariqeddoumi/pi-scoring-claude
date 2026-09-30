@@ -81,6 +81,7 @@ export interface ModelSnapshot {
   modelCode: string;
   modelName?: string;
   version: string;
+  publishedAt?: string;
   scoreScale: number | null;
   bamCoefficients: unknown;
   decisionThresholds: unknown;

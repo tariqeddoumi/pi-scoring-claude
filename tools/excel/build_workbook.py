@@ -1,15 +1,49 @@
 # -*- coding: utf-8 -*-
-"""Génère le classeur Excel du modèle PI_PROMOTION à partir des fichiers JSON
-extraits de la base (source unique). Le moteur est en FORMULES Excel."""
-import json, sys, xlsxwriter
+"""Génère le classeur Excel du modèle PI_PROMOTION.
 
-D = "_build/"
-meta = json.load(open(D + "meta.json", encoding="utf-8"))
-crit = json.load(open(D + "criteres.json", encoding="utf-8"))
-bar = json.load(open(D + "baremes.json", encoding="utf-8"))
-alr = json.load(open(D + "alertes.json", encoding="utf-8"))
+Sources uniques (aucune copie manuelle) :
+  - modèle : prisma/models/PI_PROMOTION_v4.0.0.json (instantané exact de la base) ;
+  - référentiels métier : _build/referentiels.json (exporté du code de
+    l'application par _build/gen_refs.ts) ;
+  - cas de référence : _build/vectors.json (moteur de production, _build/gen_vectors.ts).
+Le moteur est en FORMULES Excel ; le VBA n'orchestre que."""
+import json, os, sys, xlsxwriter
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+D = os.path.join(HERE, "_build") + os.sep
+SNAPSHOT = os.path.join(HERE, "..", "..", "prisma", "models", "PI_PROMOTION_v4.0.0.json")
+TOOL_VERSION = "4.1"
+TOOL_DATE = "30/09/2026"
+
+
+def from_snapshot(path):
+    """Convertit l'instantané du modèle en listes compactes utilisées par le générateur."""
+    m = json.load(open(path, encoding="utf-8"))
+    meta = {"version": m["version"], "scoreScale": m["scoreScale"], "publishedAt": m.get("publishedAt", ""),
+            "thresholds": m["decisionThresholds"], "bam": m["bamCoefficients"],
+            "segments": m["segmentAdjustments"], "zones": m["zoneAdjustments"],
+            "domains": [[d["code"], d["name"], d["weight"]] for d in sorted(m["domains"], key=lambda d: d["orderIndex"])]}
+    crit, bar = [], []
+    for d in sorted(m["domains"], key=lambda d: d["orderIndex"]):
+        for c in sorted(d["criteria"], key=lambda c: c["orderIndex"]):
+            crit.append([d["code"], c["code"], c["name"], c["type"], c["weight"], c["inputKey"], c["isGate"],
+                         c["gateThreshold"], c["gateStage"], c["family"], bool(c["critical"]), c["unit"], c["orderIndex"]])
+            for o in sorted(c["options"], key=lambda o: o["orderIndex"]):
+                bar.append([c["code"], "MODALITE", o["orderIndex"], None, None, o["value"], o["label"], o["score"]])
+            for r in sorted(c["ranges"], key=lambda r: r["orderIndex"]):
+                bar.append([c["code"], "PLAGE", r["orderIndex"], r["minIncl"], r["maxExcl"], None, r["label"], r["score"]])
+    alr = []
+    for f in sorted(m["redFlags"], key=lambda f: f["code"]):
+        cl = f["rule"]["clause"]
+        alr.append([f["code"], f["name"], f["severity"], f["malus"], ",".join(f["impactDomains"]), cl["key"], cl["op"],
+                    cl.get("value"), bool(f["requiresCommittee"]), f["effect"], f["regRef"], f["mitigable"]])
+    return meta, crit, bar, alr
+
+
+meta, crit, bar, alr = from_snapshot(SNAPSHOT)
+refs = json.load(open(D + "referentiels.json", encoding="utf-8"))
 vec = json.load(open(D + "vectors.json", encoding="utf-8"))
-OUT = sys.argv[1] if len(sys.argv) > 1 else "PI_Promotion_Modele_v4.xlsx"
+OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "PI_Promotion_Modele_v4.xlsx")
 
 wb = xlsxwriter.Workbook(OUT)
 NAVY, BLUE, LIGHT, GREY = "#1F3864", "#2E5496", "#D9E1F2", "#F2F2F2"
@@ -40,7 +74,8 @@ F_GR = f(bg_color="#D9D9D9", font_color="#404040")
 # ---------------------------------------------------------------- listes clés
 crit_keys = [(c[5], c[2], c[3], c[0]) for c in crit]                       # (key,label,type,dom)
 DERIVED = ["authorization_completeness_pct", "works_authorization_blocked", "secured_sales_rate",
-           "buyers_financing_at_risk", "release_quotity_gap_pts", "release_underpriced", "division_limit_breach"]
+           "buyers_financing_at_risk", "release_quotity_gap_pts", "release_underpriced", "division_limit_breach",
+           "project_stopped_months"]
 extra = [("dpd_days", "Retard de paiement (jours)", "NUM"), ("construction_delay_months", "Retard chantier (mois)", "NUM"),
          ("project_stopped_months", "Arrêt du projet (mois)", "NUM"), ("restructured", "Créance restructurée", "QUAL"),
          ("legal_exposure", "Exposition juridique", "QUAL"), ("equity_negative", "Fonds propres négatifs", "BOOL"),
@@ -226,15 +261,8 @@ wsF.write("A1", "Référentiels métier (pratique marocaine)", F_TITLE)
 wsF.write("A2", "Équivalents des référentiels administrables de l'application. Modifiables ici sans macro.", F_SUB)
 wsF.write("A4", "Chaîne d'autorisations", F_HS)
 wsF.write_row("A5", ["Code", "Pièce", "Jalon", "Lotissement", "Construction", "Mixte", "Bloque travaux", "Bloque livraison", "Référence"], F_H)
-AUTH = [("note_renseignement", "Note de renseignements urbanistiques", "ETUDE", 1, 1, 1, 0, 0, "Urbanisme — agence urbaine"),
-        ("titre_foncier_purge", "Titre foncier purgé (sans inscription contraignante)", "OCTROI", 1, 1, 1, 1, 0, "ANCFCC — conservation foncière"),
-        ("autorisation_lotir", "Autorisation de lotir", "TIRAGE", 1, 0, 1, 1, 0, "Loi 25-90 relative aux lotissements"),
-        ("permis_construire", "Permis de construire", "TIRAGE", 0, 1, 1, 1, 0, "Loi 12-90 relative à l'urbanisme"),
-        ("autorisation_morcellement", "Autorisation de morcellement / éclatement du titre", "TIRAGE", 1, 0, 1, 0, 0, "ANCFCC — morcellement du titre mère"),
-        ("reception_provisoire", "Réception provisoire des travaux", "TIRAGE", 1, 1, 1, 0, 1, ""),
-        ("permis_habiter", "Permis d'habiter", "TIRAGE", 0, 1, 1, 0, 1, "Loi 12-90"),
-        ("certificat_conformite", "Certificat de conformité", "TIRAGE", 1, 1, 1, 0, 1, ""),
-        ("reception_definitive", "Réception définitive", "TIRAGE", 1, 1, 1, 0, 0, "")]
+AUTH = [(a["code"], a["label"], a["stage"], "LOTISSEMENT" in a["appliesTo"], "CONSTRUCTION" in a["appliesTo"],
+         "MIXTE" in a["appliesTo"], a["blocksWorks"], a["blocksDelivery"], a["regRef"]) for a in refs["auth"]]
 for i in range(24):
     r = 6 + i - 1
     if i < len(AUTH):
@@ -247,9 +275,7 @@ for i in range(24):
 wb.define_name("R_AuthCodes", "=P_Referentiels!$A$6:$A$29"); wb.define_name("R_AuthTbl", "=P_Referentiels!$A$6:$I$29")
 wsF.write("A32", "Financement de l'acquéreur", F_HS)
 wsF.write_row("A33", ["Code", "Libellé", "Facteur de sécurisation"], F_H)
-FIN = [("fonds_propres", "Autofinancement (fonds propres acquéreur)", 1.0), ("credit_debloque", "Crédit acquéreur débloqué", 1.0),
-       ("credit_accorde", "Crédit accordé (accord de principe / offre)", 0.8), ("credit_en_cours", "Demande de crédit en cours d'instruction", 0.4),
-       ("non_instruit", "Financement non instruit", 0.2), ("credit_refuse", "Crédit refusé", 0.0)]
+FIN = [(x["code"], x["label"], x["factor"]) for x in refs["financing"]]
 for i in range(12):
     r = 34 + i - 1
     if i < len(FIN):
@@ -259,12 +285,11 @@ for i in range(12):
 wb.define_name("R_FinCodes", "=P_Referentiels!$A$34:$A$45"); wb.define_name("R_FinTbl", "=P_Referentiels!$A$34:$C$45")
 wsF.write("A48", "Natures de concours (information — contrôle de tirage)", F_HS)
 wsF.write_row("A49", ["Code", "Libellé", "Situation de travaux visée requise"], F_H)
-NAT = [("avance_foncier", "Avance sur acquisition du foncier", "Non"), ("credit_accompagnement", "Crédit d'accompagnement / de construction", "Oui"),
-       ("credit_amenagement", "Crédit d'aménagement (lotissement / VRD)", "Oui"), ("credit_in_fine", "Crédit in fine", "Non"), ("caution_marche", "Caution / engagement par signature", "Non")]
+NAT = [(x["code"], x["label"], "Oui" if x["requiresWorksCertificate"] else "Non") for x in refs["natures"]]
 for i, n in enumerate(NAT):
     for j in range(3): wsF.write(49 + i, j, n[j], F_P)
 wsF.write("A56", "Dispositifs d'aide à l'acquéreur (information)", F_HS)
-for i, (c, l) in enumerate([("aide_directe_logement", "Aide directe au logement"), ("fogarim", "FOGARIM"), ("damane_assakane", "Damane Assakane"), ("aucun", "Aucun dispositif")]):
+for i, (c, l) in enumerate([(x["code"], x["label"]) for x in refs["aid"]]):
     wsF.write(56 + i, 0, c, F_P); wsF.write(56 + i, 1, l, F_P)
 
 # ============================================================ Saisie
@@ -311,6 +336,17 @@ wb.define_name("In_Cles", f"=Saisie!$B${S0}:$B${SL}"); wb.define_name("In_Saisie
 wb.define_name("In_Calc", f"=Saisie!$F${S0}:$F${SL}"); wb.define_name("In_Retenue", f"=Saisie!$G${S0}:$G${SL}")
 SROW = {k: S0 + i for i, (_, k, _, _) in enumerate(KEYS)}
 wsS.freeze_panes(12, 3)
+# Dossier d'exemple (cas de référence T06 : trésorerie tendue → alerte et décision
+# sous conditions). À remplacer : bouton « Nouveau dossier » (macro NouveauDossier).
+EXEMPLE = next(v for v in vec if v["id"] == "T06")
+for a, v in (("C4", "EXEMPLE"), ("C5", "Dossier d'exemple — à remplacer (bouton « Nouveau dossier »)"),
+             ("C6", "moyen_haut"), ("C7", "casa_centre"), ("C8", "SAIN"), ("C9", "CONSTRUCTION")):
+    wsS.write(a, v, F_IN)
+for k, r in SROW.items():
+    v = EXEMPLE["inputs"].get(k)
+    if v is None: continue
+    if isinstance(v, bool): v = "Oui" if v else "Non"
+    wsS.write(f"E{r}", v, F_IN)
 
 # ============================================================ Calculateurs
 wsC.set_column("A:A", 30); wsC.set_column("B:B", 50); wsC.set_column("C:H", 15)
@@ -384,6 +420,19 @@ wsC.write("A118", "Ratio exposition / fonds propres (%)", F_L); wsC.write_formul
 wsC.write("A119", "Marge disponible avant limite (MAD)", F_L); wsC.write_formula("C119", '=IF(C117="","",MAX(0,C117-C116))', f(bg_color=GREY, border=1, num_format="#,##0"))
 wsC.write("A120", "Limite dépassée ?", F_L); wsC.write_formula("C120", '=IF(AND(ISNUMBER(C100),N(C100)>0),C116>C117,"")', F_C)
 wsC.write("A121", "Grand risque ?", F_L); wsC.write_formula("C121", '=IF(AND(ISNUMBER(C100),N(C100)>0),C116>=C100*C102/100,"")', F_C)
+# --- E arrêt de chantier (même règle que le journal d'événements de l'application)
+wsC.write("A124", "E. Arrêt de chantier", F_HS)
+wsC.write("A125", "Date de début de l'arrêt en cours", F_L); wsC.write_blank("C125", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy"))
+wsC.write("A126", "Date de reprise effective (vide si toujours à l'arrêt)", F_L); wsC.write_blank("C126", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy"))
+wsC.write("A127", "Date d'évaluation (vide = aujourd'hui)", F_L); wsC.write_blank("C127", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy"))
+wsC.write("A128", "Durée de l'arrêt en cours (mois)", F_L)
+wsC.write_formula("C128", '=IF(OR(NOT(ISNUMBER(C125)),ISNUMBER(C126)),"",MAX(0,INT((IF(ISNUMBER(C127),C127,TODAY())-C125)/30.4375)))', F_CN)
+wsC.write("D128", "≥ 12 mois : alerte bloquante « projet à l'arrêt » (souffrance automatique). Un arrêt terminé n'alimente plus la donnée.", f(font_size=8, italic=True))
+# Plages de saisie des calculateurs (vidées par la macro NouveauDossier ;
+# les paramètres de l'établissement — fonds propres, limites — sont conservés).
+for nm, ref_ in [("Calc_Auth", "$D$8:$D$31"), ("Calc_Valeur", "$C$39"), ("Calc_Lots", "$A$42:$D$81"),
+                 ("Calc_Mainlevee", "$C$90:$C$92"), ("Calc_Concours", "$A$105:$E$114"), ("Calc_Arret", "$C$125:$C$127")]:
+    wb.define_name(nm, f"=Calculateurs!{ref_}")
 # ---- branchement des valeurs dérivées dans Saisie!F
 def setF(key, formula):
     wsS.write_formula(f"F{SROW[key]}", formula, F_C)
@@ -394,13 +443,14 @@ setF("buyers_financing_at_risk", '=IF(Calculateurs!C86="","",IF(Calculateurs!C86
 setF("release_quotity_gap_pts", '=Calculateurs!C94')
 setF("release_underpriced", '=IF(Calculateurs!C95="","",IF(Calculateurs!C95,"Oui","Non"))')
 setF("division_limit_breach", '=IF(Calculateurs!C120="","",IF(Calculateurs!C120,"Oui","Non"))')
+setF("project_stopped_months", '=Calculateurs!C128')
 
 # ============================================================ Resultat (MOTEUR)
 DOM_H, DOM1, DOMN = 31, 32, 39
 SEED = 43; CR1 = 44; CRN = CR1 + NCR - 1          # 44..103
 AL_H = 107; AL1 = 108; ALN = AL1 + NAL - 1        # 108..137
 wsR.hide_gridlines(2)
-wsR.set_column("A:A", 30); wsR.set_column("B:B", 36); wsR.set_column("C:C", 40); wsR.set_column("D:D", 26)
+wsR.set_column("A:A", 30); wsR.set_column("B:B", 36); wsR.set_column("C:C", 48); wsR.set_column("D:D", 26)
 wsR.set_column("E:E", 14); wsR.set_column("F:S", 12); wsR.set_column("G:G", 40)
 wsR.write("A1", "Résultat du scoring", F_TITLE)
 wsR.write_formula("A2", '="Modèle "&P_Version&" — "&Saisie!C4&" "&Saisie!C5', F_SUB)
@@ -423,14 +473,16 @@ summ = [
  (21, "Alerte bloquante (souffrance automatique)", '=IF(E21,"Oui","Non")', F_C),
  (22, "Défaut avéré (classe réglementaire)", '=IF(E22,"Oui","Non")', F_C),
  (23, "Dossier incomplet (donnée décisionnelle absente)", '=IF(E23,"Oui","Non")', F_C),
- (24, "Données décisionnelles manquantes", f'=IF(C6=C6,SUBSTITUTE(M{ALN},",",", "),"")', F_C),
- (25, "Critères éliminatoires franchis", f'=S{CRN}', F_C),
+ (24, "Données décisionnelles manquantes", f'=IF(C6=C6,O{ALN},"")', F_C),
+ (25, "Conditions (critères éliminatoires franchis)", f'=S{CRN}', F_C),
  (26, "Alertes déclenchées / non exclues", f'=N{ALN}', F_C),
  (27, "Retour en comité requis", '=IF(E27,"Oui","Non")', F_C),
  (28, "Classe bloquante (contentieux)", '=IF(E28,"Oui","Non")', F_C),
 ]
+F_CW = f(bg_color=GREY, border=1, text_wrap=True, valign="top")
 for r, lab_, fm, fmt in summ:
-    wsR.write(f"A{r}", lab_, F_L); wsR.write_formula(f"C{r}", fm, fmt)
+    wsR.write(f"A{r}", lab_, F_L); wsR.write_formula(f"C{r}", fm, F_CW if r in (24, 25, 26) else fmt)
+for r in (24, 25, 26): wsR.set_row(r - 1, 32)
 wsR.set_row(5, 30); wsR.set_row(6, 24); wsR.set_row(7, 24)
 raw = {
  19: '=OR(AND(Saisie!C6<>"",ISNA(MATCH(Saisie!C6,P_SegCodes,0))),AND(Saisie!C7<>"",ISNA(MATCH(Saisie!C7,P_ZoneCodes,0))))',
@@ -467,7 +519,7 @@ for i in range(8):
     wsR.write_formula(f"G{r}", f'=ROUND(C{r}*F{r},2)', F_CN)
 # détail critères
 wsR.write("A41", "Détail par critère (explicabilité)", F_HS)
-hdr = ["Code", "Domaine", "Critère", "Clé", "Valeur", "Note /10", "Poids", "Pondéré", "Gate franchi", "Donnée critique manquante", "Note plancher", "Nb correspondances", "Note brute", "Famille", "Type", "Poids domaine", "Poids effectif", "Cumul manquantes", "Cumul gates"]
+hdr = ["Code", "Domaine", "Critère", "Clé", "Valeur", "Note /10", "Poids", "Pondéré", "Gate franchi", "Donnée critique manquante", "Note plancher", "Nb correspondances", "Note brute", "Famille", "Type", "Poids domaine", "Poids effectif", "Cumul manquantes", "Cumul conditions", "Libellés manquants"]
 wsR.write_row(f"A{AL_H - 65}", hdr, F_H)   # row 42
 wsR.write(f"A{SEED}", "(clé additionnelle)", F_C)
 wsR.write_formula(f"D{SEED}", "=P_ExtraKey", F_C)
@@ -475,6 +527,7 @@ wsR.write_formula(f"E{SEED}", f'=IF(D{SEED}="","",IFERROR(INDEX(In_Retenue,MATCH
 wsR.write_formula(f"J{SEED}", f'=AND(D{SEED}<>"",E{SEED}="")', F_C)
 wsR.write_formula(f"R{SEED}", f'=IF(J{SEED},D{SEED},"")', F_C)
 wsR.write_formula(f"S{SEED}", '=""', F_C)
+wsR.write_formula(f"T{SEED}", f'=IF(J{SEED},IFERROR(INDEX(Saisie!$C$13:$C$92,MATCH(D{SEED},In_Cles,0)),D{SEED}),"")', F_C)
 BA = "P_Baremes!$A$5:$A$400"; BB = "P_Baremes!$B$5:$B$400"; BC = "P_Baremes!$C$5:$C$400"
 BD = "P_Baremes!$D$5:$D$400"; BE = "P_Baremes!$E$5:$E$400"; BH = "P_Baremes!$H$5:$H$400"
 for i in range(NCR):
@@ -500,14 +553,17 @@ for i in range(NCR):
     W("P", f'=IF($A{r}="",0,IFERROR(INDEX(P_DomPoids,MATCH($B{r},P_DomCodes,0)),0))', F_CN)
     W("Q", f'=P{r}*G{r}', F_CN)
     W("R", f'=IF(J{r},IF(ISNUMBER(SEARCH(","&D{r}&",",","&R{p}&",")),R{p},R{p}&IF(R{p}="","",",")&D{r}),R{p})')
-    W("S", f'=IF(I{r},S{p}&IF(S{p}="","",", ")&A{r},S{p})')
+    # Conditions (F15) : chaque critère éliminatoire franchi devient une condition nommée,
+    # avec son jalon de levée (même libellé que l'application).
+    W("S", f'=IF(I{r},S{p}&IF(S{p}="","","; ")&"Lever la condition « "&C{r}&" » avant "&SUBSTITUTE(LOWER(IF(P_Criteres!I{s}="","TIRAGE",P_Criteres!I{s})),"etude","étude"),S{p})')
+    W("T", f'=IF(AND(J{r},NOT(ISNUMBER(SEARCH(","&D{r}&",",","&R{p}&",")))),T{p}&IF(T{p}="","",", ")&IFERROR(INDEX(Saisie!$C$13:$C$92,MATCH(D{r},In_Cles,0)),D{r}),T{p})')
 # détail alertes
 wsR.write("A106", "Détail des alertes D5", F_HS)
-wsR.write_row(f"A{AL_H}", ["Code", "Libellé", "Sévérité", "Opérateur", "Clé", "Valeur", "Valeur réf.", "Déclenchée", "Non exclue (donnée absente)", "Malus appliqué", "Comité", "Clé numérique manquante", "Cumul manquantes", "Cumul alertes"], F_H)
+wsR.write_row(f"A{AL_H}", ["Code", "Libellé", "Sévérité", "Opérateur", "Clé", "Valeur", "Valeur réf.", "Déclenchée", "Non exclue (donnée absente)", "Malus appliqué", "Comité", "Clé numérique manquante", "Cumul manquantes", "Cumul alertes", "Libellés manquants"], F_H)
 for i in range(NAL):
     r = AL1 + i; s = AL0 + i
     W = lambda col, fm, fmt=F_C: wsR.write_formula(f"{col}{r}", fm, fmt)
-    pm = f"R{CRN}" if i == 0 else f"M{r-1}"; pn = '""' if i == 0 else f"N{r-1}"
+    pm = f"R{CRN}" if i == 0 else f"M{r-1}"; pn = '""' if i == 0 else f"N{r-1}"; po = f"T{CRN}" if i == 0 else f"O{r-1}"
     W("A", f'=IF(P_Alertes!A{s}="","",P_Alertes!A{s})')
     W("B", f'=IF($A{r}="","",P_Alertes!B{s})')
     W("C", f'=IF($A{r}="","",P_Alertes!C{s})')
@@ -522,6 +578,7 @@ for i in range(NAL):
     W("K", f'=IF($A{r}="",FALSE,AND(OR(H{r},I{r}),P_Alertes!I{s}="Oui"))')
     W("M", f'=IF(L{r},IF(ISNUMBER(SEARCH(","&E{r}&",",","&{pm}&",")),{pm},{pm}&IF({pm}="","",",")&E{r}),{pm})')
     W("N", f'=IF(OR(H{r},I{r}),{pn}&IF({pn}="","",", ")&A{r},{pn})')
+    W("O", f'=IF(AND(L{r},NOT(ISNUMBER(SEARCH(","&E{r}&",",","&{pm}&",")))),{po}&IF({po}="","",", ")&IFERROR(INDEX(Saisie!$C$13:$C$92,MATCH(E{r},In_Cles,0)),E{r}),{po})')
 # mise en forme conditionnelle
 wsR.conditional_format("C7", {"type": "cell", "criteria": "==", "value": '"GO"', "format": F_OK})
 wsR.conditional_format("C7", {"type": "cell", "criteria": "==", "value": '"GO_WITH_CONDITIONS"', "format": f(bg_color="#E2EFDA", font_color="#375623")})
@@ -533,12 +590,12 @@ wsR.conditional_format(f"I{CR1}:J{CRN}", {"type": "cell", "criteria": "==", "val
 wsR.freeze_panes(4, 0)
 for nm, cell_ in [("Res_ScoreFinal", "C6"), ("Res_Decision", "C7"), ("Res_ClasseInt", "C8"), ("Res_PD", "C9"), ("Res_ScoreEco", "C10"),
                   ("Res_Adj", "C11"), ("Res_Malus", "C12"), ("Res_EcoScore", "C15"), ("Res_GuarScore", "C16"), ("Res_Incomplet", "E23"),
-                  ("Res_Manquantes", "C24"), ("Res_Alertes", "C26"), ("Res_Comite", "E27")]:
+                  ("Res_Manquantes", "C24"), ("Res_Conditions", "C25"), ("Res_Alertes", "C26"), ("Res_Comite", "E27")]:
     wb.define_name(nm, f"=Resultat!${cell_[0]}${cell_[1:]}")
 wb.define_name("Res_DomCodes", f"=Resultat!$A${DOM1}:$A${DOMN}"); wb.define_name("Res_DomScores", f"=Resultat!$C${DOM1}:$C${DOMN}")
 
 # ============================================================ résultats batch / tests
-RES_COLS = ["Score final", "Décision", "Classe interne", "Malus D5", "Dossier complet", "D1", "D2", "D3", "D4", "Score éco.", "Note sûretés", "PD indicative", "Alertes"]
+RES_COLS = ["Score final", "Décision", "Classe interne", "Malus D5", "Dossier complet", "D1", "D2", "D3", "D4", "Score éco.", "Note sûretés", "PD indicative", "Alertes", "Données manquantes", "Conditions"]
 def conv(v):
     if v is None: return None
     if isinstance(v, bool): return "Oui" if v else "Non"
@@ -562,7 +619,7 @@ for i, vi in enumerate([0, 2, 11]):
         val = conv(v["inputs"].get(k))
         if val is None: wsP.write_blank(r, 5 + j, None, F_IN)
         else: wsP.write(r, 5 + j, val, F_IN)
-wsP.set_column("A:A", 14); wsP.set_column("B:B", 36); wsP.set_column("C:E", 14); wsP.set_column(5, 5 + NK - 1, 13); wsP.set_column(5 + NK, 5 + NK + 12, 14)
+wsP.set_column("A:A", 14); wsP.set_column("B:B", 36); wsP.set_column("C:E", 14); wsP.set_column(5, 5 + NK - 1, 13); wsP.set_column(5 + NK, 5 + NK + len(RES_COLS) - 1, 14)
 wsP.freeze_panes(4, 2)
 wsP.data_validation(f"C{PR0}:C{PRN}", {"validate": "list", "source": "=P_SegCodes", "ignore_blank": True, "error_type": "warning"})
 wsP.data_validation(f"D{PR0}:D{PRN}", {"validate": "list", "source": "=P_ZoneCodes", "ignore_blank": True, "error_type": "warning"})
@@ -616,28 +673,30 @@ wsH.set_column("A:A", 20); wsH.set_column("B:D", 22); wsH.set_column("E:I", 16)
 # ============================================================ LisezMoi
 wsL.hide_gridlines(2); wsL.set_column("A:A", 3); wsL.set_column("B:B", 30); wsL.set_column("C:C", 110)
 wsL.write("B1", "Outil de scoring — Promotion immobilière", F_TITLE)
-wsL.write_formula("B2", '="Modèle PI_PROMOTION "&P_Version&" — publié le "&P_Date', F_SUB)
+wsL.write_formula("B2", f'="Modèle PI_PROMOTION "&P_Version&" — publié le "&P_Date&" · outil {TOOL_VERSION} ({TOOL_DATE})"', F_SUB)
 rows = [
- ("À quoi sert ce classeur", "Calculer le score, la décision et la classe interne d'un dossier de promotion immobilière selon le modèle PI_PROMOTION v4.0.0, hors de l'application : simulation, comité, agence, dépannage. Il reproduit le moteur de production (vérifié sur 20 cas de référence)."),
- ("Principe", "Le MOTEUR est en formules Excel (onglet Resultat) : chaque note est traçable cellule par cellule et les barèmes se modifient sans code. Le VBA (fichiers .bas fournis) AUTOMATISE : scoring de portefeuille, stress test, validation du modèle, autotests, journal, export PDF."),
- ("1. Renseigner un dossier", "Onglet Saisie : segment, zone, classe réglementaire BAM, puis les données (cellules jaunes). Les données dérivées (autorisations, ventes sécurisées, mainlevée, division des risques) peuvent être calculées dans l'onglet Calculateurs ; une valeur saisie prime."),
- ("2. Lire le résultat", "Onglet Resultat : score final, décision, classe interne, malus, alertes, détail par critère et par domaine. Une donnée décisionnelle absente donne « DOSSIER_INCOMPLET » — jamais un meilleur score."),
- ("3. Automatiser (VBA)", "Alt+F11 → Fichier → Importer un fichier → sélectionner les 5 fichiers .bas du dossier « vba ». Puis exécuter InstallerBoutons (une seule fois) et enregistrer le classeur au format .xlsm."),
- ("4. Vérifier", "Exécuter ExecuterAutotests : compare les résultats du classeur à 20 cas de référence issus du moteur de production. Exécuter ValiderModele après toute modification des paramètres."),
+ ("À quoi sert ce classeur", "Calculer le score, la décision et la classe interne d'un dossier de promotion immobilière selon le modèle publié, hors de l'application : simulation, préparation de comité, agence, dépannage, formation. Il reproduit le moteur de production (vérifié sur 20 cas de référence)."),
+ ("Principe", "Le MOTEUR est en formules Excel (onglet Resultat) : chaque note est traçable cellule par cellule et les barèmes se modifient sans code. Le VBA (fichiers .bas fournis) AUTOMATISE : nouveau dossier, scoring de portefeuille, stress test, validation du modèle, autotests, journal, export PDF."),
+ ("1. Nouveau dossier", "Le classeur s'ouvre sur un dossier d'EXEMPLE. Bouton « Nouveau dossier » (macro NouveauDossier) : vide la saisie et les calculateurs — les paramètres de l'établissement (fonds propres, limites) sont conservés."),
+ ("2. Renseigner le dossier", "Onglet Saisie : référence, nom, segment, zone, classe réglementaire BAM, puis les données (cellules jaunes). Un champ laissé VIDE = donnée absente : jamais 0, jamais « Non ». Les données dérivées (autorisations, ventes sécurisées, mainlevée, division des risques, arrêt de chantier) se calculent dans l'onglet Calculateurs ; une valeur saisie prime."),
+ ("3. Lire le résultat", "Onglet Resultat : score final, décision, classe interne, notes économique et de sûretés, données décisionnelles manquantes (en clair), conditions à lever avec leur jalon, alertes, retour en comité, détail par critère et par domaine."),
+ ("4. Automatiser (VBA)", "Alt+F11 → Fichier → Importer un fichier → sélectionner les 5 fichiers .bas du dossier « vba ». Débogage → Compiler VBAProject. Puis exécuter InstallerBoutons (une seule fois) et enregistrer au format .xlsm."),
+ ("5. Vérifier", "Exécuter ExecuterAutotests : attendu « 20 / 20 cas conformes ». Exécuter ValiderModele après toute modification des paramètres."),
  ("Invariants de décision", "Donnée manquante ≠ amélioration (note plancher ; alerte « non exclue » si sa donnée numérique manque) · Défaut avéré → NO_GO · Classe non renseignée → dossier incomplet · Aucun malus pour la division des risques (retour en comité)."),
  ("Ce que le classeur ne fait pas", "Classification BAM complète (déclencheurs qualitatifs 1/W, restructuration, effet de groupe) : la classe est saisie ; seule une suggestion fondée sur le retard est affichée. Trésorerie mensuelle, LGD, IFRS 9, workflow d'approbation, historisation multi-utilisateurs : dans l'application."),
- ("Limites d'usage", "Classeur individuel : pas de contrôle d'accès ni de piste d'audit opposable. La PD affichée est INDICATIVE et non calibrée : ne pas l'utiliser pour des pertes attendues ou du capital. Les grilles par phase et l'effet des coefficients territoriaux sont des challengers, pas la décision."),
- ("Paramétrage", "Onglets P_* (bleus) : critères, barèmes, alertes, ajustements, référentiels, seuils. Modifier = ValiderModele + nouvelle version (macro SnapshotModele) + information du propriétaire du modèle. La version de référence reste celle de l'application."),
- ("Compatibilité", "Excel 2010 ou plus récent (Windows), Excel pour Mac pour les formules. Les macros n'utilisent pas de bibliothèque externe. Aucun contenu actif n'est intégré au fichier .xlsx fourni."),
+ ("Limites d'usage", "Classeur individuel : pas de contrôle d'accès ni de piste d'audit opposable. La décision officielle se prend dans l'application. La PD affichée est INDICATIVE et non calibrée. Les grilles par phase et l'effet des coefficients territoriaux sont des challengers."),
+ ("Paramétrage", "Onglets P_* (bleus) : critères, barèmes, alertes, ajustements, référentiels, seuils. Modifier = ValiderModele + SnapshotModele + information du propriétaire du modèle. La version de référence reste celle de l'application."),
+ ("Version de l'outil", f"Outil {TOOL_VERSION} du {TOOL_DATE} — modèle, référentiels et cas de référence lus depuis les sources de l'application. Nouveautés : dossier d'exemple et bouton « Nouveau dossier », données manquantes en clair, conditions avec jalon, calculateur d'arrêt de chantier, macros fiabilisées (exécutées de bout en bout sous tableur)."),
 ]
 for i, (a, b) in enumerate(rows):
     r = 4 + i
     wsL.write(f"B{r}", a, F_WB); wsL.write(f"C{r}", b, F_W); wsL.set_row(r - 1, 48)
-wsL.write("B16", "Onglets", F_HS); wsL.write("C16", "", F_HS)
-tabs = [("Saisie", "Données du dossier"), ("Resultat", "Moteur de calcul et restitution"), ("Calculateurs", "Autorisations, ventes sécurisées, mainlevée, division des risques"),
+TR = 4 + len(rows) + 1
+wsL.write(f"B{TR}", "Onglets", F_HS); wsL.write(f"C{TR}", "", F_HS)
+tabs = [("Saisie", "Données du dossier"), ("Resultat", "Moteur de calcul et restitution"), ("Calculateurs", "Autorisations, ventes sécurisées, mainlevée, division des risques, arrêt de chantier"),
         ("Portefeuille", "Scoring de masse (macro)"), ("Stress", "Chocs sur le dossier courant (macro)"), ("Tests", "20 cas de référence (macro)"),
         ("Historique", "Journal des calculs"), ("P_*", "Paramètres du modèle (bleus)")]
-for i, (a, b) in enumerate(tabs): wsL.write(f"B{17+i}", a, F_L); wsL.write(f"C{17+i}", b)
+for i, (a, b) in enumerate(tabs): wsL.write(f"B{TR+1+i}", a, F_L); wsL.write(f"C{TR+1+i}", b)
 wsS.activate(); wsL.set_first_sheet()
 wb.close()
 print("Classeur généré :", OUT)

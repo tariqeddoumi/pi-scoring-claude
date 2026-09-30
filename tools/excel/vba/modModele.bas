@@ -4,6 +4,9 @@ Option Explicit
 ' modModele - gouvernance du modele : validation, listes, instantane
 '=====================================================================
 
+' Format "Classeur Excel (.xlsx)" (= xlOpenXMLWorkbook), en valeur pour rester portable.
+Private Const FORMAT_XLSX As Long = 51
+
 Private mLigne As Long
 Private mNbErr As Long
 Private mNbAvert As Long
@@ -45,7 +48,7 @@ Public Sub ValiderModele()
         Set wsV = ThisWorkbook.Worksheets.Add(After:=ThisWorkbook.Worksheets(ThisWorkbook.Worksheets.Count))
         wsV.Name = "Validation"
     End If
-    wsV.Range("A1").Value = "Validation du modele " & CStr(NomPlage("P_Version").Value) & " - " & Format(Now, "dd/mm/yyyy hh:nn")
+    wsV.Range("A1").Value = "Validation du modele " & CStr(NomPlage("P_Version").Value) & " - " & Format(Now, "dd/mm/yyyy hh:mm")
     wsV.Range("A1").Font.Bold = True
     wsV.Range("A3:C3").Value = Array("Statut", "Controle", "Detail")
     wsV.Range("A3:C3").Font.Bold = True
@@ -176,8 +179,14 @@ Private Sub ControlerPlages(ByVal wsV As Worksheet, ByVal wsB As Worksheet, ByVa
             End If
         End If
     Next i
-    If debuts <> 1 Then Ecrire wsV, "ERREUR", "Plages non couvertes a gauche (ou plusieurs debuts) : " & code, "": ok = False
-    If fins <> 1 Then Ecrire wsV, "ERREUR", "Plages non couvertes a droite (ou plusieurs fins) : " & code, "": ok = False
+    If debuts <> 1 Then
+        Ecrire wsV, "ERREUR", "Plages non couvertes a gauche (ou plusieurs debuts) : " & code, ""
+        ok = False
+    End If
+    If fins <> 1 Then
+        Ecrire wsV, "ERREUR", "Plages non couvertes a droite (ou plusieurs fins) : " & code, ""
+        ok = False
+    End If
     If ok Then Ecrire wsV, "OK", "Plages continues : " & code, nb & " plage(s)"
 End Sub
 
@@ -244,7 +253,7 @@ Public Sub SnapshotModele()
     chemin = ThisWorkbook.Path
     If Len(chemin) = 0 Then chemin = Environ("TEMP")
     If Len(chemin) = 0 Then chemin = Application.DefaultFilePath
-    fichier = chemin & SepChemin() & "PI_Promotion_parametres_" & CStr(NomPlage("P_Version").Value) & "_" & Format(Now, "yyyymmdd_hhnn") & ".xlsx"
-    wbN.SaveAs Filename:=fichier, FileFormat:=xlOpenXMLWorkbook
+    fichier = chemin & SepChemin() & "PI_Promotion_parametres_" & CStr(NomPlage("P_Version").Value) & "_" & Format(Now, "yyyymmdd_hhmm") & ".xlsx"
+    wbN.SaveAs Filename:=fichier, FileFormat:=FORMAT_XLSX
     MsgBox "Instantane enregistre :" & vbCrLf & fichier, vbInformation, "Instantane du modele"
 End Sub

@@ -2,6 +2,7 @@
   "modelCode": "PI_PROMOTION",
   "modelName": "Scoring Promotion Immobilière",
   "version": "v4.0.0",
+  "publishedAt": "2026-09-28",
   "scoreScale": 10,
   "bamCoefficients": {
     "CTX": 0,

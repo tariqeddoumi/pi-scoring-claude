@@ -37,7 +37,11 @@ Private Sub Diminuer(ByVal cle As String, ByVal montant As Double)
     Dim v As Double
     If montant > 0 Then
         If LireNum(cle, v) Then
-            If v - montant < 0 Then EcrireNum cle, 0 Else EcrireNum cle, v - montant
+            If v - montant < 0 Then
+                EcrireNum cle, 0
+            Else
+                EcrireNum cle, v - montant
+            End If
         End If
     End If
 End Sub
@@ -59,7 +63,11 @@ Private Sub AppliquerChoc(ByVal prix As Double, ByVal cout As Double, ByVal reta
     ' Leviers de base
     Diminuer "pre_sale_rate", preventes
     If LireNum("dpd_days", v) Then
-        If v + dpdAjout < 0 Then EcrireNum "dpd_days", 0 Else EcrireNum "dpd_days", v + dpdAjout
+        If v + dpdAjout < 0 Then
+            EcrireNum "dpd_days", 0
+        Else
+            EcrireNum "dpd_days", v + dpdAjout
+        End If
     ElseIf dpdAjout > 0 Then
         EcrireNum "dpd_days", dpdAjout
     End If
