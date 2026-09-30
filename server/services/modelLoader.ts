@@ -6,8 +6,8 @@
 // =====================================================================
 
 import type { Prisma, PrismaClient } from "@prisma/client";
+import { snapshotToConfig } from "@/lib/domain/modelSnapshot";
 import type {
-  CriterionConfig,
   GuaranteeTypeConfig,
   ProjectInputs,
   RegulatoryRegimeConfig,
@@ -39,58 +39,18 @@ export async function loadActiveModelConfig(
   });
   if (!version) throw new Error(`Aucune version publiée pour le modèle ${modelCode}`);
 
-  const config: ScoringModelConfig = {
+  // Conversion unique base/instantané → configuration moteur (modelSnapshot).
+  const config: ScoringModelConfig = snapshotToConfig({
     modelCode,
     version: version.version,
-    scoreScale: version.scoreScale ?? 5,
-    segmentAdjustments: (version.segmentAdjustments as unknown as ScoringModelConfig["segmentAdjustments"]) ?? {},
-    zoneAdjustments: (version.zoneAdjustments as unknown as ScoringModelConfig["zoneAdjustments"]) ?? {},
-    bamCoefficients: (version.bamCoefficients as unknown as ScoringModelConfig["bamCoefficients"]) ?? {},
-    decisionThresholds: (version.decisionThresholds as unknown as ScoringModelConfig["decisionThresholds"]) ?? {
-      go: 75,
-      goWithConditions: 65,
-      watchList: 50,
-    },
-    domains: version.domains.map((d) => ({
-      code: d.code,
-      name: d.name,
-      weight: d.weight,
-      criteria: d.criteria.map<CriterionConfig>((c) => ({
-        code: c.code,
-        name: c.name,
-        type: c.type,
-        weight: c.weight,
-        inputKey: c.inputKey,
-        isGate: c.isGate,
-        gateThreshold: c.gateThreshold,
-        // Métadonnées v3 (diagnostic) — chargées depuis la base.
-        critical: c.critical ?? false,
-        family: (c.family as CriterionConfig["family"]) ?? undefined,
-        gateStage: (c.gateStage as CriterionConfig["gateStage"]) ?? undefined,
-        unit: c.unit ?? undefined,
-        definition: c.definition ?? undefined,
-        options: c.options
-          .sort((a, b) => a.orderIndex - b.orderIndex)
-          .map((o) => ({ value: o.value, label: o.label, score: o.score })),
-        ranges: c.ranges
-          .sort((a, b) => a.orderIndex - b.orderIndex)
-          .map((r) => ({ minIncl: r.minIncl, maxExcl: r.maxExcl, score: r.score, label: r.label ?? undefined })),
-      })),
-    })),
-    redFlags: version.redFlags.map((rf) => ({
-      code: rf.code,
-      name: rf.name,
-      rule: rf.rule as RegulatoryRegimeConfig["triggers"][number]["condition"] as any,
-      severity: rf.severity,
-      impactDomains: rf.impactDomains,
-      malus: rf.malus,
-      mitigable: rf.mitigable,
-      // Refonte D5 v3 (diagnostic) — chargée depuis la base.
-      effect: (rf.effect as any) ?? undefined,
-      requiresCommittee: rf.requiresCommittee ?? false,
-      regRef: rf.regRef ?? undefined,
-    })),
-  };
+    scoreScale: version.scoreScale,
+    bamCoefficients: version.bamCoefficients,
+    decisionThresholds: version.decisionThresholds,
+    segmentAdjustments: version.segmentAdjustments,
+    zoneAdjustments: version.zoneAdjustments,
+    domains: version.domains,
+    redFlags: version.redFlags,
+  });
 
   return { versionId: version.id, config };
 }

@@ -21,6 +21,7 @@ import { classify } from "@/server/engines/regulatoryClassificationEngine";
 import { computeEligibleGuarantees } from "@/server/engines/guaranteeEligibilityEngine";
 import { computeProvision } from "@/server/engines/provisioningEngine";
 import { computeGfaRelief } from "@/lib/domain/gfaVefa";
+import { buildScoringRunDetails } from "@/lib/domain/scoringRunDetails";
 import { mostSevereClass } from "@/lib/domain/groups";
 import { projectEad } from "@/lib/domain/facility";
 import {
@@ -189,6 +190,7 @@ async function scoreAndPersist(
       decision: scoring.decision,
       triggeredRedFlags: scoring.redFlags as any,
       gateBlocked: scoring.gateBlocked,
+      details: buildScoringRunDetails(model, scoring) as any,
     },
     select: { id: true },
   });
@@ -233,6 +235,8 @@ async function scoreAndPersist(
         scoreFinal: scoring.scoreFinal,
         decision: scoring.decision,
         gateBlocked: scoring.gateBlocked,
+        internalClass: scoring.internalClass,
+        missingCriticalInputs: scoring.missingCriticalInputs,
       },
       metadata: { projectId, version: model.version },
     },

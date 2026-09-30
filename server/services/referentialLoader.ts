@@ -9,6 +9,7 @@
 // =====================================================================
 
 import type { Prisma, PrismaClient } from "@prisma/client";
+import type { DivisionLimitPolicy } from "@/lib/domain/divisionRisques";
 import {
   AUTHORIZATION_CHAIN,
   BUYER_FINANCING_STATUSES,
@@ -28,6 +29,7 @@ export const REFERENTIAL_KINDS = [
   "BUYER_FINANCING",
   "FACILITY_NATURE",
   "BUYER_AID",
+  "PRUDENTIAL_LIMIT",
 ] as const;
 export type ReferentialKind = (typeof REFERENTIAL_KINDS)[number];
 
@@ -36,6 +38,7 @@ export const REFERENTIAL_LABELS: Record<ReferentialKind, string> = {
   BUYER_FINANCING: "Financement de l'acquéreur",
   FACILITY_NATURE: "Natures de concours",
   BUYER_AID: "Dispositifs d'aide à l'acquéreur",
+  PRUDENTIAL_LIMIT: "Limites prudentielles (division des risques)",
 };
 
 export interface LoadedReferentials {
@@ -133,4 +136,38 @@ export async function loadMoroccoReferentials(db: Db): Promise<LoadedReferential
     aidList,
     fromDatabase: rows.length > 0,
   };
+}
+
+/** Code de l'entrée portant la politique de division des risques. */
+export const DIVISION_POLICY_CODE = "DIVISION_RISQUES";
+
+/**
+ * Politique de division des risques (fonds propres prudentiels, limite,
+ * seuil de grand risque), administrable dans le référentiel
+ * PRUDENTIAL_LIMIT / DIVISION_RISQUES. Aucun défaut n'est inventé : sans
+ * fonds propres renseignés, le contrôle n'est pas effectué (null).
+ */
+export function parseDivisionPolicy(config: unknown): DivisionLimitPolicy | null {
+  const c = asRecord(config);
+  const ownFunds = typeof c.ownFunds === "number" ? c.ownFunds : NaN;
+  if (!Number.isFinite(ownFunds) || ownFunds <= 0) return null;
+  const frac = (v: unknown) => (typeof v === "number" && v > 0 && v <= 1 ? v : undefined);
+  return {
+    ownFunds,
+    limitPct: frac(c.limitPct),
+    largeExposurePct: frac(c.largeExposurePct),
+    netOfGuarantees: c.netOfGuarantees === true,
+  };
+}
+
+export async function loadDivisionPolicy(db: Db): Promise<DivisionLimitPolicy | null> {
+  try {
+    const row = await db.referentialItem.findFirst({
+      where: { kind: "PRUDENTIAL_LIMIT", code: DIVISION_POLICY_CODE, active: true },
+      select: { config: true },
+    });
+    return row ? parseDivisionPolicy(row.config) : null;
+  } catch {
+    return null;
+  }
 }

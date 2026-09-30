@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd, getPhaseChallenger, getProjectAuthorizations } from "@/server/queries";
+import { getProjectDetail, getActiveCalibration, getScoringHistory, getCounterpartyExposure, getScoreFreshness, getProjectLgd, getPhaseChallenger, getProjectAuthorizations, getPublishedModelVersion } from "@/server/queries";
 import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { computeCompleteness } from "@/lib/domain/completeness";
 import { nextActionFor } from "@/lib/domain/nextAction";
@@ -18,6 +18,8 @@ import { GfaVefaCard } from "@/components/GfaVefaCard";
 import { AuthorizationsCard } from "@/components/AuthorizationsCard";
 import { FacilitiesCard } from "@/components/FacilitiesCard";
 import { RiskMetricsCard } from "@/components/RiskMetricsCard";
+import { ScoringReading } from "@/components/ScoringReading";
+import { readScoringRunDetails } from "@/lib/domain/scoringRunDetails";
 import { projectEad } from "@/lib/domain/facility";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
@@ -59,6 +61,10 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
     inputs[i.key] = i.valueNum ?? i.valueStr ?? i.valueBool ?? null;
   }
   const run = p.scoringRuns[0];
+  const activeModelRes = await safe(() =>
+    getPublishedModelVersion(p.assetType === "EXPLOITATION" ? "PI_EXPLOITATION" : "PI_PROMOTION"),
+  );
+  const activeModelVersion = activeModelRes.ok ? activeModelRes.data : null;
   const cls = p.classificationRuns[0];
   const prov = p.provisionRuns[0];
   // Waterfall de recouvrement / LGD (F14) — best-effort, ne bloque pas la page.
@@ -371,7 +377,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         <TabsContent value="Promoteur">{sectionTable("promoteur")}</TabsContent>
         <TabsContent value="Foncier">{sectionTable("foncier")}</TabsContent>
-        <TabsContent value="Autorisations">{sectionTable("autorisations")}</TabsContent>
+        <TabsContent value="Autorisations"><div className="space-y-4">{sectionTable("autorisations")}{sectionTable("maroc")}</div></TabsContent>
         <TabsContent value="Commercialisation">{sectionTable("commercialisation")}</TabsContent>
         <TabsContent value="Financement">{sectionTable("financement")}</TabsContent>
         <TabsContent value="Cash-flow">{sectionTable("cashflow")}</TabsContent>
@@ -450,6 +456,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         <TabsContent value="Classification BKAM">
          <div className="space-y-4">
+          {/* Entrées réglementaires qui alimentent la classification (1/W). */}
+          <div className="grid lg:grid-cols-2 gap-4">{sectionTable("regulatoire")}{sectionTable("credit")}</div>
           {cls ? (
             <Card><CardHeader><CardTitle>Classification — {cls.regime.name}</CardTitle></CardHeader><CardContent className="space-y-3">
               <div className="flex items-center gap-3">
@@ -547,6 +555,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   {run.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
                 </div>
               </CardContent></Card>
+              <ScoringReading
+                details={readScoringRunDetails(run.details)}
+                runVersion={run.version?.version ?? null}
+                runVersionStatus={run.version?.status ?? null}
+                activeVersion={activeModelVersion}
+                scoreFinal={run.scoreFinal}
+                coeffBAM={run.coeffBAM}
+                scoreAfterPenalties={run.scoreAfterPenalties}
+              />
               <Card className="lg:col-span-2"><CardHeader><CardTitle>Scores par domaine</CardTitle></CardHeader><CardContent className="p-0">
                 <Table>
                   <thead><tr><Th>Domaine</Th><Th>Score /100</Th><Th>Poids</Th><Th>Contribution</Th></tr></thead>

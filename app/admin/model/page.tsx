@@ -10,6 +10,8 @@ import { getModelDraft } from "@/server/queries";
 import Link from "next/link";
 import { Button } from "@/components/ui";
 import { CreateDraftButton } from "@/components/CreateDraftButton";
+import { RescorePortfolioButton } from "@/components/RescorePortfolioButton";
+import { getModelVersionCoverage } from "@/server/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -35,6 +37,8 @@ export default async function ModelBuilderPage({ searchParams }: {
   const canEdit = await currentUserCan(PERMISSIONS.MODEL_WRITE);
   const draftRes = canEdit ? await safe(() => getModelDraft(modelCode)) : null;
   const draft = draftRes && draftRes.ok ? draftRes.data : null;
+  const coverageRes = canEdit ? await safe(() => getModelVersionCoverage()) : null;
+  const coverage = coverageRes && coverageRes.ok ? coverageRes.data : null;
   const thresholds = { ...DEFAULT_THRESHOLDS, ...((v.decisionThresholds as Record<string, number> | null) ?? {}) };
   const segmentAdjustments = (v.segmentAdjustments as Record<string, number> | null) ?? {};
   const zoneAdjustments = (v.zoneAdjustments as Record<string, number> | null) ?? {};
@@ -61,6 +65,15 @@ export default async function ModelBuilderPage({ searchParams }: {
           </Link>
         ))}
       </div>
+
+      {canEdit && coverage && (
+        <Card>
+          <CardHeader><CardTitle>Portefeuille et version publiée</CardTitle></CardHeader>
+          <CardContent>
+            <RescorePortfolioButton staleCount={coverage.stale} totalCount={coverage.total} />
+          </CardContent>
+        </Card>
+      )}
 
       {canEdit && (
         <Card>

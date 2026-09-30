@@ -32,79 +32,120 @@ export const projectSchema = z.object({
   ownEquity: z.coerce.number().min(0).optional(),
 });
 
-// Entrées de scoring — clés alignées sur referenceData.ts (inputKey).
-const bool = z.coerce.boolean().optional().default(false);
+// Entrées de scoring — clés alignées sur le modèle publié (inputKey).
+//
+// Règles d'alignement avec le modèle (invariant « une omission n'améliore
+// jamais la décision ») :
+//  - un champ vide / null signifie « donnée absente » et n'est JAMAIS converti
+//    en 0 ni en « Non » : le moteur applique alors la note plancher, ou
+//    « Dossier incomplet » pour une donnée décisionnelle ;
+//  - aucune valeur par défaut n'est fabriquée ;
+//  - toutes les clés sont facultatives à l'enregistrement (brouillon partiel) :
+//    c'est le moteur qui juge la complétude, pas le formulaire.
+
+const isBlank = (v: unknown) => v === undefined || v === null || (typeof v === "string" && v.trim() === "");
+
+/** Nombre facultatif : vide → null ; « 1,5 » accepté. */
+export const optNumber = (schema: z.ZodNumber = z.number()) =>
+  z.preprocess(
+    (v) => (isBlank(v) ? null : typeof v === "string" ? Number(v.trim().replace(",", ".")) : v),
+    schema.finite().nullable(),
+  );
+
+/** Booléen facultatif : vide → null ; oui/non, true/false, 1/0 acceptés. */
+export const optBool = () =>
+  z.preprocess((v) => {
+    if (isBlank(v)) return null;
+    if (typeof v === "boolean") return v;
+    const t = String(v).trim().toLowerCase();
+    if (["true", "oui", "o", "yes", "y", "1", "vrai", "x"].includes(t)) return true;
+    if (["false", "non", "n", "no", "0", "faux"].includes(t)) return false;
+    return v; // valeur non reconnue → rejetée par z.boolean()
+  }, z.boolean().nullable());
+
+/** Modalité facultative : vide → null. */
+export const optEnum = <T extends [string, ...string[]]>(values: T) =>
+  z.preprocess((v) => (isBlank(v) ? null : v), z.enum(values).nullable());
 
 export const scoringInputsSchema = z.object({
   // --- D1 Sponsor & Gouvernance ---
-  promoter_completed_projects: z.coerce.number().min(0),
-  promoter_gearing: z.coerce.number().min(0),
-  governance_quality: z.enum(["opaque", "partielle", "claire"]),
-  mono_project_concentration: z.coerce.number().min(0).max(100),
-  promoter_type: z.enum(["opportuniste", "regional", "structure"]),
-  equity_injected_ratio: z.coerce.number().min(0),
+  promoter_completed_projects: optNumber(z.number().min(0)),
+  promoter_gearing: optNumber(z.number().min(0)),
+  governance_quality: optEnum(["opaque", "partielle", "claire"]),
+  mono_project_concentration: optNumber(z.number().min(0).max(100)),
+  promoter_type: optEnum(["opportuniste", "regional", "structure"]),
+  equity_injected_ratio: optNumber(z.number().min(0)),
   // --- D2 Qualité intrinsèque ---
-  land_permits_status: z.enum(["absentes", "partielles", "definitives"]),
-  market_positioning: z.enum(["sur_positionne", "moyen", "aligne"]),
-  technical_complexity: z.enum(["elevee", "moyenne", "standard"]),
-  progress_vs_plan: z.coerce.number().min(0),
-  sav_litigation: z.enum(["eleve", "moyen", "faible"]),
-  macro_sensitivity: z.enum(["elevee", "moyenne", "faible"]),
-  land_cost_ratio: z.coerce.number().min(0).max(100),
+  land_permits_status: optEnum(["absentes", "partielles", "definitives"]),
+  market_positioning: optEnum(["sur_positionne", "moyen", "aligne"]),
+  technical_complexity: optEnum(["elevee", "moyenne", "standard"]),
+  progress_vs_plan: optNumber(z.number().min(0)),
+  sav_litigation: optEnum(["eleve", "moyen", "faible"]),
+  macro_sensitivity: optEnum(["elevee", "moyenne", "faible"]),
+  land_cost_ratio: optNumber(z.number().min(0).max(100)),
+  authorization_completeness_pct: optNumber(z.number().min(0).max(100)),
   // --- D3 Commercial & Cash-flow ---
-  pre_sale_rate: z.coerce.number().min(0).max(100),
-  sales_vs_plan: z.coerce.number().min(0),
-  dso_days: z.coerce.number().min(0),
-  cash_coverage: z.coerce.number().min(0),
-  funding_gap_pct: z.coerce.number(),
-  stock_rotation_months: z.coerce.number().min(0),
-  stressed_margin_pct: z.coerce.number(),
+  pre_sale_rate: optNumber(z.number().min(0).max(100)),
+  sales_vs_plan: optNumber(z.number().min(0)),
+  dso_days: optNumber(z.number().min(0)),
+  cash_coverage: optNumber(z.number().min(0)),
+  funding_gap_pct: optNumber(),
+  stock_rotation_months: optNumber(z.number().min(0)),
+  stressed_margin_pct: optNumber(),
+  secured_sales_rate: optNumber(z.number().min(0).max(100)),
   // --- D4 Structuration & LGD ---
-  gross_margin_pct: z.coerce.number(),
-  ltc: z.coerce.number().min(0).max(200),
-  ltv_stressed: z.coerce.number().min(0).max(300),
-  guarantee_coverage: z.coerce.number().min(0),
-  first_rank: z.enum(["oui", "non"]),
-  interest_coverage: z.coerce.number().min(0),
+  gross_margin_pct: optNumber(),
+  ltc: optNumber(z.number().min(0).max(200)),
+  ltv_stressed: optNumber(z.number().min(0).max(300)),
+  guarantee_coverage: optNumber(z.number().min(0)),
+  first_rank: optEnum(["oui", "non"]),
+  interest_coverage: optNumber(z.number().min(0)),
+  release_quotity_gap_pts: optNumber(z.number().min(-100).max(100)),
   // --- D5 / déclencheurs réglementaires ---
-  dpd_days: z.coerce.number().int().min(0),
-  construction_delay_months: z.coerce.number().min(0).optional().default(0),
-  project_stopped_months: z.coerce.number().min(0).optional().default(0),
-  restructured: z.enum(["yes", "no"]),
-  legal_exposure: z.enum(["litigation", "watch", "clear"]),
-  funding_gap_persistent: bool,
-  equity_negative: bool,
+  dpd_days: optNumber(z.number().int().min(0)),
+  construction_delay_months: optNumber(z.number().min(0)),
+  project_stopped_months: optNumber(z.number().min(0)),
+  restructured: optEnum(["yes", "no"]),
+  legal_exposure: optEnum(["litigation", "watch", "clear"]),
+  funding_gap_persistent: optBool(),
+  equity_negative: optBool(),
+  // --- Alertes v4 (pratique marocaine) — calculées par la synchronisation du
+  //     suivi, saisissables à défaut ---
+  works_authorization_blocked: optBool(),
+  buyers_financing_at_risk: optBool(),
+  release_underpriced: optBool(),
+  division_limit_breach: optBool(),
   // --- Déclencheurs de classification (optionnels) ---
-  seizure_notice: bool,
-  financials_late_7m: bool,
-  financials_unavailable: bool,
-  negative_credit_bureau: bool,
-  commercialization_below_50_1y: bool,
-  admin_problems_over_1y: bool,
-  construction_delay_over_1y: bool,
-  bp_significant_gap: bool,
-  revenue_drop_pct: z.coerce.number().optional().default(0),
-  debt_equity_ratio: z.coerce.number().optional().default(0),
-  judicial_recovery: bool,
-  finished_2y_no_sales: bool,
-  project_stopped_over_1y: bool,
+  seizure_notice: optBool(),
+  financials_late_7m: optBool(),
+  financials_unavailable: optBool(),
+  negative_credit_bureau: optBool(),
+  commercialization_below_50_1y: optBool(),
+  admin_problems_over_1y: optBool(),
+  construction_delay_over_1y: optBool(),
+  bp_significant_gap: optBool(),
+  revenue_drop_pct: optNumber(),
+  debt_equity_ratio: optNumber(),
+  judicial_recovery: optBool(),
+  finished_2y_no_sales: optBool(),
+  project_stopped_over_1y: optBool(),
   // --- Restructuration (art.17-31) ---
-  restructuring_count: z.coerce.number().int().min(0).optional().default(0),
-  restructuring_viable: z.coerce.boolean().optional(),
-  restructuring_deferral_months: z.coerce.number().min(0).optional().default(0),
-  second_restructuring_in_observation: bool,
-  dpd_on_restructured: z.coerce.number().min(0).optional().default(0),
+  restructuring_count: optNumber(z.number().int().min(0)),
+  restructuring_viable: optBool(),
+  restructuring_deferral_months: optNumber(z.number().min(0)),
+  second_restructuring_in_observation: optBool(),
+  dpd_on_restructured: optNumber(z.number().min(0)),
   // --- Crédit in fine / dépassements / compte débiteur (1/W art.10-12) ---
-  credit_type: z.enum(["amortissable", "in_fine", "decouvert"]).optional(),
-  days_after_maturity: z.coerce.number().min(0).optional().default(0),
-  bullet_unpaid: bool,
-  authorized_amount: z.coerce.number().min(0).optional().default(0),
-  overdraft_excess_pct: z.coerce.number().min(0).optional().default(0),
-  overdraft_excess_days: z.coerce.number().min(0).optional().default(0),
-  debit_no_credit_movements_days: z.coerce.number().min(0).optional().default(0),
+  credit_type: optEnum(["amortissable", "in_fine", "decouvert"]),
+  days_after_maturity: optNumber(z.number().min(0)),
+  bullet_unpaid: optBool(),
+  authorized_amount: optNumber(z.number().min(0)),
+  overdraft_excess_pct: optNumber(z.number().min(0)),
+  overdraft_excess_days: optNumber(z.number().min(0)),
+  debit_no_credit_movements_days: optNumber(z.number().min(0)),
   // --- Fiabilité de l'information (art.5.3) ---
-  unreliable_construction_progress_info: bool,
-  unreliable_commercialization_info: bool,
+  unreliable_construction_progress_info: optBool(),
+  unreliable_commercialization_info: optBool(),
 });
 
 export type ScoringInputsForm = z.infer<typeof scoringInputsSchema>;
@@ -155,23 +196,23 @@ export type GfaVefaFormValues = z.infer<typeof gfaVefaSchema>;
 // Entrées du modèle ACTIFS D'EXPLOITATION & DE RAPPORT (hôtels, bureaux,
 // commerces loués).
 export const exploitationInputsSchema = z.object({
-  occupancy_rate: z.coerce.number().min(0).max(100),
-  lease_indexation: z.enum(["none", "partial", "full"]),
-  revenue_stability: z.enum(["volatile", "moderate", "stable"]),
-  seasonality: z.enum(["high", "moderate", "low"]),
-  dscr: z.coerce.number().min(0),
-  debt_yield: z.coerce.number().min(0),
-  interest_coverage: z.coerce.number().min(0),
-  walt_years: z.coerce.number().min(0),
-  tenant_quality: z.enum(["weak", "standard", "strong"]),
-  operator_quality: z.enum(["independent", "regional", "international"]),
-  ltv_stabilized: z.coerce.number().min(0).max(300),
-  asset_quality: z.enum(["poor", "standard", "prime"]),
-  location_demand: z.enum(["weak", "moderate", "strong"]),
-  refinancing_risk: z.enum(["high", "moderate", "low"]),
-  dpd_days: z.coerce.number().int().min(0),
-  restructured: z.enum(["yes", "no"]).optional().default("no"),
-  legal_exposure: z.enum(["litigation", "watch", "clear"]).optional().default("clear"),
+  occupancy_rate: optNumber(z.number().min(0).max(100)),
+  lease_indexation: optEnum(["none", "partial", "full"]),
+  revenue_stability: optEnum(["volatile", "moderate", "stable"]),
+  seasonality: optEnum(["high", "moderate", "low"]),
+  dscr: optNumber(z.number().min(0)),
+  debt_yield: optNumber(z.number().min(0)),
+  interest_coverage: optNumber(z.number().min(0)),
+  walt_years: optNumber(z.number().min(0)),
+  tenant_quality: optEnum(["weak", "standard", "strong"]),
+  operator_quality: optEnum(["independent", "regional", "international"]),
+  ltv_stabilized: optNumber(z.number().min(0).max(300)),
+  asset_quality: optEnum(["poor", "standard", "prime"]),
+  location_demand: optEnum(["weak", "moderate", "strong"]),
+  refinancing_risk: optEnum(["high", "moderate", "low"]),
+  dpd_days: optNumber(z.number().int().min(0)),
+  restructured: optEnum(["yes", "no"]),
+  legal_exposure: optEnum(["litigation", "watch", "clear"]),
 });
 
 export const riskCalibrationSchema = z.object({

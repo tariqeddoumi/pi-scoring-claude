@@ -9,6 +9,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { CLASS_LABELS, DECISION_LABELS } from "@/lib/labels";
+import { readScoringRunDetails } from "@/lib/domain/scoringRunDetails";
+import { INPUT_LABELS } from "@/lib/inputLabels";
 import { formatMAD, formatDate } from "@/lib/utils";
 import { getActiveCalibration, getGroups } from "@/server/queries";
 import { computeRiskMetrics, SLOTTING_LABELS } from "@/lib/domain/riskMetrics";
@@ -89,7 +91,11 @@ export async function projectReportHtml(projectId: string): Promise<string | nul
         facilities: { include: { installments: { orderBy: { seq: "asc" } } }, orderBy: { createdAt: "asc" } },
         committeeDecisions: { include: { chair: true }, orderBy: { createdAt: "desc" } },
         workflowSteps: { include: { actor: true }, orderBy: { createdAt: "desc" } },
-        scoringRuns: { orderBy: { createdAt: "desc" }, take: 1, include: { domainResults: { include: { domain: true } } } },
+        scoringRuns: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: { domainResults: { include: { domain: true } }, version: { select: { version: true, status: true } } },
+        },
         classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, include: { regime: true } },
         provisionRuns: { orderBy: { createdAt: "desc" }, take: 1 },
       },
@@ -98,6 +104,23 @@ export async function projectReportHtml(projectId: string): Promise<string | nul
   if (!p) return null;
   const run = p.scoringRuns[0];
   const cls = p.classificationRuns[0];
+  // Lecture du résultat telle que calculée (modèle, classe interne, données
+  // manquantes, notes économique/sûretés, conditions).
+  const det = readScoringRunDetails(run?.details);
+  const staleModel = run?.version && run.version.status !== "PUBLISHED";
+  const readingBlock = run
+    ? `<p class="muted">Modèle ${esc(run.version?.version ?? "?")}${staleModel ? " — <b>version retirée : score à recalculer</b>" : ""}${
+        det ? ` · classe interne ${esc(det.internalClass)} · note économique ${det.economicScore.toFixed(1)} · note de sûretés ${det.guaranteeScore != null ? det.guaranteeScore.toFixed(1) : "—"} · PD indicative ${(det.pdProxy * 100).toFixed(2)} % (non calibrée)` : ""
+      }</p>${
+        det?.dataIncomplete
+          ? `<p><b>Données décisionnelles absentes :</b> ${esc(det.missingCriticalInputs.map((k) => INPUT_LABELS[k] ?? k).join(", ") || "classe réglementaire non établie")}</p>`
+          : ""
+      }${
+        det && det.conditions.length
+          ? `<p><b>Conditions :</b> ${esc(det.conditions.map((c) => `${c.label} (${c.stage}${c.blocking ? ", bloquante" : ""})`).join(" ; "))}</p>`
+          : ""
+      }`
+    : "";
   const prov = p.provisionRuns[0];
 
   const ead = prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead;
@@ -164,6 +187,7 @@ ${cd.minutesRef ? `<br>PV : ${esc(cd.minutesRef)}` : ""}</p>`;
 <p><span class="big">${run?.scoreFinal?.toFixed(0) ?? "—"}</span> / 100 —
 <span class="pill">${run?.decision ? DECISION_LABELS[run.decision] : "Non scoré"}</span>
 · Classe BKAM <span class="pill">${cls ? CLASS_LABELS[cls.resultClass] : "—"}</span>${cls?.isWatchList ? " · Watch List" : ""}</p>
+${readingBlock}
 
 <h2>Métriques de risque — Bâle / IFRS 9</h2>
 <p class="muted">Calibrage : ${esc(calib.label)} — paramètres indicatifs à calibrer.</p>

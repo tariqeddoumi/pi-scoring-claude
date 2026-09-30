@@ -1,0 +1,43 @@
+{
+ "base": {
+  "scoreFinal": 67.98,
+  "decision": "GO_WITH_CONDITIONS"
+ },
+ "scenarios": [
+  {
+   "key": "price10",
+   "scoreFinal": 61.35,
+   "decision": "WATCH_LIST"
+  },
+  {
+   "key": "price15",
+   "scoreFinal": 58.95,
+   "decision": "WATCH_LIST"
+  },
+  {
+   "key": "cost10",
+   "scoreFinal": 59.09,
+   "decision": "WATCH_LIST"
+  },
+  {
+   "key": "delay6",
+   "scoreFinal": 50.54,
+   "decision": "WATCH_LIST"
+  },
+  {
+   "key": "sales20",
+   "scoreFinal": 65.5,
+   "decision": "GO_WITH_CONDITIONS"
+  },
+  {
+   "key": "rate200",
+   "scoreFinal": 66.54,
+   "decision": "GO_WITH_CONDITIONS"
+  },
+  {
+   "key": "severe",
+   "scoreFinal": 33.1,
+   "decision": "NO_GO"
+  }
+ ]
+}

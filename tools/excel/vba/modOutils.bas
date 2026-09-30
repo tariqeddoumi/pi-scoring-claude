@@ -24,10 +24,19 @@ Public Function FeuilleExiste(ByVal nom As String) As Boolean
 End Function
 
 ' Position (1..n) d'une cle technique dans la liste des donnees de la Saisie ; 0 si absente.
+' Recherche explicite (et non Application.Match) : meme comportement quel que soit le tableur.
 Public Function PosCle(ByVal cle As String) As Long
-    Dim p As Variant
-    p = Application.Match(cle, NomPlage("In_Cles"), 0)
-    If IsError(p) Then PosCle = 0 Else PosCle = CLng(p)
+    Dim t As Variant
+    Dim i As Long
+    PosCle = 0
+    If Len(cle) = 0 Then Exit Function
+    t = NomPlage("In_Cles").Value2
+    For i = LBound(t, 1) To UBound(t, 1)
+        If StrComp(CStr(t(i, 1)), cle, vbTextCompare) = 0 Then
+            PosCle = i - LBound(t, 1) + 1
+            Exit Function
+        End If
+    Next i
 End Function
 
 ' Cellule de saisie (colonne E) d'une cle technique ; Nothing si la cle est inconnue.
@@ -57,11 +66,9 @@ End Sub
 ' Nombre de colonnes "cle" d'une feuille de type Portefeuille / Tests (ligne 4, a partir de la colonne F).
 Public Function CompterCles(ByVal ws As Worksheet) As Long
     Dim c As Long
-    Dim p As Variant
     c = 6
     Do While Len(CStr(ws.Cells(4, c).Value)) > 0
-        p = Application.Match(CStr(ws.Cells(4, c).Value), NomPlage("In_Cles"), 0)
-        If IsError(p) Then Exit Do
+        If PosCle(CStr(ws.Cells(4, c).Value)) = 0 Then Exit Do
         c = c + 1
     Loop
     CompterCles = c - 6
@@ -90,8 +97,30 @@ Public Function NomUtilisateur() As String
     Dim u As String
     u = Environ("USERNAME")
     If Len(u) = 0 Then u = Environ("USER")
-    If Len(u) = 0 Then u = Application.UserName
+    If Len(u) = 0 Then
+        On Error Resume Next
+        u = Application.UserName
+        On Error GoTo 0
+    End If
+    If Len(u) = 0 Then u = "inconnu"
     NomUtilisateur = u
+End Function
+
+' Valeur logique d'une cellule, quel que soit son codage (VRAI/FAUX, 1/0, "Oui"/"Non").
+Public Function EstVrai(ByVal v As Variant) As Boolean
+    EstVrai = False
+    If IsError(v) Or IsEmpty(v) Then Exit Function
+    Select Case VarType(v)
+        Case vbBoolean
+            EstVrai = v
+        Case vbString
+            Select Case UCase$(Trim$(v))
+                Case "VRAI", "TRUE", "OUI", "1"
+                    EstVrai = True
+            End Select
+        Case Else
+            If IsNumeric(v) Then EstVrai = (CDbl(v) <> 0)
+    End Select
 End Function
 
 Public Function Arrondi2(ByVal x As Double) As Double

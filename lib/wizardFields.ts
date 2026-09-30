@@ -1,12 +1,19 @@
 // Métadonnées des champs du wizard de scoring (type + options).
 
-export type FieldType = "number" | "select" | "bool";
+export type FieldType = "number" | "select" | "bool" | "text";
 export interface FieldDef {
   key: string;
   type: FieldType;
   options?: { value: string; label: string }[];
   step?: string;
+  /** Aide affichée sous le champ (origine de la donnée, calcul…). */
+  hint?: string;
+  /** Libellé explicite (champs issus du modèle publié). */
+  label?: string;
 }
+
+/** Clés calculées par « Synchroniser le suivi » (saisie manuelle à défaut). */
+export const SYNC_DERIVED_HINT = "Calculé par « Synchroniser le suivi » ; saisir seulement à défaut.";
 
 const sel = (key: string, opts: [string, string][]): FieldDef => ({
   key, type: "select", options: opts.map(([value, label]) => ({ value, label })),
@@ -105,6 +112,18 @@ export const WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] =
       sel("first_rank", [["oui", "1er rang"], ["non", "Non 1er rang"]]),
       { key: "interest_coverage", type: "number", step: "0.1" },
       { key: "equity_negative", type: "bool" },
+    ],
+  },
+  {
+    id: "maroc", title: "Pratique marocaine (modèle v4)",
+    fields: [
+      { key: "authorization_completeness_pct", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "works_authorization_blocked", type: "bool", hint: SYNC_DERIVED_HINT },
+      { key: "secured_sales_rate", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "buyers_financing_at_risk", type: "bool", hint: SYNC_DERIVED_HINT },
+      { key: "release_quotity_gap_pts", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "release_underpriced", type: "bool", hint: SYNC_DERIVED_HINT },
+      { key: "division_limit_breach", type: "bool", hint: SYNC_DERIVED_HINT },
     ],
   },
   {

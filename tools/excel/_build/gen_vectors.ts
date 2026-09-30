@@ -1,32 +1,12 @@
 import fs from "node:fs";
 import { runScoring } from "@/server/engines/scoringEngine";
-import type { ScoringModelConfig, ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
+import { PROMOTION_SCORING_MODEL_V4 } from "@/lib/domain/models/piPromotionV4";
+import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
+// Cas de référence de l'outil Excel, calculés par le moteur de production sur le
+// modèle publié (instantané prisma/models/PI_PROMOTION_v4.0.0.json).
 const D = "tools/excel/_build/";
-const meta = JSON.parse(fs.readFileSync(D + "meta.json", "utf8"));
-const crit: any[] = JSON.parse(fs.readFileSync(D + "criteres.json", "utf8"));
-const bar: any[] = JSON.parse(fs.readFileSync(D + "baremes.json", "utf8"));
-const alr: any[] = JSON.parse(fs.readFileSync(D + "alertes.json", "utf8"));
-
-const model: ScoringModelConfig = {
-  modelCode: "PI_PROMOTION", version: meta.version, scoreScale: meta.scoreScale,
-  bamCoefficients: meta.bam, decisionThresholds: meta.thresholds,
-  segmentAdjustments: meta.segments, zoneAdjustments: meta.zones,
-  domains: meta.domains.map((d: any[]) => ({
-    code: d[0], name: d[1], weight: d[2],
-    criteria: crit.filter((c) => c[0] === d[0]).map((c) => ({
-      code: c[1], name: c[2], type: c[3], weight: c[4], inputKey: c[5], isGate: c[6], gateThreshold: c[7],
-      gateStage: c[8] ?? undefined, family: c[9], critical: c[10],
-      options: bar.filter((b) => b[0] === c[1] && b[1] === "MODALITE").sort((a, b) => a[2] - b[2]).map((b) => ({ value: b[5], label: b[6], score: b[7] })),
-      ranges: bar.filter((b) => b[0] === c[1] && b[1] === "PLAGE").sort((a, b) => a[2] - b[2]).map((b) => ({ minIncl: b[3], maxExcl: b[4], score: b[7], label: b[6] })),
-    })),
-  })),
-  redFlags: alr.map((a) => ({
-    code: a[0], name: a[1], severity: a[2], malus: a[3], impactDomains: String(a[4]).split(","),
-    rule: { clause: a[7] === null ? { key: a[5], op: a[6] } : { key: a[5], op: a[6], value: a[7] } },
-    mitigable: a[11],
-  })),
-} as any;
+const model = PROMOTION_SCORING_MODEL_V4;
 
 const base: ProjectInputs = {
   promoter_completed_projects: 8, promoter_gearing: 85, governance_quality: "claire", mono_project_concentration: 35,

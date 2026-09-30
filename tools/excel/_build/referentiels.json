@@ -1,0 +1,194 @@
+{
+ "auth": [
+  {
+   "code": "note_renseignement",
+   "label": "Note de renseignements urbanistiques",
+   "stage": "ETUDE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": false,
+   "regRef": "Urbanisme — agence urbaine"
+  },
+  {
+   "code": "titre_foncier_purge",
+   "label": "Titre foncier purgé (sans inscription contraignante)",
+   "stage": "OCTROI",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": true,
+   "blocksDelivery": false,
+   "regRef": "ANCFCC — conservation foncière"
+  },
+  {
+   "code": "autorisation_lotir",
+   "label": "Autorisation de lotir",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "MIXTE"
+   ],
+   "blocksWorks": true,
+   "blocksDelivery": false,
+   "regRef": "Loi 25-90 relative aux lotissements"
+  },
+  {
+   "code": "permis_construire",
+   "label": "Permis de construire",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": true,
+   "blocksDelivery": false,
+   "regRef": "Loi 12-90 relative à l'urbanisme"
+  },
+  {
+   "code": "autorisation_morcellement",
+   "label": "Autorisation de morcellement / éclatement du titre",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": false,
+   "regRef": "ANCFCC — morcellement du titre mère"
+  },
+  {
+   "code": "reception_provisoire",
+   "label": "Réception provisoire des travaux",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": true,
+   "regRef": ""
+  },
+  {
+   "code": "permis_habiter",
+   "label": "Permis d'habiter",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": true,
+   "regRef": "Loi 12-90"
+  },
+  {
+   "code": "certificat_conformite",
+   "label": "Certificat de conformité",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": true,
+   "regRef": ""
+  },
+  {
+   "code": "reception_definitive",
+   "label": "Réception définitive",
+   "stage": "TIRAGE",
+   "appliesTo": [
+    "LOTISSEMENT",
+    "CONSTRUCTION",
+    "MIXTE"
+   ],
+   "blocksWorks": false,
+   "blocksDelivery": false,
+   "regRef": ""
+  }
+ ],
+ "financing": [
+  {
+   "code": "fonds_propres",
+   "label": "Autofinancement (fonds propres acquéreur)",
+   "factor": 1
+  },
+  {
+   "code": "credit_debloque",
+   "label": "Crédit acquéreur débloqué",
+   "factor": 1
+  },
+  {
+   "code": "credit_accorde",
+   "label": "Crédit accordé (accord de principe / offre)",
+   "factor": 0.8
+  },
+  {
+   "code": "credit_en_cours",
+   "label": "Demande de crédit en cours d'instruction",
+   "factor": 0.4
+  },
+  {
+   "code": "credit_refuse",
+   "label": "Crédit refusé",
+   "factor": 0
+  },
+  {
+   "code": "non_instruit",
+   "label": "Financement non instruit",
+   "factor": 0.2
+  }
+ ],
+ "natures": [
+  {
+   "code": "avance_foncier",
+   "label": "Avance sur acquisition du foncier",
+   "requiresWorksCertificate": false
+  },
+  {
+   "code": "credit_accompagnement",
+   "label": "Crédit d'accompagnement / de construction",
+   "requiresWorksCertificate": true
+  },
+  {
+   "code": "credit_amenagement",
+   "label": "Crédit d'aménagement (lotissement / VRD)",
+   "requiresWorksCertificate": true
+  },
+  {
+   "code": "credit_in_fine",
+   "label": "Crédit in fine (remboursement du principal au terme)",
+   "requiresWorksCertificate": false
+  },
+  {
+   "code": "caution_marche",
+   "label": "Caution / engagement par signature",
+   "requiresWorksCertificate": false
+  }
+ ],
+ "aid": [
+  {
+   "code": "aide_directe_logement",
+   "label": "Aide directe au logement"
+  },
+  {
+   "code": "fogarim",
+   "label": "FOGARIM (garantie revenus irréguliers)"
+  },
+  {
+   "code": "damane_assakane",
+   "label": "Damane Assakane"
+  },
+  {
+   "code": "aucun",
+   "label": "Aucun dispositif"
+  }
+ ]
+}

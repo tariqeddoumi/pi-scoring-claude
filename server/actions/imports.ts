@@ -9,6 +9,7 @@ import { recordAudit } from "@/server/engines/auditService";
 import { PERMISSIONS } from "@/lib/rbac";
 import { mapImportRows, type ImportError } from "@/lib/domain/importMapping";
 import { INPUT_LABELS } from "@/lib/inputLabels";
+import { scoringInputsSchema } from "@/lib/validation";
 import { runFullScoring } from "@/server/services/scoringService";
 
 // Clés d'entrée booléennes (coercition oui/non) — le reste est numérique/texte.
@@ -21,6 +22,8 @@ const BOOL_INPUT_KEYS = [
   "restructuring_viable", "second_restructuring_in_observation",
   // Crédit in fine / fiabilité de l'information (art.10-12 / art.5.3).
   "bullet_unpaid", "unreliable_construction_progress_info", "unreliable_commercialization_info",
+  // Alertes du modèle v4 (pratique marocaine).
+  "works_authorization_blocked", "buyers_financing_at_risk", "release_underpriced", "division_limit_breach",
 ];
 
 export interface ImportSummary {
@@ -73,6 +76,20 @@ export async function runImport(formData: FormData): Promise<{ ok: true; summary
 
   const { rows, errors } = mapImportRows(rawRows, Object.keys(INPUT_LABELS), BOOL_INPUT_KEYS);
 
+  // Contrôle des valeurs contre le schéma de saisie (modalités du modèle,
+  // bornes) : une valeur hors référentiel n'est pas enregistrée — elle
+  // resterait sinon silencieusement non notée par le moteur.
+  const valueErrors: ImportError[] = [];
+  for (const row of rows) {
+    const check = scoringInputsSchema.safeParse(row.inputs);
+    if (check.success) continue;
+    const bad = Object.keys(check.error.flatten().fieldErrors);
+    for (const key of bad) {
+      valueErrors.push({ rowIndex: row.rowIndex, message: `${row.reference} : valeur « ${String(row.inputs[key])} » refusée pour ${INPUT_LABELS[key] ?? key} (non enregistrée).` });
+      delete row.inputs[key];
+    }
+  }
+
   // Demande optionnelle de scoring automatique après import (case à cocher).
   const autoScore = formData.get("autoScore") === "1";
 
@@ -124,6 +141,8 @@ export async function runImport(formData: FormData): Promise<{ ok: true; summary
 
   const total = rawRows.length;
   const failed = errors.length;
+  // Valeurs refusées : signalées sans faire échouer la ligne (le projet est importé).
+  errors.push(...valueErrors);
   const status = failed === 0 && success > 0 ? "COMPLETED" : success === 0 ? "FAILED" : "PARTIAL";
 
   await prisma.$transaction(async (tx) => {

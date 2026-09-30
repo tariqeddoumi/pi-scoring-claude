@@ -4,8 +4,8 @@
 // =====================================================================
 
 import { PrismaClient } from "@prisma/client";
+import { PROMOTION_MODEL_V4_SNAPSHOT } from "../lib/domain/models/piPromotionV4";
 import {
-  PROMOTION_SCORING_MODEL,
   REGIME_19G_2002,
   REGIME_19G_PROVISION_RATES,
   REGIME_1W_2025,
@@ -86,12 +86,15 @@ async function seedRbac() {
 }
 
 async function seedScoringModel() {
-  const cfg = PROMOTION_SCORING_MODEL;
+  // Modèle publié en production (v4.0.0), depuis l'instantané versionné :
+  // un nouvel environnement reçoit exactement le modèle de la base, avec ses
+  // métadonnées v3/v4 (criticité, famille, jalon, définitions, effets D5).
+  const snap = PROMOTION_MODEL_V4_SNAPSHOT;
   const model = await prisma.scoringModel.upsert({
-    where: { code: cfg.modelCode },
+    where: { code: snap.modelCode },
     create: {
-      code: cfg.modelCode,
-      name: "Scoring Promotion Immobilière",
+      code: snap.modelCode,
+      name: snap.modelName ?? "Scoring Promotion Immobilière",
       description: "Modèle de scoring projets de promotion immobilière (D1..D5).",
     },
     update: {},
@@ -99,78 +102,84 @@ async function seedScoringModel() {
 
   // Version (recréée proprement pour rejouabilité)
   const existing = await prisma.scoringModelVersion.findUnique({
-    where: { modelId_version: { modelId: model.id, version: cfg.version } },
+    where: { modelId_version: { modelId: model.id, version: snap.version } },
   });
   if (existing) {
     await prisma.scoringModelVersion.delete({ where: { id: existing.id } });
   }
+  // Une seule version publiée à la fois (même règle que la publication admin).
+  await prisma.scoringModelVersion.updateMany({
+    where: { modelId: model.id, status: "PUBLISHED" },
+    data: { status: "RETIRED" },
+  });
 
   const version = await prisma.scoringModelVersion.create({
     data: {
       modelId: model.id,
-      version: cfg.version,
+      version: snap.version,
       status: "PUBLISHED",
       publishedAt: new Date(),
-      scoreScale: cfg.scoreScale,
-      bamCoefficients: cfg.bamCoefficients,
-      decisionThresholds: cfg.decisionThresholds as any,
-      segmentAdjustments: cfg.segmentAdjustments as any,
-      zoneAdjustments: cfg.zoneAdjustments as any,
+      scoreScale: snap.scoreScale ?? 10,
+      bamCoefficients: snap.bamCoefficients as any,
+      decisionThresholds: snap.decisionThresholds as any,
+      segmentAdjustments: snap.segmentAdjustments as any,
+      zoneAdjustments: snap.zoneAdjustments as any,
     },
   });
 
-  for (const [di, d] of cfg.domains.entries()) {
+  for (const d of snap.domains) {
     const domain = await prisma.scoringDomain.create({
-      data: {
-        versionId: version.id,
-        code: d.code,
-        name: d.name,
-        weight: d.weight,
-        orderIndex: di,
-      },
+      data: { versionId: version.id, code: d.code, name: d.name, weight: d.weight, orderIndex: d.orderIndex },
     });
-    for (const [ci, c] of d.criteria.entries()) {
+    for (const c of d.criteria) {
       const crit = await prisma.scoringCriterion.create({
         data: {
           domainId: domain.id,
           code: c.code,
           name: c.name,
-          type: c.type,
+          description: c.description ?? null,
+          type: c.type as any,
           weight: c.weight,
           inputKey: c.inputKey,
           isGate: c.isGate,
           gateThreshold: c.gateThreshold ?? null,
-          orderIndex: ci,
+          orderIndex: c.orderIndex,
+          critical: c.critical ?? false,
+          family: c.family,
+          gateStage: c.gateStage,
+          unit: c.unit,
+          definition: c.definition,
         },
       });
-      if (c.options) {
-        for (const [oi, o] of c.options.entries()) {
-          await prisma.scoringOption.create({
-            data: { criterionId: crit.id, value: o.value, label: o.label, score: o.score, orderIndex: oi },
-          });
-        }
+      for (const o of c.options) {
+        await prisma.scoringOption.create({
+          data: { criterionId: crit.id, value: o.value, label: o.label, score: o.score, orderIndex: o.orderIndex },
+        });
       }
-      if (c.ranges) {
-        for (const [ri, r] of c.ranges.entries()) {
-          await prisma.scoringRange.create({
-            data: { criterionId: crit.id, minIncl: r.minIncl, maxExcl: r.maxExcl, score: r.score, label: r.label, orderIndex: ri },
-          });
-        }
+      for (const r of c.ranges) {
+        await prisma.scoringRange.create({
+          data: { criterionId: crit.id, minIncl: r.minIncl, maxExcl: r.maxExcl, score: r.score, label: r.label, orderIndex: r.orderIndex },
+        });
       }
     }
   }
 
-  for (const rf of cfg.redFlags) {
+  for (const rf of snap.redFlags) {
     await prisma.redFlagRule.create({
       data: {
         versionId: version.id,
         code: rf.code,
         name: rf.name,
+        description: rf.description ?? null,
         rule: rf.rule as any,
-        severity: rf.severity,
+        severity: rf.severity as any,
         impactDomains: rf.impactDomains,
         malus: rf.malus,
         mitigable: rf.mitigable,
+        mitigantHint: rf.mitigantHint ?? null,
+        effect: rf.effect,
+        requiresCommittee: rf.requiresCommittee ?? false,
+        regRef: rf.regRef,
       },
     });
   }
