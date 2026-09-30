@@ -456,6 +456,8 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
 
         <TabsContent value="Classification BKAM">
          <div className="space-y-4">
+          {/* Entrées réglementaires qui alimentent la classification (1/W). */}
+          <div className="grid lg:grid-cols-2 gap-4">{sectionTable("regulatoire")}{sectionTable("credit")}</div>
           {cls ? (
             <Card><CardHeader><CardTitle>Classification — {cls.regime.name}</CardTitle></CardHeader><CardContent className="space-y-3">
               <div className="flex items-center gap-3">
