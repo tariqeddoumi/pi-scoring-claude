@@ -111,6 +111,8 @@ export async function getProjectDetail(id: string) {
         include: {
           criterionResults: { include: { criterion: { include: { domain: true } } } },
           domainResults: { include: { domain: true } },
+          // Version du modèle utilisée (détection d'un score périmé).
+          version: { select: { version: true, status: true } },
         },
       },
       classificationRuns: { orderBy: { createdAt: "desc" }, take: 1, include: { regime: true } },
@@ -1286,6 +1288,9 @@ export async function getStressTest(shock: StressShock) {
   const evaluate = (p: (typeof projects)[number], inputs: ProjectInputs): StressLeg => {
     const restructuring = { restructured: inputs.restructured === "yes" };
     const classification = classify({ regime: activeRegime.config, inputs, restructuring });
+    // Mêmes options que le calcul officiel (scoringService) : défaut avéré,
+    // qualité des données bloquante et retard de paiement décisionnel.
+    const classDef = activeRegime.config.classes.find((c) => c.code === classification.resultClass);
     const scoring = runScoring({
       model: p.assetType === "EXPLOITATION" ? exploModel.config : promoModel.config,
       inputs,
@@ -1293,6 +1298,9 @@ export async function getStressTest(shock: StressShock) {
       zone: p.zone,
       regulatoryClass: classification.resultClass,
       classBlocksGo: classification.blocksGo,
+      isDefault: classDef?.isDefault ?? false,
+      dataQualityBlocking: classification.dataQuality.status === "INCOMPLETE_BLOCKING",
+      extraCriticalKeys: ["dpd_days"],
     });
     const ead = p.provisionRuns[0]?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead;
     const eligible = p.provisionRuns[0]?.eligibleGuarantees ?? 0;
@@ -1367,6 +1375,28 @@ export async function getAuditLog(limit = 100) {
     take: limit,
     include: { actor: true },
   });
+}
+
+/**
+ * Projets dont le dernier score n'a pas été calculé avec la version publiée
+ * (ou jamais calculé) — à recalculer après publication d'une version.
+ */
+export async function getModelVersionCoverage() {
+  const projects = await prisma.realEstateProject.findMany({
+    select: { scoringRuns: { orderBy: { createdAt: "desc" }, take: 1, select: { version: { select: { status: true } } } } },
+  });
+  const stale = projects.filter((p) => p.scoringRuns[0]?.version.status !== "PUBLISHED").length;
+  return { total: projects.length, stale };
+}
+
+/** Libellé de la version publiée d'un modèle (ou null). */
+export async function getPublishedModelVersion(modelCode = "PI_PROMOTION"): Promise<string | null> {
+  const v = await prisma.scoringModelVersion.findFirst({
+    where: { status: "PUBLISHED", model: { code: modelCode } },
+    orderBy: { publishedAt: "desc" },
+    select: { version: true },
+  });
+  return v?.version ?? null;
 }
 
 export async function getActiveModel(modelCode = "PI_PROMOTION") {

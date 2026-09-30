@@ -29,6 +29,10 @@ export const INPUT_SECTIONS: Record<string, { title: string; keys: string[] }> =
     title: "Crédit & dépassements (1/W)",
     keys: ["credit_type", "days_after_maturity", "bullet_unpaid", "authorized_amount", "overdraft_excess_pct", "overdraft_excess_days", "debit_no_credit_movements_days"],
   },
+  maroc: {
+    title: "Pratique marocaine (v4)",
+    keys: ["authorization_completeness_pct", "works_authorization_blocked", "secured_sales_rate", "buyers_financing_at_risk", "release_quotity_gap_pts", "release_underpriced", "division_limit_breach"],
+  },
   regulatoire: {
     title: "Vulnérabilité réglementaire",
     keys: ["dpd_days", "restructured", "restructuring_count", "restructuring_deferral_months", "restructuring_viable", "second_restructuring_in_observation", "dpd_on_restructured", "legal_exposure", "project_stopped_months", "project_stopped_over_1y", "judicial_recovery", "debt_equity_ratio", "revenue_drop_pct", "seizure_notice", "financials_late_7m", "negative_credit_bureau", "bp_significant_gap", "financials_unavailable", "unreliable_construction_progress_info", "unreliable_commercialization_info"],
@@ -87,6 +91,14 @@ export const INPUT_LABELS: Record<string, string> = {
   negative_credit_bureau: "Information négative Crédit Bureau / SCIP",
   bp_significant_gap: "Décalage significatif vs business plan",
   financials_unavailable: "Situation financière non évaluable",
+  // --- Pratique marocaine (modèle v4) — calculées par la synchronisation du suivi ---
+  authorization_completeness_pct: "Chaîne d'autorisations — complétude (%)",
+  works_authorization_blocked: "Autorisation indispensable aux travaux non levée",
+  secured_sales_rate: "Ventes sécurisées par le financement acquéreur (%)",
+  buyers_financing_at_risk: "Financement acquéreur majoritairement non sécurisé",
+  release_quotity_gap_pts: "Quotité de désengagement − équilibre (pts)",
+  release_underpriced: "Prix de mainlevée sous-tarifé",
+  division_limit_breach: "Limite de division des risques dépassée",
   // --- Crédit in fine / dépassements / compte débiteur (1/W art.10-12) ---
   credit_type: "Type de crédit",
   days_after_maturity: "Impayé in fine après terme (jours)",

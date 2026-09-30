@@ -19,6 +19,11 @@ describe("eventSignals — dérivation événements → inputs 1/W", () => {
     expect(r.values.project_stopped_over_1y).toBe(true);
   });
 
+  it("arrêt de chantier : la durée alimente la clé de l'alerte bloquante du modèle (mois)", () => {
+    expect(deriveEventInputs([ev("arret_chantier", { eventDate: daysAgo(400) })], NOW).values.project_stopped_months).toBe(13);
+    expect(deriveEventInputs([ev("arret_chantier", { eventDate: daysAgo(100) })], NOW).values.project_stopped_months).toBe(3);
+  });
+
   it("arrêt de chantier récent : signalé mais sans bascule art.12.7", () => {
     const r = deriveEventInputs([ev("arret_chantier", { eventDate: daysAgo(100) })], NOW);
     expect(r.values.project_stopped_over_1y).toBeUndefined();

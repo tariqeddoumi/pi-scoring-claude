@@ -3,7 +3,10 @@ import { notFound } from "next/navigation";
 import { getProjectDetail, getScoringHistory } from "@/server/queries";
 import { ScoringWizard } from "@/components/ScoringWizard";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
-import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS } from "@/lib/wizardFields";
+import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS, type FieldDef } from "@/lib/wizardFields";
+import { uncoveredModelFields } from "@/lib/modelInputs";
+import { loadActiveModelConfig } from "@/server/services/modelLoader";
+import { prisma } from "@/lib/prisma";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
 import { DossierAiPanel } from "@/components/DossierAiPanel";
@@ -23,7 +26,25 @@ export default async function ScoringWizardPage({ params }: { params: Promise<{ 
   // Le wizard suit la nature de l'actif : modèle promotion (vente) ou modèle
   // exploitation (hôtel / immobilier de rapport).
   const isExploitation = p.assetType === "EXPLOITATION";
-  const steps = isExploitation ? EXPLOITATION_WIZARD_STEPS : WIZARD_STEPS;
+  const baseSteps = isExploitation ? EXPLOITATION_WIZARD_STEPS : WIZARD_STEPS;
+
+  // Alignement sur le modèle PUBLIÉ : tout critère ou alerte dont la clé n'est
+  // pas encore présentée par les étapes standard (ajout via l'administration
+  // du modèle) est proposé dans une étape dédiée, avec ses modalités.
+  const modelRes = await safe(() => loadActiveModelConfig(prisma, isExploitation ? "PI_EXPLOITATION" : "PI_PROMOTION"));
+  const covered = baseSteps.flatMap((s) => s.fields.map((f) => f.key));
+  const extraFields: FieldDef[] = modelRes.ok
+    ? uncoveredModelFields(modelRes.data.config, covered).map((f) => ({
+        key: f.key,
+        type: f.kind,
+        label: f.label,
+        options: f.options,
+        hint: `${f.source === "criterion" ? "Critère" : "Alerte"} ${f.code} du modèle ${modelRes.data.config.version}`,
+      }))
+    : [];
+  const steps = extraFields.length
+    ? [...baseSteps, { id: "modele", title: "Autres critères du modèle publié", fields: extraFields }]
+    : baseSteps;
 
   const historyRes = await safe(() => getScoringHistory(p.id));
   const history = historyRes.ok ? historyRes.data : [];

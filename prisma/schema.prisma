@@ -773,6 +773,10 @@ model ScoringRun {
   triggeredRedFlags   Json?    // liste codes + détails
   gateBlocked         Boolean  @default(false)
   notes               String?
+  // Lecture complète du résultat (modèle v3/v4) : classe interne, notes
+  // économique / sûretés, données décisionnelles manquantes, conditions,
+  // PD indicative, version du modèle — cf. lib/domain/scoringRunDetails.ts.
+  details             Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -43,7 +43,7 @@ const FIELD_META: Record<string, FieldMeta> = {
   market_positioning: { kind: "select", values: ["sur_positionne", "moyen", "aligne"] },
   technical_complexity: { kind: "select", values: ["elevee", "moyenne", "standard"] },
   sav_litigation: { kind: "select", values: ["eleve", "moyen", "faible"] },
-  macro_sensitivity: { kind: "select", values: ["elevee", "faible"] },
+  macro_sensitivity: { kind: "select", values: ["elevee", "moyenne", "faible"] },
   progress_vs_plan: { kind: "num", unit: "%" },
   land_cost_ratio: { kind: "num", unit: "%" },
   // D3 — Commercial & cash-flow
@@ -81,6 +81,14 @@ const FIELD_META: Record<string, FieldMeta> = {
   negative_credit_bureau: { kind: "bool" },
   bp_significant_gap: { kind: "bool" },
   financials_unavailable: { kind: "bool" },
+  // Pratique marocaine (modèle v4)
+  authorization_completeness_pct: { kind: "num", unit: "%" },
+  works_authorization_blocked: { kind: "bool" },
+  secured_sales_rate: { kind: "num", unit: "%" },
+  buyers_financing_at_risk: { kind: "bool" },
+  release_quotity_gap_pts: { kind: "num", unit: "pts" },
+  release_underpriced: { kind: "bool" },
+  division_limit_breach: { kind: "bool" },
   // Restructuration (art.17-31)
   restructured: { kind: "select", values: ["no", "yes"] },
   restructuring_count: { kind: "num", unit: "nombre" },
@@ -108,6 +116,8 @@ const EXAMPLE: Record<string, string | number> = {
   negative_credit_bureau: "non", bp_significant_gap: "non", financials_unavailable: "non",
   restructured: "no", restructuring_count: 0, restructuring_deferral_months: 0,
   restructuring_viable: "oui", second_restructuring_in_observation: "non", dpd_on_restructured: 0,
+  authorization_completeness_pct: 100, works_authorization_blocked: "non", secured_sales_rate: 45,
+  buyers_financing_at_risk: "non", release_quotity_gap_pts: 5, release_underpriced: "non", division_limit_breach: "non",
 };
 
 // Ordre d'affichage des colonnes d'entrée, regroupées par domaine du modèle.
@@ -117,6 +127,7 @@ const INPUT_GROUPS: { group: string; keys: string[] }[] = [
   { group: "D3 · Commercial & cash-flow", keys: ["pre_sale_rate", "sales_vs_plan", "dso_days", "cash_coverage", "funding_gap_pct", "stock_rotation_months", "stressed_margin_pct", "funding_gap_persistent"] },
   { group: "D4 · Structuration financière & LGD", keys: ["gross_margin_pct", "ltc", "ltv_stressed", "guarantee_coverage", "first_rank", "interest_coverage", "equity_negative"] },
   { group: "D5 · Vulnérabilité réglementaire (1/W)", keys: ["construction_delay_months", "admin_problems_over_1y", "construction_delay_over_1y", "commercialization_below_50_1y", "finished_2y_no_sales", "project_stopped_months", "project_stopped_over_1y", "dpd_days", "judicial_recovery", "legal_exposure", "debt_equity_ratio", "revenue_drop_pct", "seizure_notice", "financials_late_7m", "negative_credit_bureau", "bp_significant_gap", "financials_unavailable"] },
+  { group: "Pratique marocaine (modèle v4)", keys: ["authorization_completeness_pct", "works_authorization_blocked", "secured_sales_rate", "buyers_financing_at_risk", "release_quotity_gap_pts", "release_underpriced", "division_limit_breach"] },
   { group: "Restructuration (art.17-31)", keys: ["restructured", "restructuring_count", "restructuring_deferral_months", "restructuring_viable", "second_restructuring_in_observation", "dpd_on_restructured"] },
 ];
 

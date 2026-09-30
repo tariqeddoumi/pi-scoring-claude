@@ -66,6 +66,9 @@ export function deriveEventInputs(
   const stops = openOf("arret_chantier");
   if (stops.length > 0) {
     const oldest = Math.max(...stops.map((e) => ageDays(e, now)));
+    // Durée d'arrêt en mois : clé de l'alerte bloquante du modèle
+    // (RF_PROJET_ARRET_12M, ≥ 12 mois) — la durée est connue du journal.
+    values.project_stopped_months = Math.floor(oldest / 30.4375);
     if (oldest >= 365) {
       values.project_stopped_over_1y = true;
       notes.push({ key: "project_stopped_over_1y", label: "Projet à l'arrêt > 1 an", reason: `Arrêt de chantier ouvert depuis ${oldest} j (art.12.7 → compromis).` });

@@ -29,7 +29,11 @@ export function ScoringWizard({
     start(async () => {
       const r = await saveProjectInputs(projectId, values);
       if (!r.ok) {
-        setMsg("Erreurs de validation : " + Object.keys(r.errors ?? {}).join(", "));
+        setMsg(
+          "error" in r && r.error
+            ? r.error
+            : "Valeurs invalides : " + Object.keys(r.errors ?? {}).map((k) => INPUT_LABELS[k] ?? k).join(", "),
+        );
         return;
       }
       if (then === "run") {
@@ -62,34 +66,44 @@ export function ScoringWizard({
         <div className="grid sm:grid-cols-2 gap-4">
           {current.fields.map((f) => (
             <label key={f.key} className="text-sm space-y-1">
-              <span className="text-muted-foreground">{INPUT_LABELS[f.key] ?? f.key}</span>
+              <span className="text-muted-foreground">{f.label ?? INPUT_LABELS[f.key] ?? f.key}</span>
               {f.type === "select" ? (
                 <select
                   className="w-full rounded-md border border-border bg-background px-2 py-1.5"
                   value={values[f.key] ?? ""}
-                  onChange={(e) => setVal(f.key, e.target.value)}
+                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value)}
                 >
-                  <option value="" disabled>—</option>
+                  <option value="">— non renseigné</option>
                   {f.options!.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               ) : f.type === "bool" ? (
                 <select
                   className="w-full rounded-md border border-border bg-background px-2 py-1.5"
                   value={values[f.key] === true ? "true" : values[f.key] === false ? "false" : ""}
-                  onChange={(e) => setVal(f.key, e.target.value === "true")}
+                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value === "true")}
                 >
+                  <option value="">— non renseigné</option>
                   <option value="false">Non</option>
                   <option value="true">Oui</option>
                 </select>
+              ) : f.type === "text" ? (
+                <input
+                  type="text"
+                  className="w-full rounded-md border border-border bg-background px-2 py-1.5"
+                  value={values[f.key] ?? ""}
+                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value)}
+                />
               ) : (
                 <input
                   type="number"
-                  step={f.step ?? "1"}
+                  step={f.step ?? "any"}
                   className="w-full rounded-md border border-border bg-background px-2 py-1.5"
                   value={values[f.key] ?? ""}
-                  onChange={(e) => setVal(f.key, e.target.value === "" ? "" : Number(e.target.value))}
+                  // Champ vidé = donnée absente (null), jamais 0.
+                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : Number(e.target.value))}
                 />
               )}
+              {f.hint && <span className="block text-xs text-muted-foreground">{f.hint}</span>}
             </label>
           ))}
         </div>

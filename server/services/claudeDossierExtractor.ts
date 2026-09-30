@@ -45,6 +45,8 @@ function buildSchema(fields: FieldDef[]) {
       properties[f.key] = { ...nullable("number"), description: `${label} — nombre, sinon null` };
     } else if (f.type === "bool") {
       properties[f.key] = { ...nullable("boolean"), description: `${label} — booléen si établi par le document, sinon null` };
+    } else if (f.type === "text") {
+      properties[f.key] = { ...nullable("string"), description: `${label} — texte, sinon null` };
     } else {
       const values = (f.options ?? []).map((o) => o.value);
       properties[f.key] = {

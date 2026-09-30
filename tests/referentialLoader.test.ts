@@ -77,3 +77,19 @@ describe("Référentiels administrables (paramétrage sans redéploiement)", () 
     expect(r.financing.get("bizarre")?.securityFactor).toBe(0.2); // repli prudent
   });
 });
+
+describe("Politique de division des risques (référentiel PRUDENTIAL_LIMIT)", () => {
+  it("n'invente aucun défaut : sans fonds propres, pas de contrôle", async () => {
+    const { parseDivisionPolicy } = await import("@/server/services/referentialLoader");
+    expect(parseDivisionPolicy({})).toBeNull();
+    expect(parseDivisionPolicy({ ownFunds: 0 })).toBeNull();
+    expect(parseDivisionPolicy({ ownFunds: "15e9" })).toBeNull();
+  });
+
+  it("lit les fonds propres et les taux, en ignorant les taux hors [0 ; 1]", async () => {
+    const { parseDivisionPolicy } = await import("@/server/services/referentialLoader");
+    expect(parseDivisionPolicy({ ownFunds: 15e9, limitPct: 0.2, largeExposurePct: 5, netOfGuarantees: true })).toEqual({
+      ownFunds: 15e9, limitPct: 0.2, largeExposurePct: undefined, netOfGuarantees: true,
+    });
+  });
+});
