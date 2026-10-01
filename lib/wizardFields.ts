@@ -127,6 +127,23 @@ export const WIZARD_STEPS: { id: string; title: string; fields: FieldDef[] }[] =
     ],
   },
   {
+    id: "programme", title: "Programme, tranche, équipements et déblocages (modèle v5)",
+    fields: [
+      sel("regional_market_tension", [["surstock", "Marché en surstock"], ["equilibre", "Marché équilibré"], ["porteur", "Marché porteur"]]),
+      sel("tranche_dependency", [["dependante_non_financee", "Dépendante d'ouvrages communs non financés"], ["dependante_financee", "Dépendante d'ouvrages communs financés / réalisés"], ["autonome", "Tranche autonome"], ["programme_entier", "Programme entier financé"]]),
+      sel("contractor_quality", [["non_qualifiee", "Non qualifiée / régie"], ["qualifiee", "Qualifiée, garanties partielles"], ["qualifiee_garantie", "Qualifiée, forfaitaire, cautions"]]),
+      { key: "cost_overrun_pct", type: "number", step: "0.1", hint: "Coût à terminaison estimé vs budget initial (négatif si économie)." },
+      { key: "slow_liquidity_share_pct", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "component_exit_unsecured", type: "bool", hint: "Hôtel, commerces ou bureaux significatifs sans acquéreur, opérateur ou preneur engagé." },
+      { key: "cancellation_rate_pct", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "equipment_unbudgeted_pct", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "equipment_delivery_at_risk", type: "bool", hint: SYNC_DERIVED_HINT },
+      { key: "drawdown_vs_progress_pct", type: "number", step: "0.1", hint: SYNC_DERIVED_HINT },
+      { key: "drawdown_ahead_of_works", type: "bool", hint: SYNC_DERIVED_HINT },
+      { key: "drawdown_schedule_late", type: "bool", hint: SYNC_DERIVED_HINT },
+    ],
+  },
+  {
     id: "credit", title: "Crédit & dépassements (1/W art.10-12)",
     fields: [
       sel("credit_type", [["amortissable", "Amortissable"], ["in_fine", "In fine"], ["decouvert", "Découvert / ligne"]]),

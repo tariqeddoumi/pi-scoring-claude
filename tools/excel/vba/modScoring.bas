@@ -239,7 +239,8 @@ Public Sub ViderDossier()
     Dim i As Long
     ThisWorkbook.Worksheets("Saisie").Range("C4:C9").ClearContents
     NomPlage("In_Saisie").ClearContents
-    noms = Array("Calc_Auth", "Calc_Valeur", "Calc_Lots", "Calc_Mainlevee", "Calc_Concours", "Calc_Arret")
+    noms = Array("Calc_Auth", "Calc_Valeur", "Calc_Lots", "Calc_Mainlevee", "Calc_Concours", "Calc_Arret", _
+                 "Calc_Tirage", "Calc_Plan", "Calc_PlanDate", "Calc_EquipParam", "Calc_Equip", "Calc_Mixte", "Calc_Desist", "Calc_Cout")
     For i = LBound(noms) To UBound(noms)
         NomPlage(CStr(noms(i))).ClearContents
     Next i

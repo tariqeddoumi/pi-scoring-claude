@@ -26,6 +26,10 @@ const HINTS: Record<string, { hint: string; configHint: string }> = {
     hint: "Dispositifs publics d'appui à l'acquisition. Montants et conditions relèvent d'un référentiel daté, à maintenir avec le Juridique.",
     configHint: "Généralement {} — la note porte les conditions.",
   },
+  REGIONAL_MARKET: {
+    hint: "Une entrée par région administrative (code = région, ex. casablanca_settat). Tension du marché par segment du modèle, datée et sourcée : alimente le critère « Tension du marché régional ». Sans appréciation, la donnée reste absente (note plancher).",
+    configHint: 'Ex. {"segments":{"social":"porteur","intermediaire":"equilibre","moyen_haut":"surstock"},"default":"equilibre","assessedAt":"2026-09","source":"Étude Direction des risques"} — valeurs : porteur | equilibre | surstock.',
+  },
   PRUDENTIAL_LIMIT: {
     hint: "Code DIVISION_RISQUES : fonds propres prudentiels et limite par contrepartie / groupe. Alimente l'alerte « Limite de division des risques dépassée » lors de la synchronisation du suivi. Sans fonds propres renseignés, le contrôle n'est pas effectué.",
     configHint: 'Ex. {"ownFunds":15000000000,"limitPct":0.2,"largeExposurePct":0.05,"netOfGuarantees":false} — montants en MAD, taux entre 0 et 1, à caler sur le référentiel réglementaire en vigueur.',

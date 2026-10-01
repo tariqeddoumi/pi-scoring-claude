@@ -1,7 +1,7 @@
 // Exporte, depuis le code et le modèle publié, les données factuelles du guide
 // du chargé d'affaires (libellés, étapes du wizard, barèmes, alertes, événements).
 import fs from "node:fs";
-import { PROMOTION_SCORING_MODEL_V4 } from "@/lib/domain/models/piPromotionV4";
+import { CURRENT_PROMOTION_MODEL } from "@/lib/domain/models/current";
 import { WIZARD_STEPS } from "@/lib/wizardFields";
 import { INPUT_LABELS } from "@/lib/inputLabels";
 import { EVENT_TYPES_LIST } from "@/lib/domain/referentiels";
@@ -11,7 +11,7 @@ import { WORKFLOW_LABELS, WORKFLOW_TRANSITIONS } from "@/lib/workflow";
 import { ROLE_LABELS, ROLE_PERMISSIONS } from "@/lib/rbac";
 import { criticalInputKeys } from "@/lib/domain/decisionInvariants";
 
-const M = PROMOTION_SCORING_MODEL_V4;
+const M = CURRENT_PROMOTION_MODEL;
 const stepOf: Record<string, string> = {};
 for (const s of WIZARD_STEPS) for (const f of s.fields) stepOf[f.key] = s.title;
 const out = {

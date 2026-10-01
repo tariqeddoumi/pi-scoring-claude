@@ -1,4 +1,4 @@
-# Outil Excel / VBA — Modèle PI_PROMOTION v4.0.0 (outil 4.1)
+# Outil Excel / VBA — Modèle PI_PROMOTION v5.0.0 (outil 5.0)
 
 Classeur qui implémente le modèle de scoring de promotion immobilière publié
 (mêmes critères, barèmes, alertes, seuils et invariants de décision que
@@ -8,16 +8,16 @@ l'application).
 
 | Fichier | Rôle |
 |---|---|
-| `PI_Promotion_Modele_v4.xlsx` | Classeur : Saisie (avec un dossier d'exemple), Resultat, Calculateurs, Portefeuille, Stress, Tests, Historique, paramètres `P_*` |
+| `PI_Promotion_Modele_v5.xlsx` | Classeur : Saisie (avec un dossier d'exemple), Resultat, Calculateurs, Portefeuille, Stress, Tests, Historique, paramètres `P_*` |
 | `vba/*.bas` | 5 modules VBA (outils, scoring, stress, gouvernance du modèle, installation des boutons) — ASCII, sans bibliothèque externe |
 | `build_workbook.py` | Régénère le classeur |
-| `_build/gen_vectors.ts` | 20 cas de référence calculés par le moteur de production → `vectors.json` |
+| `_build/gen_vectors.ts` | 26 cas de référence calculés par le moteur de production → `vectors.json` |
 | `_build/gen_stress.ts` | Stress attendu sur le dossier d'exemple, moteur de l'application → `stress_expected.json` |
 | `_build/gen_refs.ts` | Référentiels métier exportés du code de l'application → `referentiels.json` |
 | `_build/libreoffice/` | Banc de vérification : recalcul des formules et exécution réelle des macros sous LibreOffice |
 | `_build/verify.py` | Vérification alternative des formules (bibliothèque Python `formulas`) |
 
-**Sources uniques** : le modèle est lu dans `prisma/models/PI_PROMOTION_v4.0.0.json`
+**Sources uniques** : le modèle est lu dans `prisma/models/PI_PROMOTION_v5.0.0.json`
 (instantané exact de la base de production) ; les référentiels et les cas de
 référence sont produits par le code de l'application. Aucune donnée n'est
 recopiée à la main.
@@ -31,12 +31,12 @@ onglets `P_*` sans toucher au code.
 
 ## Installation (2 minutes)
 
-1. Ouvrir `PI_Promotion_Modele_v4.xlsx` dans Excel (Windows recommandé).
+1. Ouvrir `PI_Promotion_Modele_v5.xlsx` dans Excel (Windows recommandé).
 2. `Alt + F11` → *Fichier → Importer un fichier…* → importer les 5 fichiers de `vba/`.
 3. *Débogage → Compiler VBAProject* : aucune erreur attendue.
 4. `Alt + F8` → exécuter `InstallerBoutons`.
 5. *Enregistrer sous…* → **Classeur Excel prenant en charge les macros (.xlsm)**.
-6. Exécuter `ExecuterAutotests` : attendu « 20 / 20 cas conformes ».
+6. Exécuter `ExecuterAutotests` : attendu « 26 / 26 cas conformes ».
 7. Exécuter `ValiderModele` : attendu 0 erreur.
 
 ## Utilisation
@@ -48,7 +48,10 @@ onglets `P_*` sans toucher au code.
   « Non »). Booléens : « Oui » / « Non ». Une valeur saisie prime sur une valeur calculée.
 - **Calculateurs** : A. chaîne d'autorisations · B. ventes sécurisées par le financement
   de l'acquéreur · C. mainlevée / quotité de désengagement · D. division des risques ·
-  E. arrêt de chantier. Ils alimentent 8 données dérivées (colonne F de la Saisie).
+  E. arrêt de chantier · F. déblocages vs avancement certifié et plan de tirage vs
+  calendrier · G. équipements exigés (mosquée, école, voirie…) · H. programme mixte,
+  désistements et coût à terminaison. Ils alimentent 16 données dérivées (colonne F de
+  la Saisie). Si la banque ne finance qu'une tranche, saisir les chiffres de cette seule tranche.
 - **Resultat** : score, décision, classe interne, notes économique et de sûretés,
   **données décisionnelles manquantes en clair**, **conditions à lever avec leur jalon**,
   alertes, retour en comité, détail par critère et par domaine.
@@ -57,15 +60,19 @@ onglets `P_*` sans toucher au code.
 - **Stress** : 7 scénarios → `LancerStress` (mêmes chocs que l'application).
 - **P_\*** : paramètres du modèle. Après modification : `ValiderModele`, puis `SnapshotModele`.
 
-## Vérifications (outil 4.1)
+## Vérifications (outil 5.0)
 
 | Contrôle | Résultat |
 |---|---|
-| Formules recalculées par **LibreOffice Calc** sur les 20 cas de référence du moteur de production | 20 / 20 |
+| Formules recalculées par **LibreOffice Calc** sur les 26 cas de référence du moteur de production | 26 / 26 |
+| Calculateurs v5 (sections F à H) comparés aux fonctions de l'application ; calculateur vide = aucune valeur injectée | 10 / 10 |
 | Macros **exécutées** sous LibreOffice (mode de compatibilité VBA) : autotests, dossier, portefeuille, stress, validation, listes, instantané, nouveau dossier, boutons | toutes exécutées sans erreur |
-| Autotests lancés par la macro | 20 / 20 |
+| Autotests lancés par la macro | 26 / 26 |
 | Stress VBA comparé au moteur de stress de l'application (7 scénarios) | identique |
 | `ValiderModele` | 0 erreur |
+
+Outil 5.0 : modèle v5.0.0 (37 critères, 18 alertes), calculateurs F à H, 26 cas de référence ;
+la macro « Nouveau dossier » vide aussi les nouveaux calculateurs.
 
 Corrections apportées au VBA de l'outil 4.0 grâce à cette exécution réelle :
 
@@ -97,13 +104,14 @@ l'installation) reste la recette de référence.
 ```bash
 # depuis la racine du dépôt
 npx tsx tools/excel/_build/gen_refs.ts      # référentiels métier
-npx tsx tools/excel/_build/gen_vectors.ts   # 20 cas de référence
+npx tsx tools/excel/_build/gen_vectors.ts   # 26 cas de référence
 npx tsx tools/excel/_build/gen_stress.ts    # stress attendu (dossier d'exemple)
-python3 tools/excel/build_workbook.py       # écrit tools/excel/PI_Promotion_Modele_v4.xlsx
+python3 tools/excel/build_workbook.py       # écrit tools/excel/PI_Promotion_Modele_v5.xlsx
 
 # vérification sous LibreOffice (paquets libreoffice-calc et python3-uno)
 cd tools/excel
-python3 _build/libreoffice/verifier_formules.py PI_Promotion_Modele_v4.xlsx _build/vectors.json
-cp PI_Promotion_Modele_v4.xlsx /tmp/essai.xlsx   # les macros modifient le fichier chargé
+python3 _build/libreoffice/verifier_formules.py PI_Promotion_Modele_v5.xlsx _build/vectors.json
+python3 _build/libreoffice/verifier_calculateurs_v5.py PI_Promotion_Modele_v5.xlsx
+cp PI_Promotion_Modele_v5.xlsx /tmp/essai.xlsx   # les macros modifient le fichier chargé
 LO_VISIBLE=1 python3 _build/libreoffice/verifier_macros.py /tmp/essai.xlsx vba _build/stress_expected.json
 ```

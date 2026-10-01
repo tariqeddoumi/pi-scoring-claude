@@ -24,6 +24,8 @@ const BOOL_INPUT_KEYS = [
   "bullet_unpaid", "unreliable_construction_progress_info", "unreliable_commercialization_info",
   // Alertes du modèle v4 (pratique marocaine).
   "works_authorization_blocked", "buyers_financing_at_risk", "release_underpriced", "division_limit_breach",
+  // Alertes du modèle v5 (déblocages, équipements, composantes).
+  "drawdown_ahead_of_works", "drawdown_schedule_late", "equipment_delivery_at_risk", "component_exit_unsecured",
 ];
 
 export interface ImportSummary {

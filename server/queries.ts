@@ -474,9 +474,9 @@ export async function getScoringHistory(projectId: string) {
   const runs = await prisma.scoringRun.findMany({
     where: { projectId },
     orderBy: { createdAt: "asc" },
-    select: { id: true, createdAt: true, scoreFinal: true, decision: true },
+    select: { id: true, createdAt: true, scoreFinal: true, decision: true, version: { select: { version: true } } },
   });
-  return runs;
+  return runs.map(({ version, ...r }) => ({ ...r, modelVersion: version.version }));
 }
 
 /**

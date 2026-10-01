@@ -4,7 +4,7 @@
 // =====================================================================
 
 import { PrismaClient } from "@prisma/client";
-import { PROMOTION_MODEL_V4_SNAPSHOT } from "../lib/domain/models/piPromotionV4";
+import { CURRENT_PROMOTION_SNAPSHOT } from "../lib/domain/models/current";
 import {
   REGIME_19G_2002,
   REGIME_19G_PROVISION_RATES,
@@ -86,10 +86,10 @@ async function seedRbac() {
 }
 
 async function seedScoringModel() {
-  // Modèle publié en production (v4.0.0), depuis l'instantané versionné :
+  // Modèle publié en production (version courante), depuis l'instantané versionné :
   // un nouvel environnement reçoit exactement le modèle de la base, avec ses
   // métadonnées v3/v4 (criticité, famille, jalon, définitions, effets D5).
-  const snap = PROMOTION_MODEL_V4_SNAPSHOT;
+  const snap = CURRENT_PROMOTION_SNAPSHOT;
   const model = await prisma.scoringModel.upsert({
     where: { code: snap.modelCode },
     create: {

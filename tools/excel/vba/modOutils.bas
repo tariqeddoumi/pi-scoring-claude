@@ -1,7 +1,7 @@
 Attribute VB_Name = "modOutils"
 Option Explicit
 '=====================================================================
-' modOutils - fonctions utilitaires communes (PI_PROMOTION v4)
+' modOutils - fonctions utilitaires communes (PI_PROMOTION v5)
 ' Le moteur de calcul est dans les FORMULES du classeur (onglet Resultat).
 ' Les macros ne font que charger des donnees, recalculer et lire le resultat.
 '=====================================================================

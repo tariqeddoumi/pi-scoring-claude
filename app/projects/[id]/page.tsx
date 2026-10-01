@@ -35,7 +35,7 @@ export const dynamic = "force-dynamic";
 
 const TABS = [
   "Identification", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
-  "Financement", "Cash-flow", "Garanties", "Classification BKAM", "Provisionnement", "Scoring", "Audit",
+  "Financement", "Programme", "Cash-flow", "Garanties", "Classification BKAM", "Provisionnement", "Scoring", "Audit",
 ];
 
 const WF_STATE_COLORS: Record<WorkflowStateName, string> = {
@@ -380,6 +380,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="Autorisations"><div className="space-y-4">{sectionTable("autorisations")}{sectionTable("maroc")}</div></TabsContent>
         <TabsContent value="Commercialisation">{sectionTable("commercialisation")}</TabsContent>
         <TabsContent value="Financement">{sectionTable("financement")}</TabsContent>
+        <TabsContent value="Programme">{sectionTable("programme")}</TabsContent>
         <TabsContent value="Cash-flow">{sectionTable("cashflow")}</TabsContent>
 
         <TabsContent value="Garanties">

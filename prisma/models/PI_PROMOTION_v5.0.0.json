@@ -1,0 +1,1922 @@
+{
+  "modelCode": "PI_PROMOTION",
+  "modelName": "Scoring Promotion Immobilière",
+  "version": "v5.0.0",
+  "publishedAt": "2026-10-01",
+  "scoreScale": 10,
+  "bamCoefficients": {
+    "CTX": 0,
+    "SAIN": 1,
+    "DOUTEUX": 0.4,
+    "SENSIBLE": 0.9,
+    "COMPROMIS": 0.2,
+    "PRE_DOUTEUX": 0.7
+  },
+  "decisionThresholds": {
+    "go": 75,
+    "watchList": 50,
+    "goWithConditions": 65
+  },
+  "segmentAdjustments": {
+    "social": 0,
+    "villas": -0.04,
+    "bureaux": -0.05,
+    "commerces": -0.03,
+    "moyen_haut": 0,
+    "touristique": -0.07,
+    "intermediaire": -0.05
+  },
+  "zoneAdjustments": {
+    "agadir": 0,
+    "tanger": 0,
+    "marrakech": -0.07,
+    "casa_centre": 0,
+    "fes_oriental": -0.03,
+    "rabat_centre": 0.02,
+    "casa_peripherie": -0.05,
+    "rabat_peripherie": 0,
+    "regions_interieures": -0.05
+  },
+  "domains": [
+    {
+      "code": "D1",
+      "name": "Sponsor & Gouvernance",
+      "weight": 0.25,
+      "orderIndex": 0,
+      "criteria": [
+        {
+          "code": "D1C1",
+          "name": "Projets similaires livrés (5 ans)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.2,
+          "inputKey": "promoter_completed_projects",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 0,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 1,
+              "score": 1,
+              "label": "< 1 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 1,
+              "maxExcl": 3,
+              "score": 6,
+              "label": "1 à < 3 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 3,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 3 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D1C2",
+          "name": "Gearing promoteur (dettes nettes / FP)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.25,
+          "inputKey": "promoter_gearing",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 1,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 100,
+              "score": 10,
+              "label": "< 100 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 100,
+              "maxExcl": 150,
+              "score": 6,
+              "label": "100 à < 150 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 150,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 150 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D1C3",
+          "name": "Gouvernance & structure juridique",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.15,
+          "inputKey": "governance_quality",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 2,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "opaque",
+              "label": "Opaque",
+              "score": 1,
+              "orderIndex": 0
+            },
+            {
+              "value": "partielle",
+              "label": "Partielle",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "claire",
+              "label": "Claire / structurée",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D1C4",
+          "name": "Concentration mono-projet (CA projet / CA total)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.15,
+          "inputKey": "mono_project_concentration",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 3,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 40,
+              "score": 10,
+              "label": "< 40 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 40,
+              "maxExcl": 60,
+              "score": 6,
+              "label": "40 à < 60 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 60,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 60 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D1C5",
+          "name": "Typologie promoteur",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.1,
+          "inputKey": "promoter_type",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 4,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "opportuniste",
+              "label": "Opportuniste",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "regional",
+              "label": "Régional",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "structure",
+              "label": "Structuré",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D1C6",
+          "name": "Apport effectif (injecté / prévu)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.15,
+          "inputKey": "equity_injected_ratio",
+          "isGate": true,
+          "gateThreshold": 1,
+          "orderIndex": 5,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": "SIGNATURE",
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 80,
+              "score": 1,
+              "label": "< 80 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 80,
+              "maxExcl": 100,
+              "score": 6,
+              "label": "80 à < 100 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 100,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 100 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D2",
+      "name": "Qualité intrinsèque du projet",
+      "weight": 0.2,
+      "orderIndex": 1,
+      "criteria": [
+        {
+          "code": "D2C1",
+          "name": "Foncier & autorisations",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.1,
+          "inputKey": "land_permits_status",
+          "isGate": true,
+          "gateThreshold": 1,
+          "orderIndex": 0,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": "TIRAGE",
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "absentes",
+              "label": "Titre non purgé / autorisations absentes",
+              "score": 1,
+              "orderIndex": 0
+            },
+            {
+              "value": "partielles",
+              "label": "Partielles",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "definitives",
+              "label": "Titre purgé + autorisations définitives",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C2",
+          "name": "Marché & positionnement",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.15,
+          "inputKey": "market_positioning",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 1,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "sur_positionne",
+              "label": "Sur-positionné / sur-offre",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "moyen",
+              "label": "Correct",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "aligne",
+              "label": "Aligné / forte demande",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C3",
+          "name": "Complexité technique",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.1,
+          "inputKey": "technical_complexity",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 2,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "elevee",
+              "label": "Élevée",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "moyenne",
+              "label": "Moyenne",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "standard",
+              "label": "Standard",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C4",
+          "name": "Avancement vs planning",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "progress_vs_plan",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 3,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 80,
+              "score": 1,
+              "label": "< 80 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 80,
+              "maxExcl": 100,
+              "score": 6,
+              "label": "80 à < 100 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 100,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 100 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D2C5",
+          "name": "Litiges clients / SAV",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.05,
+          "inputKey": "sav_litigation",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 4,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "eleve",
+              "label": "Élevé",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "moyen",
+              "label": "Moyen",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "faible",
+              "label": "Faible",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C6",
+          "name": "Sensibilité macro / subvention",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.05,
+          "inputKey": "macro_sensitivity",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 5,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "elevee",
+              "label": "Élevée",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "moyenne",
+              "label": "Moyenne",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "faible",
+              "label": "Faible",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C7",
+          "name": "Coût foncier / CA",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "land_cost_ratio",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 6,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 25,
+              "score": 10,
+              "label": "< 25 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 25,
+              "maxExcl": 35,
+              "score": 6,
+              "label": "25 à < 35 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 35,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 35 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D2C8",
+          "name": "Chaîne d'autorisations (complétude)",
+          "description": "Complétude de la chaîne d'autorisations exigible selon la nature du programme (lotir, construire, morcellement, habiter, conformité, réceptions).",
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "authorization_completeness_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 7,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": "TIRAGE",
+          "unit": "%",
+          "definition": "Pièces obtenues / pièces exigibles selon la nature du programme (loi 25-90 lotissements ; loi 12-90 urbanisme ; ANCFCC morcellement).",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 50,
+              "score": 1,
+              "label": "< 50 % (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 50,
+              "maxExcl": 100,
+              "score": 6,
+              "label": "50 à < 100 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 100,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 100 % (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D2C9",
+          "name": "Tension du marché régional",
+          "description": "Régionalité : un même programme ne se vend pas au même rythme selon la région et le segment.",
+          "type": "QUAL",
+          "weight": 0.1,
+          "inputKey": "regional_market_tension",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 8,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": "Appréciation datée du marché immobilier de la région administrative du programme pour son segment (référentiel « Marché régional » de la Direction des risques ou étude de marché).",
+          "options": [
+            {
+              "value": "surstock",
+              "label": "Marché en surstock (écoulement lent, prix sous pression)",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "equilibre",
+              "label": "Marché équilibré",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "porteur",
+              "label": "Marché porteur (demande soutenue)",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C10",
+          "name": "Entreprise de travaux et garanties de marché",
+          "description": "Risque d'achèvement porté par l'entreprise qui construit.",
+          "type": "QUAL",
+          "weight": 0.1,
+          "inputKey": "contractor_quality",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 9,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": "Qualification et classification de l'entreprise de BTP, nature du marché (forfaitaire ou en régie) et garanties contractuelles (caution de bonne exécution, retenue de garantie).",
+          "options": [
+            {
+              "value": "non_qualifiee",
+              "label": "Entreprise non qualifiée, travaux en régie ou promoteur-constructeur sans structure",
+              "score": 2,
+              "orderIndex": 0
+            },
+            {
+              "value": "qualifiee",
+              "label": "Entreprise qualifiée, garanties de marché partielles",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "qualifiee_garantie",
+              "label": "Entreprise qualifiée et classée, marché forfaitaire avec caution de bonne exécution et retenue de garantie",
+              "score": 10,
+              "orderIndex": 2
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D2C11",
+          "name": "Équipements exigés non budgétés (% du coût)",
+          "description": "Un équipement public non budgété ampute la marge et peut bloquer la réception.",
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "equipment_unbudgeted_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 10,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "%",
+          "definition": "Coût des équipements exigés par la commune, le cahier des charges ou l'autorisation (mosquée, école, voirie…) non prévus au budget et à la charge du programme / coût total du programme.",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 0.0001,
+              "score": 10,
+              "label": "0 % — tout est budgété (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 0.0001,
+              "maxExcl": 3,
+              "score": 6,
+              "label": "> 0 à < 3 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 3,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 3 % (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D2C12",
+          "name": "Autonomie du périmètre financé (tranche)",
+          "description": "Financement d'un lot : risque de dépendance aux tranches non financées.",
+          "type": "QUAL",
+          "weight": 0.05,
+          "inputKey": "tranche_dependency",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 11,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": "Lorsque la banque finance une tranche et non le programme entier : la tranche peut-elle être achevée, livrée et vendue sans les ouvrages communs (accès, VRD, raccordements) d'autres tranches ?",
+          "options": [
+            {
+              "value": "dependante_non_financee",
+              "label": "Tranche dépendante d'ouvrages communs non financés",
+              "score": 1,
+              "orderIndex": 0
+            },
+            {
+              "value": "dependante_financee",
+              "label": "Tranche dépendante d'ouvrages communs financés ou réalisés",
+              "score": 6,
+              "orderIndex": 1
+            },
+            {
+              "value": "autonome",
+              "label": "Tranche autonome (accès, VRD et raccordements propres)",
+              "score": 10,
+              "orderIndex": 2
+            },
+            {
+              "value": "programme_entier",
+              "label": "Financement du programme entier",
+              "score": 10,
+              "orderIndex": 3
+            }
+          ],
+          "ranges": []
+        }
+      ]
+    },
+    {
+      "code": "D3",
+      "name": "Commercial & Cash-flow",
+      "weight": 0.31,
+      "orderIndex": 2,
+      "criteria": [
+        {
+          "code": "D3C1",
+          "name": "Préventes sécurisées (encaissées / CA)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.15,
+          "inputKey": "pre_sale_rate",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 0,
+          "critical": true,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": "Prix des lots juridiquement sécurisés, net des annulations — distinct des acomptes déjà dépensés (F07).",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 25,
+              "score": 1,
+              "label": "< 25 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 25,
+              "maxExcl": 40,
+              "score": 6,
+              "label": "25 à < 40 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 40,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 40 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C2",
+          "name": "Ventes vs planning",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "sales_vs_plan",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 1,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 80,
+              "score": 1,
+              "label": "< 80 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 80,
+              "maxExcl": 100,
+              "score": 6,
+              "label": "80 à < 100 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 100,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 100 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C3",
+          "name": "DSO (jours)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "dso_days",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 2,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 120,
+              "score": 10,
+              "label": "< 120 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 120,
+              "maxExcl": 240,
+              "score": 6,
+              "label": "120 à < 240 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 240,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 240 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C4",
+          "name": "Cash coverage (cash / échéances)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.2,
+          "inputKey": "cash_coverage",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 3,
+          "critical": true,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": "Trésorerie affectable / échéances sur l'horizon — à reconstituer depuis un budget mensuel (F07).",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 1,
+              "score": 1,
+              "label": "< 1 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 1,
+              "maxExcl": 1.2,
+              "score": 6,
+              "label": "1 à < 1,2 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 1.2,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 1,2 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C5",
+          "name": "Impasse brute",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.15,
+          "inputKey": "funding_gap_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 4,
+          "critical": true,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 0.0001,
+              "score": 10,
+              "label": "≤ 0 — aucune impasse (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 0.0001,
+              "maxExcl": 10,
+              "score": 6,
+              "label": "> 0 à < 10 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 10,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 10 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C6",
+          "name": "Rotation stock (mois)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "stock_rotation_months",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 5,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 18,
+              "score": 10,
+              "label": "< 18 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 18,
+              "maxExcl": 30,
+              "score": 6,
+              "label": "18 à < 30 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 30,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 30 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C7",
+          "name": "Marge brute stressée (prix -10%)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "stressed_margin_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 6,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 10,
+              "score": 1,
+              "label": "< 10 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 10,
+              "maxExcl": 15,
+              "score": 6,
+              "label": "10 à < 15 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 15,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 15 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C8",
+          "name": "Ventes sécurisées (financement acquéreur)",
+          "description": "Taux de ventes pondéré par la solidité du financement de l'acquéreur (crédit débloqué, accordé, en cours, refusé) et l'engagement juridique.",
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "secured_sales_rate",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 7,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "%",
+          "definition": "Σ(prix du lot × facteur de sécurisation du financement acquéreur) / valeur commercialisable totale. Une réservation non instruite ne vaut pas un acte financé.",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 25,
+              "score": 1,
+              "label": "< 25 % (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 25,
+              "maxExcl": 40,
+              "score": 6,
+              "label": "25 à < 40 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 40,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 40 % (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C9",
+          "name": "Part du CA en produits à écoulement lent",
+          "description": "Programme mixte : les commerces, bureaux et l'hôtel se vendent plus lentement que les logements.",
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "slow_liquidity_share_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 8,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "%",
+          "definition": "Chiffre d'affaires des commerces, bureaux et composantes hôtelières / chiffre d'affaires total du programme (ou du périmètre financé).",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 20,
+              "score": 10,
+              "label": "< 20 % (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 20,
+              "maxExcl": 40,
+              "score": 6,
+              "label": "20 à < 40 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 40,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 40 % (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D3C10",
+          "name": "Taux de désistement des réservations",
+          "description": "Qualité des préventes : une prévente qui se désiste n'en était pas une.",
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "cancellation_rate_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 9,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "%",
+          "definition": "Désistements / (réservations, compromis, ventes et livraisons + désistements), sur le périmètre financé.",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 10,
+              "score": 10,
+              "label": "< 10 % (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 10,
+              "maxExcl": 20,
+              "score": 6,
+              "label": "10 à < 20 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 20,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 20 % (critique)",
+              "orderIndex": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "code": "D4",
+      "name": "Structuration financière & LGD",
+      "weight": 0.24,
+      "orderIndex": 3,
+      "criteria": [
+        {
+          "code": "D4C1",
+          "name": "Marge brute (CA - coûts directs)/CA",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.15,
+          "inputKey": "gross_margin_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 0,
+          "critical": true,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": "Marge à terminaison en coût complet : (recettes nettes − coût complet)/recettes nettes (§8.4).",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 15,
+              "score": 1,
+              "label": "< 15 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 15,
+              "maxExcl": 25,
+              "score": 6,
+              "label": "15 à < 25 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 25,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 25 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C2",
+          "name": "LTC (dette / coût total)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "ltc",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 1,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 60,
+              "score": 10,
+              "label": "< 60 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 60,
+              "maxExcl": 80,
+              "score": 6,
+              "label": "60 à < 80 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 80,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 80 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C3",
+          "name": "LTV stressée (dette / valeur×0,90)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.2,
+          "inputKey": "ltv_stressed",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 2,
+          "critical": false,
+          "family": "GUARANTEE",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 70,
+              "score": 10,
+              "label": "< 70 (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 70,
+              "maxExcl": 85,
+              "score": 6,
+              "label": "70 à < 85 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 85,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 85 (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C4",
+          "name": "Couverture garanties réalisable",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "guarantee_coverage",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 3,
+          "critical": false,
+          "family": "GUARANTEE",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 90,
+              "score": 1,
+              "label": "< 90 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 90,
+              "maxExcl": 120,
+              "score": 6,
+              "label": "90 à < 120 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 120,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 120 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C5",
+          "name": "Rang bancaire 1er rang",
+          "description": null,
+          "type": "QUAL",
+          "weight": 0.1,
+          "inputKey": "first_rank",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 4,
+          "critical": false,
+          "family": "GUARANTEE",
+          "gateStage": null,
+          "unit": "modalité",
+          "definition": null,
+          "options": [
+            {
+              "value": "non",
+              "label": "Non 1er rang",
+              "score": 1,
+              "orderIndex": 0
+            },
+            {
+              "value": "oui",
+              "label": "1er rang",
+              "score": 10,
+              "orderIndex": 1
+            }
+          ],
+          "ranges": []
+        },
+        {
+          "code": "D4C6",
+          "name": "Interest coverage (EBITDA / charges fin.)",
+          "description": null,
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "interest_coverage",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 5,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "ratio/%",
+          "definition": null,
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 1.5,
+              "score": 1,
+              "label": "< 1,5 (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 1.5,
+              "maxExcl": 3,
+              "score": 6,
+              "label": "1,5 à < 3 (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 3,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 3 (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C7",
+          "name": "Quotité de désengagement vs équilibre",
+          "description": "Écart entre la quotité de mainlevée appliquée et la quotité qui éteindrait la dette sur l'ensemble du programme.",
+          "type": "NUM",
+          "weight": 0.05,
+          "inputKey": "release_quotity_gap_pts",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 6,
+          "critical": false,
+          "family": "GUARANTEE",
+          "gateStage": null,
+          "unit": "pts",
+          "definition": "Quotité appliquée − (encours / valeur commercialisable totale), en points. Négatif = prix de mainlevée sous-tarifé laissant une dette résiduelle sur les lots restants.",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": -10,
+              "score": 1,
+              "label": "< −10 pts (critique)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": -10,
+              "maxExcl": 0,
+              "score": 6,
+              "label": "−10 à < 0 pt (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 0,
+              "maxExcl": null,
+              "score": 10,
+              "label": "≥ 0 pt (favorable)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C8",
+          "name": "Déblocages vs avancement certifié",
+          "description": "Suivi des déblocages : un tirage en avance sur les travaux réduit la valeur de la garantie par rapport à l'encours.",
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "drawdown_vs_progress_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 7,
+          "critical": false,
+          "family": "GUARANTEE",
+          "gateStage": null,
+          "unit": "%",
+          "definition": "Cumul débloqué sur les crédits de travaux / (montant autorisé × avancement certifié) × 100. Au-delà de 100 %, la banque a financé plus que les travaux réalisés.",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 105,
+              "score": 10,
+              "label": "< 105 % — en phase (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 105,
+              "maxExcl": 115,
+              "score": 6,
+              "label": "105 à < 115 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 115,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 115 % — tirages en avance (critique)",
+              "orderIndex": 2
+            }
+          ]
+        },
+        {
+          "code": "D4C9",
+          "name": "Dépassement du coût à terminaison",
+          "description": "Un dépassement de coût consomme la marge et l'apport, et crée une impasse.",
+          "type": "NUM",
+          "weight": 0.1,
+          "inputKey": "cost_overrun_pct",
+          "isGate": false,
+          "gateThreshold": null,
+          "orderIndex": 8,
+          "critical": false,
+          "family": "ECONOMIC",
+          "gateStage": null,
+          "unit": "%",
+          "definition": "(Coût à terminaison estimé − coût du budget initial) / coût du budget initial × 100.",
+          "options": [],
+          "ranges": [
+            {
+              "minIncl": null,
+              "maxExcl": 5,
+              "score": 10,
+              "label": "< 5 % (favorable)",
+              "orderIndex": 0
+            },
+            {
+              "minIncl": 5,
+              "maxExcl": 10,
+              "score": 6,
+              "label": "5 à < 10 % (vigilance)",
+              "orderIndex": 1
+            },
+            {
+              "minIncl": 10,
+              "maxExcl": null,
+              "score": 1,
+              "label": "≥ 10 % (critique)",
+              "orderIndex": 2
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "redFlags": [
+    {
+      "code": "RF_ACQUEREURS_NON_FINANCES",
+      "name": "Financement acquéreur majoritairement non sécurisé",
+      "description": "Une part significative des lots engagés repose sur des acquéreurs dont le crédit n'est pas instruit ou a été refusé.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "buyers_financing_at_risk"
+        }
+      },
+      "severity": "MEDIUM",
+      "impactDomains": [
+        "D3",
+        "D5"
+      ],
+      "malus": 10,
+      "mitigable": true,
+      "mitigantHint": "Instruction des dossiers de crédit acquéreur ; suivi des dispositifs d'aide.",
+      "effect": "HYPOTHESIS",
+      "requiresCommittee": false,
+      "regRef": "Liquidité des ventes — solvabilité acquéreur"
+    },
+    {
+      "code": "RF_AUTORISATION_TIRAGE",
+      "name": "Autorisation indispensable aux travaux non levée",
+      "description": "Une pièce de la chaîne d'autorisations conditionnant le démarrage des travaux financés est manquante : verrou de tirage.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "works_authorization_blocked"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D2",
+        "D5"
+      ],
+      "malus": 15,
+      "mitigable": true,
+      "mitigantHint": "Production de l'autorisation manquante (lotir / construire / titre purgé).",
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": false,
+      "regRef": "Loi 25-90 (lotissements) ; loi 12-90 (urbanisme) ; ANCFCC"
+    },
+    {
+      "code": "RF_CASH_LT_ECH",
+      "name": "Cash coverage < 1,0x",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "lt",
+          "key": "cash_coverage",
+          "value": 1
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D3",
+        "D5"
+      ],
+      "malus": 25,
+      "mitigable": true,
+      "mitigantHint": null,
+      "effect": "HYPOTHESIS",
+      "requiresCommittee": false,
+      "regRef": null
+    },
+    {
+      "code": "RF_COMPOSANTE_SANS_PRENEUR",
+      "name": "Composante commerciale ou hôtelière sans preneur engagé",
+      "description": "Une composante significative (hôtel, commerces, bureaux) n'a ni acquéreur, ni opérateur, ni preneur engagé.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "component_exit_unsecured"
+        }
+      },
+      "severity": "MEDIUM",
+      "impactDomains": [
+        "D3",
+        "D5"
+      ],
+      "malus": 10,
+      "mitigable": true,
+      "mitigantHint": "Lettre d'engagement d'un opérateur ou d'un investisseur ; plan de commercialisation dédié.",
+      "effect": "HYPOTHESIS",
+      "requiresCommittee": false,
+      "regRef": "Programme mixte — liquidité des composantes non résidentielles"
+    },
+    {
+      "code": "RF_DIVISION_RISQUES",
+      "name": "Limite de division des risques dépassée",
+      "description": "L'exposition sur la contrepartie ou le groupe dépasse la limite rapportée aux fonds propres : autorisation au niveau de délégation requis.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "division_limit_breach"
+        }
+      },
+      "severity": "MEDIUM",
+      "impactDomains": [
+        "D5"
+      ],
+      "malus": 0,
+      "mitigable": false,
+      "mitigantHint": null,
+      "effect": "REGULATORY",
+      "requiresCommittee": true,
+      "regRef": "Division des risques — limite par contrepartie / groupe d'intérêt"
+    },
+    {
+      "code": "RF_EQUIPEMENT_RECEPTION",
+      "name": "Équipement exigé en retard (conditionne la réception)",
+      "description": "Un équipement exigé (mosquée, école, voirie…) conditionnant la réception est en retard : risque de blocage de la livraison, des actes et des mainlevées.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "equipment_delivery_at_risk"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D2",
+        "D5"
+      ],
+      "malus": 15,
+      "mitigable": true,
+      "mitigantHint": "Calendrier de réalisation de l'équipement, financement identifié, accord de la commune.",
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": true,
+      "regRef": "Cahier des charges / convention avec la commune ; réception et permis d'habiter"
+    },
+    {
+      "code": "RF_FP_NEG",
+      "name": "Fonds propres négatifs",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "equity_negative"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D4",
+        "D5"
+      ],
+      "malus": 25,
+      "mitigable": false,
+      "mitigantHint": null,
+      "effect": "HYPOTHESIS",
+      "requiresCommittee": false,
+      "regRef": null
+    },
+    {
+      "code": "RF_IMPASSE_PERSIST",
+      "name": "Impasse de trésorerie persistante",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "funding_gap_persistent"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D3",
+        "D5"
+      ],
+      "malus": 20,
+      "mitigable": true,
+      "mitigantHint": null,
+      "effect": "HYPOTHESIS",
+      "requiresCommittee": false,
+      "regRef": null
+    },
+    {
+      "code": "RF_IMPAYE_90J",
+      "name": "Impayé ≥ 90 jours (souffrance automatique)",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "gte",
+          "key": "dpd_days",
+          "value": 90
+        }
+      },
+      "severity": "BLOCKING",
+      "impactDomains": [
+        "D5"
+      ],
+      "malus": 0,
+      "mitigable": false,
+      "mitigantHint": null,
+      "effect": "REGULATORY",
+      "requiresCommittee": false,
+      "regRef": "1/W art.5 ; art.34"
+    },
+    {
+      "code": "RF_LITIGE",
+      "name": "Action en justice / contentieux (CTX)",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "eq",
+          "key": "legal_exposure",
+          "value": "litigation"
+        }
+      },
+      "severity": "BLOCKING",
+      "impactDomains": [
+        "D5"
+      ],
+      "malus": 0,
+      "mitigable": false,
+      "mitigantHint": null,
+      "effect": "REGULATORY",
+      "requiresCommittee": false,
+      "regRef": "1/W art.12.8"
+    },
+    {
+      "code": "RF_MAINLEVEE_SOUS_TARIFEE",
+      "name": "Prix de mainlevée sous-tarifé",
+      "description": "La quotité de désengagement appliquée ne permet pas d'éteindre la dette : risque de dette résiduelle adossée aux lots les moins liquides.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "release_underpriced"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D4",
+        "D5"
+      ],
+      "malus": 15,
+      "mitigable": true,
+      "mitigantHint": "Relèvement de la quotité de désengagement au niveau d'équilibre majoré d'une marge.",
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": true,
+      "regRef": "Politique interne — mainlevées partielles"
+    },
+    {
+      "code": "RF_NON_1ER_RANG",
+      "name": "Garantie non 1er rang",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "eq",
+          "key": "first_rank",
+          "value": "non"
+        }
+      },
+      "severity": "MEDIUM",
+      "impactDomains": [
+        "D4",
+        "D5"
+      ],
+      "malus": 25,
+      "mitigable": true,
+      "mitigantHint": null,
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": false,
+      "regRef": null
+    },
+    {
+      "code": "RF_PLAN_TIRAGE_RETARD",
+      "name": "Plan de tirage en retard sur le calendrier",
+      "description": "Au moins 25 % du montant prévu à date n'a pas été débloqué : signe d'un chantier en retard ou d'un besoin mal calibré.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "drawdown_schedule_late"
+        }
+      },
+      "severity": "MEDIUM",
+      "impactDomains": [
+        "D2",
+        "D5"
+      ],
+      "malus": 5,
+      "mitigable": true,
+      "mitigantHint": "Visite de chantier ; mise à jour du planning et du plan de trésorerie.",
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": false,
+      "regRef": "Planning des déblocages du business plan"
+    },
+    {
+      "code": "RF_PROJET_ARRET_12M",
+      "name": "Projet à l'arrêt ≥ 12 mois (souffrance automatique)",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "gte",
+          "key": "project_stopped_months",
+          "value": 12
+        }
+      },
+      "severity": "BLOCKING",
+      "impactDomains": [
+        "D5"
+      ],
+      "malus": 0,
+      "mitigable": false,
+      "mitigantHint": null,
+      "effect": "REGULATORY",
+      "requiresCommittee": false,
+      "regRef": "1/W art.12.7"
+    },
+    {
+      "code": "RF_RESTRUCT",
+      "name": "Première restructuration",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "eq",
+          "key": "restructured",
+          "value": "yes"
+        }
+      },
+      "severity": "MEDIUM",
+      "impactDomains": [
+        "D5"
+      ],
+      "malus": 25,
+      "mitigable": false,
+      "mitigantHint": null,
+      "effect": "REGULATORY",
+      "requiresCommittee": true,
+      "regRef": "1/W art.17-31"
+    },
+    {
+      "code": "RF_RETARD_6M",
+      "name": "Retard chantier ≥ 6 mois",
+      "description": null,
+      "rule": {
+        "clause": {
+          "op": "gte",
+          "key": "construction_delay_months",
+          "value": 6
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D2",
+        "D5"
+      ],
+      "malus": 15,
+      "mitigable": true,
+      "mitigantHint": null,
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": true,
+      "regRef": "1/W art.12.7"
+    },
+    {
+      "code": "RF_TIRAGE_AVANCE",
+      "name": "Déblocages en avance sur l'avancement des travaux",
+      "description": "Le cumul débloqué dépasse de 15 % ou plus ce que justifie l'avancement certifié : l'encours devance la valeur créée.",
+      "rule": {
+        "clause": {
+          "op": "isTrue",
+          "key": "drawdown_ahead_of_works"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D4",
+        "D5"
+      ],
+      "malus": 15,
+      "mitigable": true,
+      "mitigantHint": "Suspendre les tirages jusqu'à une situation de travaux visée cohérente ; recaler le plan de tirage.",
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": true,
+      "regRef": "Politique de crédit — déblocage sur situation de travaux visée"
+    },
+    {
+      "code": "RF_TRANCHE_DEPENDANTE",
+      "name": "Tranche financée dépendante d'ouvrages communs non financés",
+      "description": "La banque finance une tranche qui ne peut être achevée, livrée ou vendue sans des ouvrages communs (accès, VRD, raccordements) qui ne sont ni réalisés ni financés.",
+      "rule": {
+        "clause": {
+          "op": "eq",
+          "key": "tranche_dependency",
+          "value": "dependante_non_financee"
+        }
+      },
+      "severity": "HIGH",
+      "impactDomains": [
+        "D2",
+        "D5"
+      ],
+      "malus": 15,
+      "mitigable": true,
+      "mitigantHint": "Financement ou réalisation préalable des ouvrages communs ; condition suspensive au premier tirage.",
+      "effect": "SURVEILLANCE",
+      "requiresCommittee": true,
+      "regRef": "Financement par tranche — ouvrages communs"
+    }
+  ]
+}

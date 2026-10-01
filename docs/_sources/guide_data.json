@@ -1,5 +1,5 @@
 {
- "version": "v4.0.0",
+ "version": "v5.0.0",
  "criticalKeys": [
   "dpd_days",
   "cash_coverage",
@@ -162,7 +162,7 @@
      "label": "Marché & positionnement",
      "step": "Qualité du projet (Foncier / Autorisations)",
      "type": "QUAL",
-     "weight": 0.2,
+     "weight": 0.15,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -180,7 +180,7 @@
      "label": "Complexité technique",
      "step": "Qualité du projet (Foncier / Autorisations)",
      "type": "QUAL",
-     "weight": 0.15,
+     "weight": 0.1,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -198,7 +198,7 @@
      "label": "Avancement vs planning (%)",
      "step": "Qualité du projet (Foncier / Autorisations)",
      "type": "NUM",
-     "weight": 0.15,
+     "weight": 0.1,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -216,7 +216,7 @@
      "label": "Litiges clients / SAV",
      "step": "Qualité du projet (Foncier / Autorisations)",
      "type": "QUAL",
-     "weight": 0.1,
+     "weight": 0.05,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -234,7 +234,7 @@
      "label": "Sensibilité macro / subvention",
      "step": "Qualité du projet (Foncier / Autorisations)",
      "type": "QUAL",
-     "weight": 0.1,
+     "weight": 0.05,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -252,7 +252,7 @@
      "label": "Coût foncier / CA (%)",
      "step": "Qualité du projet (Foncier / Autorisations)",
      "type": "NUM",
-     "weight": 0.1,
+     "weight": 0.05,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -279,6 +279,79 @@
       "< 50 % → 1",
       "50 à < 100 % → 6",
       "≥ 100 % → 10"
+     ]
+    },
+    {
+     "code": "D2C9",
+     "name": "Tension du marché régional",
+     "key": "regional_market_tension",
+     "label": "Tension du marché régional",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Marché en surstock (écoulement lent, prix sous pression) → 2",
+      "Marché équilibré → 6",
+      "Marché porteur (demande soutenue) → 10"
+     ]
+    },
+    {
+     "code": "D2C10",
+     "name": "Entreprise de travaux et garanties de marché",
+     "key": "contractor_quality",
+     "label": "Entreprise de travaux et garanties de marché",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "QUAL",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Entreprise non qualifiée, travaux en régie ou promoteur-constructeur sans structure → 2",
+      "Entreprise qualifiée, garanties de marché partielles → 6",
+      "Entreprise qualifiée et classée, marché forfaitaire avec caution de bonne exécution et retenue de garantie → 10"
+     ]
+    },
+    {
+     "code": "D2C11",
+     "name": "Équipements exigés non budgétés (% du coût)",
+     "key": "equipment_unbudgeted_pct",
+     "label": "Équipements exigés non budgétés (% du coût)",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "NUM",
+     "weight": 0.05,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "0 % — tout est budgété → 10",
+      "> 0 à < 3 % → 6",
+      "≥ 3 % → 1"
+     ]
+    },
+    {
+     "code": "D2C12",
+     "name": "Autonomie du périmètre financé (tranche)",
+     "key": "tranche_dependency",
+     "label": "Autonomie du périmètre financé (tranche)",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "QUAL",
+     "weight": 0.05,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "Tranche dépendante d'ouvrages communs non financés → 1",
+      "Tranche dépendante d'ouvrages communs financés ou réalisés → 6",
+      "Tranche autonome (accès, VRD et raccordements propres) → 10",
+      "Financement du programme entier → 10"
      ]
     }
    ]
@@ -331,7 +404,7 @@
      "label": "DSO (jours)",
      "step": "Commercialisation & Cash-flow",
      "type": "NUM",
-     "weight": 0.1,
+     "weight": 0.05,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -385,7 +458,7 @@
      "label": "Rotation stock (mois)",
      "step": "Commercialisation & Cash-flow",
      "type": "NUM",
-     "weight": 0.1,
+     "weight": 0.05,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -421,7 +494,7 @@
      "label": "Ventes sécurisées par le financement acquéreur (%)",
      "step": "Pratique marocaine (modèle v4)",
      "type": "NUM",
-     "weight": 0.1,
+     "weight": 0.05,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -430,6 +503,42 @@
       "< 25 % → 1",
       "25 à < 40 % → 6",
       "≥ 40 % → 10"
+     ]
+    },
+    {
+     "code": "D3C9",
+     "name": "Part du CA en produits à écoulement lent",
+     "key": "slow_liquidity_share_pct",
+     "label": "Part du CA en commerces, bureaux, hôtel (%)",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "NUM",
+     "weight": 0.05,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 20 % → 10",
+      "20 à < 40 % → 6",
+      "≥ 40 % → 1"
+     ]
+    },
+    {
+     "code": "D3C10",
+     "name": "Taux de désistement des réservations",
+     "key": "cancellation_rate_pct",
+     "label": "Taux de désistement des réservations (%)",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 10 % → 10",
+      "10 à < 20 % → 6",
+      "≥ 20 % → 1"
      ]
     }
    ]
@@ -446,7 +555,7 @@
      "label": "Marge brute (%)",
      "step": "Structuration financière & LGD",
      "type": "NUM",
-     "weight": 0.2,
+     "weight": 0.15,
      "gate": false,
      "gateStage": null,
      "critical": true,
@@ -464,7 +573,7 @@
      "label": "LTC (%)",
      "step": "Structuration financière & LGD",
      "type": "NUM",
-     "weight": 0.15,
+     "weight": 0.1,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -500,7 +609,7 @@
      "label": "Couverture garanties (%)",
      "step": "Structuration financière & LGD",
      "type": "NUM",
-     "weight": 0.15,
+     "weight": 0.1,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -535,7 +644,7 @@
      "label": "Interest coverage (x)",
      "step": "Structuration financière & LGD",
      "type": "NUM",
-     "weight": 0.15,
+     "weight": 0.1,
      "gate": false,
      "gateStage": null,
      "critical": false,
@@ -562,6 +671,42 @@
       "< −10 pts → 1",
       "−10 à < 0 pt → 6",
       "≥ 0 pt → 10"
+     ]
+    },
+    {
+     "code": "D4C8",
+     "name": "Déblocages vs avancement certifié",
+     "key": "drawdown_vs_progress_pct",
+     "label": "Déblocages vs avancement certifié (%)",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "GUARANTEE",
+     "scale": [
+      "< 105 % — en phase → 10",
+      "105 à < 115 % → 6",
+      "≥ 115 % — tirages en avance → 1"
+     ]
+    },
+    {
+     "code": "D4C9",
+     "name": "Dépassement du coût à terminaison",
+     "key": "cost_overrun_pct",
+     "label": "Dépassement du coût à terminaison (%)",
+     "step": "Programme, tranche, équipements et déblocages (modèle v5)",
+     "type": "NUM",
+     "weight": 0.1,
+     "gate": false,
+     "gateStage": null,
+     "critical": false,
+     "family": "ECONOMIC",
+     "scale": [
+      "< 5 % → 10",
+      "5 à < 10 % → 6",
+      "≥ 10 % → 1"
      ]
     }
    ]
@@ -599,6 +744,16 @@
    "step": "Commercialisation & Cash-flow"
   },
   {
+   "code": "RF_COMPOSANTE_SANS_PRENEUR",
+   "name": "Composante commerciale ou hôtelière sans preneur engagé",
+   "severity": "MEDIUM",
+   "malus": 10,
+   "committee": false,
+   "key": "component_exit_unsecured",
+   "label": "Composante commerciale / hôtelière sans preneur engagé",
+   "step": "Programme, tranche, équipements et déblocages (modèle v5)"
+  },
+  {
    "code": "RF_DIVISION_RISQUES",
    "name": "Limite de division des risques dépassée",
    "severity": "MEDIUM",
@@ -607,6 +762,16 @@
    "key": "division_limit_breach",
    "label": "Limite de division des risques dépassée",
    "step": "Pratique marocaine (modèle v4)"
+  },
+  {
+   "code": "RF_EQUIPEMENT_RECEPTION",
+   "name": "Équipement exigé en retard (conditionne la réception)",
+   "severity": "HIGH",
+   "malus": 15,
+   "committee": true,
+   "key": "equipment_delivery_at_risk",
+   "label": "Équipement exigé en retard (conditionne la réception)",
+   "step": "Programme, tranche, équipements et déblocages (modèle v5)"
   },
   {
    "code": "RF_FP_NEG",
@@ -669,6 +834,16 @@
    "step": "Structuration financière & LGD"
   },
   {
+   "code": "RF_PLAN_TIRAGE_RETARD",
+   "name": "Plan de tirage en retard sur le calendrier",
+   "severity": "MEDIUM",
+   "malus": 5,
+   "committee": false,
+   "key": "drawdown_schedule_late",
+   "label": "Plan de tirage en retard",
+   "step": "Programme, tranche, équipements et déblocages (modèle v5)"
+  },
+  {
    "code": "RF_PROJET_ARRET_12M",
    "name": "Projet à l'arrêt ≥ 12 mois (souffrance automatique)",
    "severity": "BLOCKING",
@@ -697,6 +872,26 @@
    "key": "construction_delay_months",
    "label": "Retard chantier (mois)",
    "step": "Vulnérabilité réglementaire BAM"
+  },
+  {
+   "code": "RF_TIRAGE_AVANCE",
+   "name": "Déblocages en avance sur l'avancement des travaux",
+   "severity": "HIGH",
+   "malus": 15,
+   "committee": true,
+   "key": "drawdown_ahead_of_works",
+   "label": "Déblocages en avance sur les travaux",
+   "step": "Programme, tranche, équipements et déblocages (modèle v5)"
+  },
+  {
+   "code": "RF_TRANCHE_DEPENDANTE",
+   "name": "Tranche financée dépendante d'ouvrages communs non financés",
+   "severity": "HIGH",
+   "malus": 15,
+   "committee": true,
+   "key": "tranche_dependency",
+   "label": "Autonomie du périmètre financé (tranche)",
+   "step": "Programme, tranche, équipements et déblocages (modèle v5)"
   }
  ],
  "steps": [
@@ -896,6 +1091,71 @@
     {
      "key": "division_limit_breach",
      "label": "Limite de division des risques dépassée",
+     "type": "bool"
+    }
+   ]
+  },
+  {
+   "title": "Programme, tranche, équipements et déblocages (modèle v5)",
+   "keys": [
+    {
+     "key": "regional_market_tension",
+     "label": "Tension du marché régional",
+     "type": "select"
+    },
+    {
+     "key": "tranche_dependency",
+     "label": "Autonomie du périmètre financé (tranche)",
+     "type": "select"
+    },
+    {
+     "key": "contractor_quality",
+     "label": "Entreprise de travaux et garanties de marché",
+     "type": "select"
+    },
+    {
+     "key": "cost_overrun_pct",
+     "label": "Dépassement du coût à terminaison (%)",
+     "type": "number"
+    },
+    {
+     "key": "slow_liquidity_share_pct",
+     "label": "Part du CA en commerces, bureaux, hôtel (%)",
+     "type": "number"
+    },
+    {
+     "key": "component_exit_unsecured",
+     "label": "Composante commerciale / hôtelière sans preneur engagé",
+     "type": "bool"
+    },
+    {
+     "key": "cancellation_rate_pct",
+     "label": "Taux de désistement des réservations (%)",
+     "type": "number"
+    },
+    {
+     "key": "equipment_unbudgeted_pct",
+     "label": "Équipements exigés non budgétés (% du coût)",
+     "type": "number"
+    },
+    {
+     "key": "equipment_delivery_at_risk",
+     "label": "Équipement exigé en retard (conditionne la réception)",
+     "type": "bool"
+    },
+    {
+     "key": "drawdown_vs_progress_pct",
+     "label": "Déblocages vs avancement certifié (%)",
+     "type": "number"
+    },
+    {
+     "key": "drawdown_ahead_of_works",
+     "label": "Déblocages en avance sur les travaux",
+     "type": "bool"
+    },
+    {
+     "key": "drawdown_schedule_late",
+     "label": "Plan de tirage en retard",
      "type": "bool"
     }
    ]

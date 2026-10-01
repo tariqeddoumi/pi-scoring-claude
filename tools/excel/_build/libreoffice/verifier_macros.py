@@ -36,8 +36,9 @@ try:
             stress_rows = [(x.getCellByPosition(0, r).getString(), x.getCellByPosition(9, r).getValue(), x.getCellByPosition(10, r).getString()) for r in range(4, 11)]
             base = (x.getCellRangeByName("C3").getValue(), x.getCellRangeByName("E3").getString())
     t = Sh("Tests"); hdr = [t.getCellByPosition(c, 3).getString() for c in range(0, 160)]; sc = hdr.index("Statut")
-    stat = [t.getCellByPosition(sc, r).getString() for r in range(4, 24)]
-    print(f"Autotests VBA : {sum(1 for s in stat if s == 'OK')}/20", [s for s in stat if s != "OK"])
+    nCas = sum(1 for r in range(4, 200) if t.getCellByPosition(0, r).getString())
+    stat = [t.getCellByPosition(sc, r).getString() for r in range(4, 4 + nCas)]
+    print(f"Autotests VBA : {sum(1 for s in stat if s == 'OK')}/{nCas}", [s for s in stat if s != "OK"])
     ok_all &= all(s == "OK" for s in stat)
     exp = json.load(open(STRESS))
     print(f"Stress base : VBA {base} | app {exp['base']}")

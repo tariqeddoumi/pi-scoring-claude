@@ -126,8 +126,9 @@ export async function updateUnitsBuyerFinancing(
 
   await prisma.$transaction(async (tx) => {
     for (const i of items) {
-      await tx.unit.update({
-        where: { id: i.unitId },
+      // Le lot doit appartenir au projet (pas de modification d'un autre dossier).
+      await tx.unit.updateMany({
+        where: { id: i.unitId, tranche: { projectId } },
         data: {
           buyerFinancingStatus: i.financingStatus && okFin.has(i.financingStatus) ? i.financingStatus : null,
           buyerAidScheme: i.aidScheme && okAid.has(i.aidScheme) ? i.aidScheme : null,

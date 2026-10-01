@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import { runScoring } from "@/server/engines/scoringEngine";
+import { CURRENT_PROMOTION_MODEL } from "@/lib/domain/models/current";
 import { PROMOTION_SCORING_MODEL_V4 } from "@/lib/domain/models/piPromotionV4";
 import { modelInputFields, extendSchemaWithModel, uncoveredModelFields } from "@/lib/modelInputs";
 import { WIZARD_STEPS } from "@/lib/wizardFields";
@@ -10,23 +11,23 @@ import { scoringInputsSchema } from "@/lib/validation";
 import { TEMPLATE_COLUMNS } from "@/lib/domain/importTemplate";
 import type { ProjectInputs, RegulatoryClassCode, ScoringModelConfig } from "@/lib/domain/types";
 
-// Alignement base ↔ code ↔ écrans pour le modèle PUBLIÉ (v4.0.0).
-// L'instantané prisma/models/PI_PROMOTION_v4.0.0.json est extrait de la base
+// Alignement base ↔ code ↔ écrans pour le modèle PUBLIÉ (version courante, v5.0.0).
+// L'instantané prisma/models/PI_PROMOTION_v5.0.0.json est celui publié en base
 // de production : si le modèle publié évolue, l'instantané et ces tests
 // doivent évoluer avec lui.
 
-const M = PROMOTION_SCORING_MODEL_V4;
+const M = CURRENT_PROMOTION_MODEL;
 const fields = modelInputFields(M);
 const wizardFields = WIZARD_STEPS.flatMap((s) => s.fields);
 const wizardKeys = new Set(wizardFields.map((f) => f.key));
 
-describe("Modèle v4 versionné (instantané de la base)", () => {
-  it("structure publiée : 4 domaines, 29 critères, 13 alertes, poids à 100 %", () => {
-    expect(M.version).toBe("v4.0.0");
+describe("Modèle courant versionné (instantané de la base)", () => {
+  it("structure publiée : 4 domaines, 37 critères, 18 alertes, poids à 100 %", () => {
+    expect(M.version).toBe("v5.0.0");
     expect(M.scoreScale).toBe(10);
     expect(M.domains.map((d) => d.code)).toEqual(["D1", "D2", "D3", "D4"]);
-    expect(M.domains.flatMap((d) => d.criteria)).toHaveLength(29);
-    expect(M.redFlags).toHaveLength(13);
+    expect(M.domains.flatMap((d) => d.criteria)).toHaveLength(37);
+    expect(M.redFlags).toHaveLength(18);
     const total = M.domains.reduce((s, d) => s + d.weight, 0);
     expect(total).toBeCloseTo(1, 9);
     for (const d of M.domains) {
@@ -35,13 +36,13 @@ describe("Modèle v4 versionné (instantané de la base)", () => {
     expect(M.decisionThresholds).toEqual({ go: 75, goWithConditions: 65, watchList: 50 });
   });
 
-  it("reproduit les 20 cas de référence de l'outil Excel (même moteur, même modèle)", () => {
+  it("reproduit les 26 cas de référence de l'outil Excel (même moteur, même modèle)", () => {
     const file = path.resolve(__dirname, "../tools/excel/_build/vectors.json");
     const vectors = JSON.parse(fs.readFileSync(file, "utf8")) as {
       id: string; inputs: ProjectInputs; segment: string; zone: string; cls: string;
       expected: Record<string, any>;
     }[];
-    expect(vectors).toHaveLength(20);
+    expect(vectors).toHaveLength(26);
     const DEFAULT = ["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
     for (const v of vectors) {
       const cls = (v.cls || undefined) as RegulatoryClassCode | undefined;
@@ -61,6 +62,21 @@ describe("Modèle v4 versionné (instantané de la base)", () => {
       expect(r.redFlags.map((f) => f.code).sort(), v.id).toEqual([...e.flags].sort());
       for (const d of r.domains) expect(d.score, `${v.id} ${d.domainCode}`).toBeCloseTo(e.domains[d.domainCode], 2);
     }
+  });
+});
+
+describe("v5 = v4 enrichie (aucune règle v4 modifiée hors poids)", () => {
+  it("conserve les barèmes, modalités et alertes de la v4", () => {
+    const v4 = PROMOTION_SCORING_MODEL_V4;
+    for (const d of v4.domains) for (const c of d.criteria) {
+      const n = M.domains.find((x) => x.code === d.code)!.criteria.find((x) => x.code === c.code)!;
+      expect(n.inputKey, c.code).toBe(c.inputKey);
+      expect(n.ranges, c.code).toEqual(c.ranges);
+      expect(n.options, c.code).toEqual(c.options);
+      expect(n.isGate, c.code).toBe(c.isGate);
+    }
+    for (const r of v4.redFlags) expect(M.redFlags.find((x) => x.code === r.code), r.code).toEqual(r);
+    expect(M.domains.map((d) => d.weight)).toEqual(v4.domains.map((d) => d.weight));
   });
 });
 

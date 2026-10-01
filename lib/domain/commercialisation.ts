@@ -22,7 +22,7 @@ export type StandingCode =
   | "ECONOMIQUE"
   | "SOCIAL";
 
-export type UnitTypeCode = "APPARTEMENT" | "VILLA" | "COMMERCE" | "BUREAU" | "TERRAIN" | "AUTRE";
+export type UnitTypeCode = "APPARTEMENT" | "VILLA" | "COMMERCE" | "BUREAU" | "TERRAIN" | "AUTRE" | "HOTEL";
 
 export type UnitStatusCode = "DISPONIBLE" | "RESERVE" | "COMPROMIS" | "VENDU" | "LIVRE" | "DESISTE";
 

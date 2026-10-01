@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import { runScoring } from "@/server/engines/scoringEngine";
-import { PROMOTION_SCORING_MODEL_V4 } from "@/lib/domain/models/piPromotionV4";
+import { CURRENT_PROMOTION_MODEL } from "@/lib/domain/models/current";
 import type { ProjectInputs, RegulatoryClassCode } from "@/lib/domain/types";
 
 // Cas de référence de l'outil Excel, calculés par le moteur de production sur le
 // modèle publié (instantané prisma/models/PI_PROMOTION_v4.0.0.json).
 const D = "tools/excel/_build/";
-const model = PROMOTION_SCORING_MODEL_V4;
+const model = CURRENT_PROMOTION_MODEL;
 
 const base: ProjectInputs = {
   promoter_completed_projects: 8, promoter_gearing: 85, governance_quality: "claire", mono_project_concentration: 35,
@@ -19,12 +19,18 @@ const base: ProjectInputs = {
   dpd_days: 0, construction_delay_months: 0, project_stopped_months: 0, restructured: "no", legal_exposure: "clear",
   equity_negative: false, funding_gap_persistent: false, works_authorization_blocked: false,
   buyers_financing_at_risk: false, release_underpriced: false, division_limit_breach: false,
+  // v5 : régionalité, tranche, programme mixte, équipements, déblocages
+  regional_market_tension: "porteur", tranche_dependency: "programme_entier", contractor_quality: "qualifiee_garantie",
+  slow_liquidity_share_pct: 5, cancellation_rate_pct: 3, equipment_unbudgeted_pct: 0, drawdown_vs_progress_pct: 98, cost_overrun_pct: 2,
+  component_exit_unsecured: false, equipment_delivery_at_risk: false, drawdown_ahead_of_works: false, drawdown_schedule_late: false,
 };
 const mid: ProjectInputs = { ...base, promoter_completed_projects: 2, promoter_gearing: 120, governance_quality: "partielle", mono_project_concentration: 50,
   promoter_type: "regional", equity_injected_ratio: 90, land_permits_status: "partielles", market_positioning: "moyen", technical_complexity: "moyenne",
   progress_vs_plan: 90, sav_litigation: "moyen", macro_sensitivity: "moyenne", land_cost_ratio: 30, authorization_completeness_pct: 70,
   pre_sale_rate: 35, sales_vs_plan: 90, dso_days: 180, cash_coverage: 1.1, funding_gap_pct: 5, stock_rotation_months: 24, stressed_margin_pct: 12,
-  secured_sales_rate: 30, gross_margin_pct: 20, ltc: 70, ltv_stressed: 78, guarantee_coverage: 100, interest_coverage: 2, release_quotity_gap_pts: -5 };
+  secured_sales_rate: 30, gross_margin_pct: 20, ltc: 70, ltv_stressed: 78, guarantee_coverage: 100, interest_coverage: 2, release_quotity_gap_pts: -5,
+  regional_market_tension: "equilibre", tranche_dependency: "dependante_financee", contractor_quality: "qualifiee",
+  slow_liquidity_share_pct: 25, cancellation_rate_pct: 12, equipment_unbudgeted_pct: 1.5, drawdown_vs_progress_pct: 108, cost_overrun_pct: 7 };
 
 type Case = { id: string; desc: string; inputs: ProjectInputs; segment?: string; zone?: string; cls?: string };
 const M = (o: Partial<Record<string, any>>, from: ProjectInputs = base): ProjectInputs => { const r: any = { ...from }; for (const k of Object.keys(o)) { if (o[k] === undefined) delete r[k]; else r[k] = o[k]; } return r; };
@@ -49,6 +55,12 @@ const cases: Case[] = [
   { id: "T18", desc: "Retard de paiement (dpd_days) absent : dossier incomplet", inputs: M({ dpd_days: undefined }), cls: "SAIN" },
   { id: "T19", desc: "Litige : alerte bloquante CTX", inputs: M({ legal_exposure: "litigation" }), cls: "SAIN" },
   { id: "T20", desc: "Projet en difficulté (dégradé + non 1er rang)", inputs: M({ ...mid, first_rank: "non", cash_coverage: 0.95, gross_margin_pct: 12, ltc: 85 }, mid), segment: "villas", zone: "regions_interieures", cls: "SENSIBLE" },
+  { id: "T21", desc: "Tranche financée dépendante d'ouvrages communs non financés", inputs: M({ tranche_dependency: "dependante_non_financee" }), cls: "SAIN" },
+  { id: "T22", desc: "Déblocages en avance sur l'avancement (150 %)", inputs: M({ drawdown_vs_progress_pct: 150, drawdown_ahead_of_works: true }), cls: "SAIN" },
+  { id: "T23", desc: "Mosquée exigée non budgétée (4 % du coût) et en retard", inputs: M({ equipment_unbudgeted_pct: 4, equipment_delivery_at_risk: true }), cls: "SAIN" },
+  { id: "T24", desc: "Programme mixte : 45 % commerces et hôtel, sans preneur engagé", inputs: M({ slow_liquidity_share_pct: 45, component_exit_unsecured: true }), cls: "SAIN" },
+  { id: "T25", desc: "Région en surstock, désistements 25 %, plan de tirage en retard", inputs: M({ regional_market_tension: "surstock", cancellation_rate_pct: 25, drawdown_schedule_late: true }), cls: "SAIN" },
+  { id: "T26", desc: "Données v5 non renseignées (notes plancher)", inputs: M({ regional_market_tension: undefined, tranche_dependency: undefined, contractor_quality: undefined, slow_liquidity_share_pct: undefined, cancellation_rate_pct: undefined, equipment_unbudgeted_pct: undefined, drawdown_vs_progress_pct: undefined, cost_overrun_pct: undefined }), cls: "SAIN" },
 ];
 
 const DEFAULT_CLASSES = ["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];

@@ -1,6 +1,6 @@
 import warnings; warnings.filterwarnings("ignore")
 import formulas, openpyxl
-X = "PI_Promotion_Modele_v4.xlsx"; fn = X.split("/")[-1]
+X = "PI_Promotion_Modele_v5.xlsx"; fn = X.split("/")[-1]
 ws = openpyxl.load_workbook(X)["Saisie"]
 rowof = {ws.cell(row=r, column=2).value: r for r in range(13, 93) if ws.cell(row=r, column=2).value}
 xl = formulas.ExcelModel().loads(X).finish()

@@ -56,7 +56,7 @@ async function icon(Comp, color, size = 256) {
   s.addText([{ text: "Guide du", options: { breakLine: true } }, { text: "chargé d'affaires" }], { x: 0.6, y: 0.9, w: 6.8, h: 1.45, fontFace: HF, fontSize: 36, bold: true, color: WHITE, valign: "top", margin: 0, isTextBox: true });
   s.addText("Crédit à la promotion immobilière", { x: 0.6, y: 2.45, w: 6.8, h: 0.5, fontFace: HF, fontSize: 22, color: "F2B8A6", margin: 0, isTextBox: true });
   s.addText("Pièces à réunir · où saisir chaque donnée · lire le résultat · suivre le dossier", { x: 0.6, y: 3.1, w: 6.8, h: 0.5, fontFace: BF, fontSize: 14, color: WHITE, margin: 0, isTextBox: true });
-  s.addText(`Modèle de scoring PI_PROMOTION ${G.version} · outil Excel 4.1 · septembre 2026`, { x: 0.6, y: 4.7, w: 8, h: 0.35, fontFace: BF, fontSize: 11, color: ICE, margin: 0, isTextBox: true });
+  s.addText(`Modèle de scoring PI_PROMOTION ${G.version} · outil Excel 5.0 · octobre 2026`, { x: 0.6, y: 4.7, w: 8, h: 0.35, fontFace: BF, fontSize: 11, color: ICE, margin: 0, isTextBox: true });
   s.addNotes("Objectif de la session : savoir exactement quelles pièces réunir pour un dossier de promotion immobilière, où saisir chaque donnée, comment lire le résultat du scoring et comment suivre le dossier après octroi. Le guide Word détaille chaque point ; ce support en donne l'essentiel.");
 
   // 2 — L'essentiel
@@ -185,8 +185,29 @@ async function icon(Comp, color, size = 256) {
   footer(s, 8);
   s.addNotes("Nouveaux critères v4 : complétude de la chaîne d'autorisations (D2), ventes sécurisées par le financement de l'acquéreur (D3), quotité de désengagement comparée à l'équilibre (D4). Nouvelles alertes : autorisation de travaux manquante, acquéreurs non financés, mainlevée sous-tarifée, dépassement de la division des risques.");
 
+  // 8 bis — Modèle v5 : programme, tranche, équipements, déblocages
+  s = pres.addSlide(); title(s, "Ce qu'apporte la v5", "Région, tranche financée, programme mixte, équipements exigés, déblocages");
+  const v5 = [
+    [I.map, "Régionalité", "Tension du marché de la région × segment, lue dans le référentiel « Marché régional »."],
+    [I.key, "Tranche financée", "Préventes, désistements et encours calculés sur la seule tranche financée ; autonomie vis-à-vis des ouvrages communs."],
+    [I.building, "Programme mixte", "Villas, appartements, commerces, bureaux, hôtel : part du CA à écoulement lent ; composante sans preneur."],
+    [I.gavel, "Équipements exigés", "Mosquée, école, voirie… : coût non budgété, retard qui bloque la réception."],
+    [I.coins, "Déblocages", "Cumul débloqué vs avancement certifié ; plan de tirage vs calendrier."],
+    [I.chart, "Trajectoire", "Alerte précoce : −5 pts sur 3 revues ou décision dégradée."],
+  ];
+  v5.forEach(([img, t, d], i) => {
+    const x = 0.5 + (i % 3) * 3.05, y = 1.4 + Math.floor(i / 3) * 1.75;
+    card(s, x, y, 2.85, 1.6);
+    circleIcon(s, img, x + 0.15, y + 0.15, 0.55, i < 4 ? TEAL : TERRA);
+    s.addText(t, { x: x + 0.8, y: y + 0.18, w: 1.95, h: 0.5, fontFace: BF, fontSize: 13, bold: true, color: NAVY, valign: "middle", margin: 0, isTextBox: true });
+    s.addText(d, { x: x + 0.15, y: y + 0.78, w: 2.6, h: 0.78, fontFace: BF, fontSize: 10, color: INK, valign: "top", margin: 0, isTextBox: true });
+  });
+  s.addText("Tout se renseigne dans Suivi › « Programme, tranche financée, équipements » puis « Synchroniser vers le scoring ».", { x: 0.5, y: 4.98, w: 9, h: 0.28, fontFace: BF, fontSize: 11, italic: true, color: TERRA, margin: 0, isTextBox: true });
+  footer(s, 9);
+  s.addNotes("Nouveaux critères v5 : tension du marché régional, entreprise de travaux, équipements non budgétés, autonomie de la tranche (D2) ; part du CA à écoulement lent, taux de désistement (D3) ; déblocages vs avancement certifié, dépassement du coût à terminaison (D4). Nouvelles alertes : tirages en avance, plan de tirage en retard, équipement en retard conditionnant la réception, composante sans preneur, tranche dépendante d'ouvrages non financés. Une donnée v5 non renseignée est notée au plancher : renseigner avant de re-scorer.");
+
   // 9 — Où trouver chaque donnée
-  s = pres.addSlide(); title(s, "Où trouver chaque donnée : exemples", "Le guide Word couvre les 29 critères et les 13 alertes");
+  s = pres.addSlide(); title(s, "Où trouver chaque donnée : exemples", `Le guide Word couvre les ${allC.length} critères et les ${G.alerts.length} alertes`);
   const ex = ["equity_injected_ratio", "land_permits_status", "pre_sale_rate", "cash_coverage", "gross_margin_pct", "ltv_stressed", "secured_sales_rate", "release_quotity_gap_pts"];
   const rows = [[{ text: "Donnée", options: { bold: true, color: WHITE, fill: { color: NAVY } } }, { text: "Pièces", options: { bold: true, color: WHITE, fill: { color: NAVY } } }, { text: "Comment l'obtenir", options: { bold: true, color: WHITE, fill: { color: NAVY } } }]];
   ex.forEach((k, i) => {
@@ -196,8 +217,8 @@ async function icon(Comp, color, size = 256) {
     rows.push([{ text: c.label, options: { bold: true, color: NAVY, fill } }, { text: DONNEES[k].pieces.join(", "), options: { color: TERRA, bold: true, fill, align: "center" } }, { text: calc, options: { color: INK, fill } }]);
   });
   s.addTable(rows, { x: 0.5, y: 1.35, w: 9.0, colW: [2.5, 1.1, 5.4], fontFace: BF, fontSize: 10, border: { type: "solid", pt: 0.5, color: "D0D6E2" }, valign: "middle", margin: 0.05 });
-  footer(s, 9);
-  s.addNotes("Références des pièces : voir la liste P01 à P33 du guide. Exemple : P17 est le plan de trésorerie mensuel du programme ; sans lui, la couverture de trésorerie et l'impasse ne peuvent pas être établies.");
+  footer(s, 10);
+  s.addNotes("Références des pièces : voir la liste P01 à P39 du guide. Exemple : P17 est le plan de trésorerie mensuel du programme ; sans lui, la couverture de trésorerie et l'impasse ne peuvent pas être établies.");
 
   // 10 — Synchroniser
   s = pres.addSlide(); title(s, "« Synchroniser vers le scoring »", "Un bouton, huit données reportées automatiquement depuis le suivi");
@@ -212,7 +233,7 @@ async function icon(Comp, color, size = 256) {
     s.addText(t, { x: x + 0.7, y: y + 0.27, w: 2.6, h: 0.28, fontFace: BF, fontSize: 11, color: MUTED, margin: 0, isTextBox: true });
   });
   s.addText("Puis « Enregistrer & calculer ». Une valeur reportée remplace la saisie manuelle.", { x: 3.7, y: 3.15, w: 2.4, h: 1.1, fontFace: BF, fontSize: 11.5, color: INK, align: "center", valign: "top", margin: 0, isTextBox: true });
-  footer(s, 10);
+  footer(s, 11);
   s.addNotes("La synchronisation se lance depuis le suivi du projet. Elle affiche la liste des valeurs reportées et leur justification. Sans fonds propres paramétrés par la Direction des risques, le contrôle de division des risques n'est pas effectué et le message le signale.");
 
   // 11 — Lire le résultat
@@ -228,7 +249,7 @@ async function icon(Comp, color, size = 256) {
   s.addText("L'encart affiche", { x: 6.75, y: 1.5, w: 2.6, h: 0.35, fontFace: BF, fontSize: 14, bold: true, color: "F2B8A6", margin: 0, isTextBox: true });
   const aff = ["Version du modèle (alerte si retirée)", "Classe interne", "Score brut, ajustements, malus, coefficient BAM", "Notes économique et de sûretés", "Données manquantes en clair", "Conditions et jalon de levée", "Retour en comité requis", "PD indicative (non calibrée)"];
   s.addText(aff.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < aff.length - 1 } })), { x: 6.75, y: 1.9, w: 2.6, h: 2.95, fontFace: BF, fontSize: 11, color: WHITE, paraSpaceAfter: 3, valign: "top", margin: 0, isTextBox: true });
-  footer(s, 11);
+  footer(s, 12);
   s.addNotes("La hiérarchie est appliquée dans cet ordre : un contentieux l'emporte sur tout ; un dossier incomplet n'est jamais noté favorablement ; les seuils ne jouent qu'en dernier.");
 
   // 12 — Que faire
@@ -245,7 +266,7 @@ async function icon(Comp, color, size = 256) {
     s.addText(h, { x: x + 1.05, y: y + 0.2, w: 3.2, h: 0.4, fontFace: BF, fontSize: 15, bold: true, color: NAVY, margin: 0, isTextBox: true });
     s.addText(t, { x: x + 1.05, y: y + 0.62, w: 3.2, h: 0.95, fontFace: BF, fontSize: 12, color: INK, valign: "top", margin: 0, isTextBox: true });
   });
-  footer(s, 12);
+  footer(s, 13);
   s.addNotes("Score marqué « version retirée » : il a été calculé avec une ancienne version du modèle. Relancer le calcul avant tout passage en comité.");
 
   // 13 — Suivi
@@ -265,11 +286,11 @@ async function icon(Comp, color, size = 256) {
     s.addShape(pres.shapes.ROUNDED_RECTANGLE, { x, y, w: 2.9, h: 0.4, fill: { color: "FBE9E5" }, line: { color: "FBE9E5" }, rectRadius: 0.06 });
     s.addText(t, { x: x + 0.1, y, w: 2.7, h: 0.4, fontFace: BF, fontSize: 10.5, color: "8A2E1C", valign: "middle", margin: 0, isTextBox: true });
   });
-  footer(s, 13);
+  footer(s, 14);
   s.addNotes("Chaque tirage travaux s'appuie sur une situation de travaux visée par l'architecte ou le BET. Un verrou d'autorisation ouvert interdit le tirage. La fiche projet indique la fraîcheur du score et la prochaine échéance de revue.");
 
   // 14 — Excel
-  s = pres.addSlide(); title(s, "L'outil Excel, hors application", "Même calcul que l'application — vérifié sur 20 cas de référence");
+  s = pres.addSlide(); title(s, "L'outil Excel, hors application", "Même calcul que l'application — vérifié sur 26 cas de référence");
   const xs = [["Nouveau dossier", "vide la saisie et les calculateurs"], ["Saisie", "cellules jaunes ; vide = absent"], ["Calculateurs", "autorisations, ventes sécurisées, quotité, division des risques, arrêt"], ["Résultat", "décision, données manquantes, conditions"], ["Stress test", "prix, coût, retard, ventes, taux"], ["Export PDF", "à joindre à la note"]];
   xs.forEach(([h, t], i) => {
     const y = 1.4 + i * 0.6;
@@ -280,7 +301,7 @@ async function icon(Comp, color, size = 256) {
   circleIcon(s, I.file, 7.55, 1.6, 0.9, TEAL);
   s.addText("20 / 20", { x: 6.5, y: 2.6, w: 3.0, h: 0.6, fontFace: HF, fontSize: 30, bold: true, color: TEAL, align: "center", margin: 0, isTextBox: true });
   s.addText("cas de référence conformes ; macros exécutées de bout en bout. La décision officielle se prend dans l'application.", { x: 6.7, y: 3.2, w: 2.6, h: 1.5, fontFace: BF, fontSize: 11.5, color: INK, align: "center", valign: "top", margin: 0, isTextBox: true });
-  footer(s, 14);
+  footer(s, 15);
   s.addNotes("Usage : simulation, préparation de comité, travail hors connexion, formation. Au premier usage, importer les macros et installer les boutons (onglet LisezMoi du classeur).");
 
   // 15 — À faire / à éviter
@@ -294,7 +315,7 @@ async function icon(Comp, color, size = 256) {
     s.addText(h, { x: x + 0.85, y: 1.58, w: 3.3, h: 0.45, fontFace: BF, fontSize: 16, bold: true, color: c, margin: 0, isTextBox: true });
     s.addText(L.map((t, i) => ({ text: t, options: { bullet: true, breakLine: i < L.length - 1 } })), { x: x + 0.3, y: 2.2, w: 3.9, h: 2.7, fontFace: BF, fontSize: 12.5, color: INK, paraSpaceAfter: 6, valign: "top", margin: 0, isTextBox: true });
   });
-  footer(s, 15);
+  footer(s, 16);
   s.addNotes("Rappel : chaque valeur doit pouvoir être justifiée par une pièce datée lors de la contre-étude.");
 
   // 16 — Clôture
