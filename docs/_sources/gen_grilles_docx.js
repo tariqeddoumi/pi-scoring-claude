@@ -1,5 +1,6 @@
 // Génère le document « Grilles de scoring détaillées » depuis l'instantané du
-// modèle publié (prisma/models/PI_PROMOTION_v4.0.0.json) : aucune valeur n'est
+// modèle publié (prisma/models/PI_PROMOTION_<version>.json, v5.0.0 par défaut ;
+// les cas de référence utilisés pour l'exemple sont ceux de la version courante) : aucune valeur n'est
 // recopiée à la main. Usage (racine du dépôt) : node docs/_sources/gen_grilles_docx.js
 const fs = require("fs");
 const path = require("path");
@@ -7,10 +8,16 @@ const {
   Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType,
   ShadingType, BorderStyle, PageBreak, TableOfContents, PageNumber, Footer, Header, LevelFormat,
 } = require("docx");
-const M = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "prisma", "models", "PI_PROMOTION_v4.0.0.json"), "utf8"));
+const VERSION = process.argv[2] || "v5.0.0";
+const snap = (v) => JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "prisma", "models", `PI_PROMOTION_${v}.json`), "utf8"));
+const M = snap(VERSION);
+// Critères et alertes apparus avec cette version (comparaison à la v4).
+const PREV = VERSION === "v4.0.0" ? null : snap("v4.0.0");
+const NEW_CRIT = new Set(PREV ? M.domains.flatMap((d) => d.criteria.map((c) => c.code)).filter((c) => !PREV.domains.some((d) => d.criteria.some((x) => x.code === c))) : []);
+const NEW_RF = new Set(PREV ? M.redFlags.map((r) => r.code).filter((c) => !PREV.redFlags.some((x) => x.code === c)) : []);
 const GD = JSON.parse(fs.readFileSync(path.join(__dirname, "guide_data.json"), "utf8"));
 const VEC = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "tools", "excel", "_build", "vectors.json"), "utf8"));
-const OUT = path.join(__dirname, "..", "Grilles_Scoring_PI_PROMOTION_v4.docx");
+const OUT = path.join(__dirname, "..", `Grilles_Scoring_PI_PROMOTION_${VERSION.replace(/\.0\.0$/, "")}.docx`);
 
 const NAVY = "1F3864", BLUE = "2E5496", LIGHT = "D9E1F2", ZEBRA = "F2F5FB", GREY = "595959", CRIT = "C00000", WARN = "B45F06", OKG = "2E7D32";
 const LVL = { crit: { t: "Critique", c: CRIT, bg: "FBE4E1" }, vig: { t: "Vigilance", c: WARN, bg: "FFF1DC" }, fav: { t: "Favorable", c: OKG, bg: "E4F2E5" } };
@@ -65,7 +72,7 @@ const cover = [
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 12, color: LIGHT, space: 8 } }, children: [T("", { size: 2 })] }),
   new Paragraph({ spacing: { before: 280 }, alignment: AlignmentType.CENTER, children: [T("Poids, tranches, notes, critères éliminatoires, alertes, ajustements, coefficients et seuils de décision", { italics: true, size: 26, color: GREY })] }),
   new Paragraph({ spacing: { before: 1300 }, alignment: AlignmentType.CENTER, children: [T(`${allCrit.length} critères · ${M.redFlags.length} alertes · 4 domaines · notes de 1 à ${M.scoreScale}`, { bold: true, size: 22, color: NAVY })] }),
-  new Paragraph({ spacing: { before: 40 }, alignment: AlignmentType.CENTER, children: [T("30 septembre 2026 — extrait de la version publiée en base", { size: 20, color: GREY })] }),
+  new Paragraph({ spacing: { before: 40 }, alignment: AlignmentType.CENTER, children: [T(`${new Date(M.publishedAt || Date.now()).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} — extrait de la version publiée en base`, { size: 20, color: GREY })] }),
   brk(),
   new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "Sommaire" })] }),
   new TableOfContents("Sommaire", { hyperlink: true, headingStyleRange: "1-2" }),
@@ -96,13 +103,15 @@ s1.push(bullet([T("S ", { bold: true, color: BLUE }), T("critère de la note de 
 s1.push(bullet([T("Niveau : ", { bold: true }), T("critique (note ≤ 3), vigilance (4 à 7), favorable (≥ 8).")]));
 
 // 2 — vue d'ensemble
-const s2 = [brk(), H1("2. Vue d'ensemble : 29 critères, poids et statut")];
+const s2 = [brk(), H1(`2. Vue d'ensemble : ${allCrit.length} critères, poids et statut`)];
+if (NEW_CRIT.size) s2.push(P([T(`Nouveautés ${M.version} : `, { bold: true, color: BLUE }), T(`${NEW_CRIT.size} critères (${[...NEW_CRIT].join(", ")}) et ${NEW_RF.size} alertes (${[...NEW_RF].join(", ")}), repérés « nouveau » ci-dessous. Barèmes et modalités des critères existants inchangés ; poids rééquilibrés au sein des domaines.`)]));
 s2.push(table(["Domaine", "Critère", "Poids critère", "Poids effectif", "Statut"], allCrit.map((c, i) => {
   const eff = c.weight * c.dom.weight;
   const flags = [];
   if (CRIT_KEYS.has(c.inputKey)) flags.push([T("★ décisionnelle", { color: CRIT, bold: true, size: 16 })]);
   if (c.isGate) flags.push([T(`⛔ éliminatoire (${c.gateStage ?? "TIRAGE"})`, { color: CRIT, bold: true, size: 16 })]);
   if (c.family === "GUARANTEE") flags.push([T("S sûretés", { color: BLUE, bold: true, size: 16 })]);
+  if (NEW_CRIT.has(c.code)) flags.push([T(`nouveau ${M.version}`, { color: OKG, bold: true, size: 16 })]);
   const bg = i % 2 ? ZEBRA : undefined;
   return [cell(`${c.dom.code} — ${pct(c.dom.weight)}`, { w: 1700, bg, size: 16 }), cell([[T(c.code + "  ", { bold: true, size: 16, color: NAVY }), T(c.name, { size: 16 })]], { w: 4238, bg }),
     cell(pct(c.weight), { w: 1000, bg, align: AlignmentType.CENTER }), cell(pct(eff), { w: 1100, bg, align: AlignmentType.CENTER }), cell(flags.length ? flags : "—", { w: 1600, bg })];
@@ -120,6 +129,7 @@ domains.forEach((d, di) => {
     if (CRIT_KEYS.has(c.inputKey)) tags.push("★ donnée décisionnelle");
     if (c.isGate) tags.push(`⛔ critère éliminatoire — seuil : note ≤ ${c.gateThreshold}, jalon ${c.gateStage ?? "TIRAGE"}`);
     if (c.family === "GUARANTEE") tags.push("S — note de sûretés");
+    if (NEW_CRIT.has(c.code)) tags.push(`nouveau critère ${M.version}`);
     secs.push(H2(`${c.code} — ${c.name}`));
     secs.push(P([T(`Poids ${pct(c.weight)} du domaine`, { bold: true }), T(` · soit ${pct(c.weight * d.weight)} du score économique · clé technique `), T(c.inputKey, { bold: true }), T(c.type === "QUAL" ? " · critère qualitatif" : ` · critère numérique${c.unit && c.unit !== "ratio/%" ? ` (${c.unit})` : ""}`)], { after: 40, keepNext: true }));
     if (tags.length) secs.push(P([T(tags.join("   ·   "), { color: CRIT, bold: true, size: 18 })], { after: 40, keepNext: true }));
@@ -151,7 +161,7 @@ s7.push(box("Division des risques", "L'alerte « Limite de division des risques 
 s7.push(P("", { after: 80 }));
 s7.push(table(["Alerte", "Règle de déclenchement", "Sévérité", "Malus", "Comité", "Effet / référence"], [...M.redFlags].sort((a, b) => (b.severity === "BLOCKING") - (a.severity === "BLOCKING") || b.malus - a.malus).map((r, i) => {
   const bg = i % 2 ? ZEBRA : undefined;
-  return [cell([[T(r.name, { bold: true, size: 17 })], [T(r.code, { size: 14, color: GREY })]], { w: 2200, bg }), cell(rule(r), { w: 2000, bg, size: 17 }),
+  return [cell([[T(r.name, { bold: true, size: 17 })], [T(r.code, { size: 14, color: GREY }), ...(NEW_RF.has(r.code) ? [T(`  nouveau ${M.version}`, { size: 14, bold: true, color: OKG })] : [])]], { w: 2200, bg }), cell(rule(r), { w: 2000, bg, size: 17 }),
     cell(sevLabel[r.severity], { w: 1250, bg, bold: true, color: sevColor[r.severity] }),
     cell(r.severity === "BLOCKING" ? "souffrance" : r.malus === 0 ? "0" : `−${r.malus}`, { w: 1250, bg, align: AlignmentType.CENTER, bold: true, color: r.malus > 0 || r.severity === "BLOCKING" ? CRIT : GREY }),
     cell(r.requiresCommittee ? "Oui" : "—", { w: 950, bg, align: AlignmentType.CENTER, bold: r.requiresCommittee, color: r.requiresCommittee ? CRIT : GREY }),
@@ -229,7 +239,7 @@ s10.push(table(["Étape", "Calcul", "Résultat"], [
   ["Après pénalités", "", fr(e.scoreAfterPenalties)],
   ["Coefficient BAM", `classe ${ex.cls === "SAIN" ? "saine" : ex.cls}`, `× ${fr(e.coeffBAM)}`],
   ["Score final", "", fr(e.scoreFinal)],
-  ["Décision", `${fr(e.scoreFinal)} ≥ ${th.watchList} et < ${th.goWithConditions}`, `${e.decision} — ${e.internalClass}`],
+  ["Décision", e.scoreFinal >= th.go ? `${fr(e.scoreFinal)} ≥ ${th.go}` : e.scoreFinal >= th.goWithConditions ? `${fr(e.scoreFinal)} ≥ ${th.goWithConditions} et < ${th.go}` : e.scoreFinal >= th.watchList ? `${fr(e.scoreFinal)} ≥ ${th.watchList} et < ${th.goWithConditions}` : `${fr(e.scoreFinal)} < ${th.watchList}`, `${e.decision} — ${e.internalClass}`],
 ].map((r, i) => r.map((x, j) => cell(x, { w: [2200, 4938, 2500][j], bg: i % 2 ? ZEBRA : undefined, bold: j === 0 || i >= 5, align: j === 2 ? AlignmentType.CENTER : undefined }))), [2200, 4938, 2500]));
 
 // 11 — données décisionnelles et floor

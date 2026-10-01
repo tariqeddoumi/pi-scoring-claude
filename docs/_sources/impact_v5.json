@@ -1,0 +1,222 @@
+[
+ {
+  "ref": "PI-2026-001",
+  "name": "Résidence Les Jardins de l'Atlas",
+  "region": "casablanca_settat",
+  "cls": "SAIN",
+  "v4": {
+   "score": 92.89,
+   "decision": "GO",
+   "technique": 92.89,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 81.26,
+   "decision": "GO",
+   "technique": 81.26
+  },
+  "v5_renseigne": {
+   "score": 93.16,
+   "decision": "GO",
+   "technique": 93.16
+  }
+ },
+ {
+  "ref": "PI-2026-002",
+  "name": "Résidence Annour",
+  "region": "marrakech_safi",
+  "cls": "PRE_DOUTEUX",
+  "v4": {
+   "score": 0,
+   "decision": "NO_GO",
+   "technique": 18.77,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 0,
+   "decision": "NO_GO",
+   "technique": 17.27
+  },
+  "v5_renseigne": {
+   "score": 0,
+   "decision": "NO_GO",
+   "technique": 27.75
+  }
+ },
+ {
+  "ref": "PI-2026-101",
+  "name": "Tranche Verdure",
+  "region": "casablanca_settat",
+  "cls": "SAIN",
+  "v4": {
+   "score": 80.61,
+   "decision": "GO",
+   "technique": 80.61,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 71.36,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 71.36
+  },
+  "v5_renseigne": {
+   "score": 83.26,
+   "decision": "GO",
+   "technique": 83.26
+  }
+ },
+ {
+  "ref": "PI-2026-102",
+  "name": "Les Oliviers",
+  "region": "marrakech_safi",
+  "cls": "PRE_DOUTEUX",
+  "v4": {
+   "score": 54.73,
+   "decision": "NO_GO",
+   "technique": 78.19,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 48.45,
+   "decision": "NO_GO",
+   "technique": 69.22
+  },
+  "v5_renseigne": {
+   "score": 56.53,
+   "decision": "NO_GO",
+   "technique": 80.76
+  }
+ },
+ {
+  "ref": "PI-2026-104",
+  "name": "Riad El Fath",
+  "region": "marrakech_safi",
+  "cls": "SENSIBLE",
+  "v4": {
+   "score": 63.85,
+   "decision": "WATCH_LIST",
+   "technique": 70.94,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 56.52,
+   "decision": "WATCH_LIST",
+   "technique": 62.8
+  },
+  "v5_renseigne": {
+   "score": 65.94,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 73.27
+  }
+ },
+ {
+  "ref": "PI-2026-105",
+  "name": "Cèdres Business",
+  "region": "fes_meknes",
+  "cls": "SAIN",
+  "v4": {
+   "score": 74.16,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 74.16,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 65.65,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 65.65
+  },
+  "v5_renseigne": {
+   "score": 76.6,
+   "decision": "GO",
+   "technique": 76.6
+  }
+ },
+ {
+  "ref": "PI-2026-106",
+  "name": "Ocean View",
+  "region": "tanger_tetouan_al_hoceima",
+  "cls": "SENSIBLE",
+  "v4": {
+   "score": 72.55,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 80.61,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 64.22,
+   "decision": "WATCH_LIST",
+   "technique": 71.36
+  },
+  "v5_renseigne": {
+   "score": 74.93,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 83.26
+  }
+ },
+ {
+  "ref": "PI-2026-108",
+  "name": "Médina Lofts",
+  "region": "marrakech_safi",
+  "cls": "CTX",
+  "v4": {
+   "score": 0,
+   "decision": "NO_GO",
+   "technique": 71.74,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 0,
+   "decision": "NO_GO",
+   "technique": 63.51
+  },
+  "v5_renseigne": {
+   "score": 0,
+   "decision": "NO_GO",
+   "technique": 74.1
+  }
+ },
+ {
+  "ref": "PI-2026-109",
+  "name": "Green Valley",
+  "region": "rabat_sale_kenitra",
+  "cls": "SAIN",
+  "v4": {
+   "score": 76.58,
+   "decision": "GO",
+   "technique": 76.58,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 67.79,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 67.79
+  },
+  "v5_renseigne": {
+   "score": 79.1,
+   "decision": "GO",
+   "technique": 79.1
+  }
+ },
+ {
+  "ref": "PI-2026-110",
+  "name": "Zénith Towers",
+  "region": "casablanca_settat",
+  "cls": "SENSIBLE",
+  "v4": {
+   "score": 72.55,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 80.61,
+   "incomplete": false
+  },
+  "v5_brut": {
+   "score": 64.22,
+   "decision": "WATCH_LIST",
+   "technique": 71.36
+  },
+  "v5_renseigne": {
+   "score": 74.93,
+   "decision": "GO_WITH_CONDITIONS",
+   "technique": 83.26
+  }
+ }
+]

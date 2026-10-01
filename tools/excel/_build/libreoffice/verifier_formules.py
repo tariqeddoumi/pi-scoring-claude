@@ -1,4 +1,4 @@
-# Recalcule le classeur dans LibreOffice Calc sur les 20 cas de référence.
+# Recalcule le classeur dans LibreOffice Calc sur les cas de référence (vectors.json).
 import json, sys, time
 sys.path.insert(0, sys.argv[0].rsplit("/", 1)[0])
 import lo

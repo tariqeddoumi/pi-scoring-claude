@@ -1,19 +1,23 @@
 # Instantanés des modèles publiés
 
-`PI_PROMOTION_v4.0.0.json` est l'instantané **exact** de la version publiée en
-production (`ScoringModelVersion` `ver_4`, schéma `pi_scoring`) : domaines,
+`PI_PROMOTION_v5.0.0.json` est l'instantané **exact** de la version publiée en
+production (`ScoringModelVersion` `ver_5`, schéma `pi_scoring`, publiée le
+1er octobre 2026 ; `ver_4` est retirée). Il est dérivé de la v4 par
+`derive_v5_from_v4.py` (critères et alertes ajoutés, poids rééquilibrés au sein
+des domaines, barèmes v4 inchangés). `PI_PROMOTION_v4.0.0.json` reste l'instantané
+de la version retirée (les runs v4 conservent leur version) : domaines,
 critères, modalités, barèmes, alertes D5, seuils, coefficients BAM et
 ajustements segment / zone, avec les métadonnées v3/v4 (criticité, famille,
 jalon, définitions, effet des alertes, retour en comité).
 
 Il est utilisé par :
 
-- `lib/domain/models/piPromotionV4.ts` → configuration moteur (même fonction de
+- `lib/domain/models/piPromotionV5.ts` (via `lib/domain/models/current.ts`) → configuration moteur (même fonction de
   conversion que le chargement en base : `lib/domain/modelSnapshot.ts`) ;
 - `prisma/seed.ts` → un nouvel environnement reçoit exactement ce modèle ;
 - `tests/modelAlignment.test.ts` → contrôle que la saisie, les libellés, la
   validation et l'import couvrent toutes les clés du modèle, et que le moteur
-  reproduit les 20 cas de référence de l'outil Excel.
+  reproduit les 26 cas de référence de l'outil Excel.
 
 ## Mettre à jour l'instantané après une publication
 

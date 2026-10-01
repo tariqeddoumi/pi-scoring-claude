@@ -5,7 +5,9 @@
 | `export_guide_data.ts` | Exporte du code et du modèle publié les faits du guide : libellés d'écran, étapes du wizard, barèmes, données décisionnelles, alertes, événements, périodicités de revue, circuit et rôles → `guide_data.json` |
 | `guide_content.js` | Contenu métier : pièces justificatives (P01 à P33), méthode de calcul et points d'attention pour chaque donnée |
 | `gen_guide_docx.js` | Génère `docs/Guide_Charge_Affaires_Promotion_Immobiliere.docx` |
-| `gen_grilles_docx.js` | Génère `docs/Grilles_Scoring_PI_PROMOTION_v4.docx` directement depuis `prisma/models/PI_PROMOTION_v4.0.0.json` (grilles détaillées, alertes, coefficients, seuils, exemple chiffré vérifié contre les cas de référence) |
+| `gen_grilles_docx.js` | Génère `docs/Grilles_Scoring_PI_PROMOTION_v5.docx` directement depuis `prisma/models/PI_PROMOTION_v5.0.0.json` (nouveautés v5 repérées) (grilles détaillées, alertes, coefficients, seuils, exemple chiffré vérifié contre les cas de référence) |
+| `gen_diagnostic_v5_docx.js` | Génère `docs/Diagnostic_Modele_v5_Regionalite_Tranches_Equipements_Deblocages.docx` (diagnostic v5) depuis les instantanés v4/v5 et `impact_v5.json` |
+| `impact_v5.ts` | Recalcule v4 / v5 les projets de la base (données extraites) → `impact_v5.json` |
 | `gen_guide_pptx.js` | Génère `docs/Guide_Charge_Affaires_Formation.pptx` |
 
 Régénération (depuis la racine du dépôt) :
@@ -13,6 +15,9 @@ Régénération (depuis la racine du dépôt) :
 ```bash
 npx tsx docs/_sources/export_guide_data.ts
 node docs/_sources/gen_guide_docx.js
+node docs/_sources/gen_grilles_docx.js
+npx tsx docs/_sources/impact_v5.ts > docs/_sources/impact_v5.json
+node docs/_sources/gen_diagnostic_v5_docx.js
 # le support PowerPoint utilise pptxgenjs, react-icons, react, react-dom et sharp,
 # installés dans un dossier séparé pour ne pas modifier les dépendances de l'application :
 #   mkdir /tmp/pptx && cd /tmp/pptx && npm init -y && npm i pptxgenjs react-icons react react-dom sharp
