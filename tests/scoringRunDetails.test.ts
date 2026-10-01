@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { runScoring } from "@/server/engines/scoringEngine";
-import { PROMOTION_SCORING_MODEL_V4 } from "@/lib/domain/models/piPromotionV4";
+import { CURRENT_PROMOTION_MODEL } from "@/lib/domain/models/current";
 import { buildScoringRunDetails, readScoringRunDetails } from "@/lib/domain/scoringRunDetails";
 import type { ProjectInputs } from "@/lib/domain/types";
 
-const M = PROMOTION_SCORING_MODEL_V4;
+const M = CURRENT_PROMOTION_MODEL;
 const base: ProjectInputs = {
   promoter_completed_projects: 8, promoter_gearing: 85, governance_quality: "claire", mono_project_concentration: 35,
   promoter_type: "structure", equity_injected_ratio: 100, land_permits_status: "definitives", market_positioning: "aligne",
@@ -20,7 +20,7 @@ describe("Détail conservé avec le run (ScoringRun.details)", () => {
   it("fige la version, la classe interne et les notes séparées", () => {
     const r = runScoring({ model: M, inputs: base, regulatoryClass: "SAIN", extraCriticalKeys: ["dpd_days"] });
     const d = buildScoringRunDetails(M, r);
-    expect(d.modelVersion).toBe("v4.0.0");
+    expect(d.modelVersion).toBe("v5.0.0");
     expect(d.internalClass).toBe(r.internalClass);
     expect(d.economicScore).toBe(r.economicScore);
     expect(d.guaranteeScore).toBe(r.guaranteeScore);

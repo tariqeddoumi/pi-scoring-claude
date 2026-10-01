@@ -33,6 +33,10 @@ export const INPUT_SECTIONS: Record<string, { title: string; keys: string[] }> =
     title: "Pratique marocaine (v4)",
     keys: ["authorization_completeness_pct", "works_authorization_blocked", "secured_sales_rate", "buyers_financing_at_risk", "release_quotity_gap_pts", "release_underpriced", "division_limit_breach"],
   },
+  programme: {
+    title: "Programme, tranche, équipements et déblocages (v5)",
+    keys: ["regional_market_tension", "tranche_dependency", "contractor_quality", "slow_liquidity_share_pct", "component_exit_unsecured", "cancellation_rate_pct", "equipment_unbudgeted_pct", "equipment_delivery_at_risk", "drawdown_vs_progress_pct", "drawdown_ahead_of_works", "drawdown_schedule_late", "cost_overrun_pct"],
+  },
   regulatoire: {
     title: "Vulnérabilité réglementaire",
     keys: ["dpd_days", "restructured", "restructuring_count", "restructuring_deferral_months", "restructuring_viable", "second_restructuring_in_observation", "dpd_on_restructured", "legal_exposure", "project_stopped_months", "project_stopped_over_1y", "judicial_recovery", "debt_equity_ratio", "revenue_drop_pct", "seizure_notice", "financials_late_7m", "negative_credit_bureau", "bp_significant_gap", "financials_unavailable", "unreliable_construction_progress_info", "unreliable_commercialization_info"],
@@ -99,6 +103,19 @@ export const INPUT_LABELS: Record<string, string> = {
   release_quotity_gap_pts: "Quotité de désengagement − équilibre (pts)",
   release_underpriced: "Prix de mainlevée sous-tarifé",
   division_limit_breach: "Limite de division des risques dépassée",
+  // --- Modèle v5 : régionalité, tranche, programme mixte, équipements, déblocages ---
+  regional_market_tension: "Tension du marché régional",
+  tranche_dependency: "Autonomie du périmètre financé (tranche)",
+  contractor_quality: "Entreprise de travaux et garanties de marché",
+  slow_liquidity_share_pct: "Part du CA en commerces, bureaux, hôtel (%)",
+  component_exit_unsecured: "Composante commerciale / hôtelière sans preneur engagé",
+  cancellation_rate_pct: "Taux de désistement des réservations (%)",
+  equipment_unbudgeted_pct: "Équipements exigés non budgétés (% du coût)",
+  equipment_delivery_at_risk: "Équipement exigé en retard (conditionne la réception)",
+  drawdown_vs_progress_pct: "Déblocages vs avancement certifié (%)",
+  drawdown_ahead_of_works: "Déblocages en avance sur les travaux",
+  drawdown_schedule_late: "Plan de tirage en retard",
+  cost_overrun_pct: "Dépassement du coût à terminaison (%)",
   // --- Crédit in fine / dépassements / compte débiteur (1/W art.10-12) ---
   credit_type: "Type de crédit",
   days_after_maturity: "Impayé in fine après terme (jours)",

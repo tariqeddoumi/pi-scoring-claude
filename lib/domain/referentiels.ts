@@ -99,6 +99,7 @@ export const UNIT_TYPES = indexed([
   { value: "BUREAU", label: "Bureau" },
   { value: "TERRAIN", label: "Terrain" },
   { value: "AUTRE", label: "Autre" },
+  { value: "HOTEL", label: "Hôtel / composante hôtelière" },
 ] as const);
 
 // --- Statuts de lot (enum Prisma UnitStatus) --------------------------------

@@ -21,6 +21,8 @@ import { deriveEventInputs } from "@/lib/domain/eventSignals";
 import { deriveMoroccoInputs, type ProgramKind } from "@/lib/domain/morocco";
 import { loadMoroccoReferentials, loadDivisionPolicy } from "@/server/services/referentialLoader";
 import { computeDivisionRisques } from "@/lib/domain/divisionRisques";
+import { financedPerimeter, inPerimeter } from "@/lib/domain/programmeV5";
+import { deriveV5Inputs } from "@/server/services/programmeV5Service";
 import { scheduleDpd, totalOverdue, overdraftExcessPct } from "@/lib/domain/facility";
 
 /**
@@ -277,9 +279,10 @@ async function syncMonitoringCore(projectId: string, actorId: string) {
       programKind: true,
       releaseQuotity: true,
       authorizations: { select: { code: true, obtained: true, obtainedAt: true } },
-      facilities: { select: { drawnAmount: true } },
+      facilities: { select: { drawnAmount: true, trancheId: true, status: true } },
       tranches: {
         select: {
+          id: true, financed: true,
           units: {
             select: {
               status: true, plannedPrice: true, soldPrice: true,
@@ -293,8 +296,16 @@ async function syncMonitoringCore(projectId: string, actorId: string) {
   if (projectForMorocco) {
     // Référentiels administrables (repli sur les défauts du code).
     const refs = await loadMoroccoReferentials(prisma);
-    const units = projectForMorocco.tranches.flatMap((t) => t.units);
-    const outstandingDebt = projectForMorocco.facilities.reduce((s, f) => s + (f.drawnAmount ?? 0), 0);
+    // Modèle v5 : ventes sécurisées et désengagement mesurés sur le PÉRIMÈTRE
+    // FINANCÉ (tranches financées) et non sur le programme entier.
+    const per = financedPerimeter(
+      projectForMorocco.tranches.map((t) => ({ id: t.id, financed: t.financed })),
+      projectForMorocco.facilities.map((f) => f.trancheId),
+    );
+    const units = projectForMorocco.tranches.filter((t) => inPerimeter(per, t.id)).flatMap((t) => t.units);
+    const outstandingDebt = projectForMorocco.facilities
+      .filter((f) => f.status !== "CLOSED" && (per.wholeProgramme || !f.trancheId || inPerimeter(per, f.trancheId)))
+      .reduce((s, f) => s + (f.drawnAmount ?? 0), 0);
     const moroccoInputs = deriveMoroccoInputs({
       kind: (projectForMorocco.programKind as ProgramKind) ?? "CONSTRUCTION",
       authorizations: projectForMorocco.authorizations.map((a) => ({
@@ -322,6 +333,12 @@ async function syncMonitoringCore(projectId: string, actorId: string) {
         : "Aucun verrou d'autorisation de travaux ouvert.",
     });
   }
+
+  // 4 bis. Modèle v5 : régionalité, périmètre financé, programme mixte,
+  //    équipements exigés, déblocages selon le calendrier, désistements.
+  const v5 = await deriveV5Inputs(projectId, mon.visitAnalysis.trend.latestProgressPct ?? null);
+  Object.assign(values, v5.values);
+  notes.push(...v5.notes);
 
   // 5. Division des risques : exposition agrégée de la contrepartie (groupe
   //    d'intérêt s'il est renseigné, sinon promoteur) rapportée aux fonds
@@ -481,3 +498,4 @@ export async function rescorePortfolioAction(opts: { syncFirst?: boolean; onlySt
   revalidatePath("/projects");
   return { ok: true as const, total: targets.length, scored, synced, decisions, errors };
 }
+

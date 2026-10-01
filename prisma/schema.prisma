@@ -165,6 +165,7 @@ enum UnitType {
   BUREAU
   TERRAIN
   AUTRE
+  HOTEL // composante hôtelière d'un programme mixte (cession en bloc ou exploitation)
 }
 
 // Cycle de vie commercial d'une unité.
@@ -345,6 +346,9 @@ model RealEstateProject {
   programKind     String? @default("CONSTRUCTION")
   // Quotité de désengagement convenue pour les mainlevées partielles (0..1).
   releaseQuotity  Float?
+  // Modèle v5 : déclaration des équipements exigés (commune, cahier des charges).
+  // true = liste déclarée (fait foi) ; false = aucun équipement exigé ; null = non déclaré.
+  equipmentDeclared Boolean?
   landTitleRef    String? // n° du/des titre(s) foncier(s)
   landStatus      String? // statut foncier (cf. referentiels LAND_STATUSES)
   buildPermitRef  String? // n° autorisation de construire
@@ -378,6 +382,7 @@ model RealEstateProject {
   committeeDecisions CommitteeDecision[]
   tranches          Tranche[]
   authorizations    ProjectAuthorization[]
+  equipments        ProjectEquipment[]
   disbursementMilestones DisbursementMilestone[]
   visitReports      VisitReport[]
   bpRevisions       BusinessPlanRevision[]
@@ -462,12 +467,17 @@ model Tranche {
   actualDelivery  DateTime?
   progressPct     Float    @default(0) // avancement physique 0..100
   budget          Float?
+  // Modèle v5 : la banque finance cette tranche (périmètre financé). Si aucune
+  // tranche n'est marquée ni portée par une facilité, le programme entier est financé.
+  financed        Boolean  @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   units           Unit[]
   // Vision lotissement (volet 2) : déblocages et événements rattachés au lot.
   disbursements   DisbursementMilestone[]
+  facilities      Facility[]
+  equipments      ProjectEquipment[]
   events          ProjectEvent[]
 
   @@index([projectId])
@@ -933,6 +943,33 @@ model ReferentialItem {
   @@index([kind, active])
 }
 
+// Équipement exigé du programme (modèle v5) : mosquée, école, voirie, espaces
+// verts… demandés par la commune, le cahier des charges ou l'autorisation.
+// Son coût non budgété ampute la marge ; son retard peut bloquer la réception,
+// le permis d'habiter, les actes et donc les mainlevées.
+model ProjectEquipment {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  trancheId          String?
+  tranche            Tranche? @relation(fields: [trancheId], references: [id])
+  kind               String   // cf. EQUIPMENT_KINDS (lib/domain/programmeV5.ts)
+  label              String
+  origin             String?  // cahier_des_charges | convention_commune | permis | convention_etat | autre
+  estimatedCost      Float?   // MAD
+  budgeted           Boolean  @default(false) // inclus dans le budget du programme
+  fundedBy           String?  // promoteur | banque | commune | autre
+  progressPct        Float    @default(0)
+  dueDate            DateTime?
+  conditionsDelivery Boolean  @default(false) // conditionne réception / permis d'habiter
+  handedOver         Boolean  @default(false) // remis à la commune
+  note               String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([projectId])
+}
+
 // Chaîne d'autorisations d'un programme (pratique marocaine) : chaque pièce
 // conditionne un jalon (étude / octroi / signature / tirage).
 model ProjectAuthorization {
@@ -1087,6 +1124,9 @@ model Facility {
   // conditionne l'exigence d'une situation de travaux visée au déblocage.
   nature           String?
   reservedAgios    Float    @default(0)
+  // Modèle v5 : tranche financée par ce concours (null = programme entier).
+  trancheId        String?
+  tranche          Tranche? @relation(fields: [trancheId], references: [id])
   status           FacilityStatus @default(ACTIVE)
   startedAt        DateTime? // date de démarrage des travaux financés
   createdAt        DateTime @default(now())

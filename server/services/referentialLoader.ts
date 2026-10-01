@@ -10,6 +10,7 @@
 
 import type { Prisma, PrismaClient } from "@prisma/client";
 import type { DivisionLimitPolicy } from "@/lib/domain/divisionRisques";
+import { parseRegionalMarket, type RegionalMarketDef } from "@/lib/domain/programmeV5";
 import {
   AUTHORIZATION_CHAIN,
   BUYER_FINANCING_STATUSES,
@@ -30,6 +31,7 @@ export const REFERENTIAL_KINDS = [
   "FACILITY_NATURE",
   "BUYER_AID",
   "PRUDENTIAL_LIMIT",
+  "REGIONAL_MARKET",
 ] as const;
 export type ReferentialKind = (typeof REFERENTIAL_KINDS)[number];
 
@@ -39,6 +41,7 @@ export const REFERENTIAL_LABELS: Record<ReferentialKind, string> = {
   FACILITY_NATURE: "Natures de concours",
   BUYER_AID: "Dispositifs d'aide à l'acquéreur",
   PRUDENTIAL_LIMIT: "Limites prudentielles (division des risques)",
+  REGIONAL_MARKET: "Marché régional (tension par région et segment)",
 };
 
 export interface LoadedReferentials {
@@ -169,5 +172,22 @@ export async function loadDivisionPolicy(db: Db): Promise<DivisionLimitPolicy | 
     return row ? parseDivisionPolicy(row.config) : null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Appréciations du marché régional (référentiel REGIONAL_MARKET, code =
+ * région administrative). Aucune valeur par défaut : une région non appréciée
+ * laisse la donnée absente.
+ */
+export async function loadRegionalMarkets(db: Db): Promise<RegionalMarketDef[]> {
+  try {
+    const rows = await db.referentialItem.findMany({
+      where: { kind: "REGIONAL_MARKET", active: true },
+      select: { code: true, config: true },
+    });
+    return rows.map((r) => parseRegionalMarket(r.code, r.config)).filter((x): x is RegionalMarketDef => x !== null);
+  } catch {
+    return [];
   }
 }

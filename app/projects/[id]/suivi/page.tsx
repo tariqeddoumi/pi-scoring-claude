@@ -15,6 +15,8 @@ import { DisbursementPlanCard } from "@/components/DisbursementPlanCard";
 import { BuyerFinancingPanel } from "@/components/BuyerFinancingPanel";
 import { SyncCoreBankingButton } from "@/components/SyncCoreBankingButton";
 import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
+import { ProgrammeV5Card } from "@/components/ProgrammeV5Card";
+import { loadProgrammeV5View } from "@/server/services/programmeV5Service";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
 
@@ -75,6 +77,9 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
   // Financement des acquéreurs (saisie) — best-effort.
   const finRes = await safe(() => getProjectBuyerFinancing(id));
   const buyerFinancing = finRes.ok ? finRes.data : null;
+  // Modèle v5 : périmètre financé, équipements, déblocages — best-effort.
+  const v5Res = await safe(() => loadProgrammeV5View(id));
+  const programmeV5 = v5Res.ok ? v5Res.data : null;
 
   // Timeline sérialisée pour le composant client (dates ISO).
   const timelineView = timeline.map((t) => ({
@@ -247,6 +252,9 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
 
       {/* ===================== Journal du projet (tous événements) ===================== */}
       <ProjectEventsPanel projectId={project.id} timeline={timelineView} canWrite={canWrite} />
+
+      {/* ===================== Modèle v5 : tranche financée, équipements, déblocages ===================== */}
+      {programmeV5 && <ProgrammeV5Card projectId={project.id} view={programmeV5} canWrite={canWrite} />}
 
       {canWrite && (
         <Card>

@@ -4,13 +4,13 @@
 import fs from "node:fs";
 import { runScoring } from "@/server/engines/scoringEngine";
 import { applyStress, STRESS_SCENARIOS } from "@/lib/domain/stress";
-import { PROMOTION_SCORING_MODEL_V4 } from "@/lib/domain/models/piPromotionV4";
+import { CURRENT_PROMOTION_MODEL } from "@/lib/domain/models/current";
 
 const D = "tools/excel/_build/";
 const vec = JSON.parse(fs.readFileSync(D + "vectors.json", "utf8")) as { id: string; inputs: Record<string, any> }[];
 const inputs = vec.find((v) => v.id === "T06")!.inputs;
 const score = (i: Record<string, any>) =>
-  runScoring({ model: PROMOTION_SCORING_MODEL_V4, inputs: i, segment: "moyen_haut", zone: "casa_centre",
+  runScoring({ model: CURRENT_PROMOTION_MODEL, inputs: i, segment: "moyen_haut", zone: "casa_centre",
     regulatoryClass: "SAIN", classBlocksGo: false, isDefault: false, extraCriticalKeys: ["dpd_days"] });
 const base = score(inputs);
 const out = { base: { scoreFinal: base.scoreFinal, decision: base.decision },
