@@ -1,23 +1,24 @@
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat } from "@/components/ui";
-import { formatMAD, formatPercent } from "@/lib/utils";
+import { formatMAD, formatPercent, formatMADCompact } from "@/lib/utils";
 import { computeRiskMetrics, SLOTTING_LABELS, DEFAULT_CALIBRATION, type RiskCalibration } from "@/lib/domain/riskMetrics";
 import { computeEcl, assessSicr } from "@/lib/domain/ifrs9";
 import { computeStandardApproach, BAM_SOLVENCY_RATIO } from "@/lib/domain/standardApproach";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
+import { TONE } from "@/lib/tones";
 
 const DEFAULT_CLASSES: RegulatoryClassCode[] = ["PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
 
 const SLOTTING_COLORS: Record<string, string> = {
-  STRONG: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  GOOD: "bg-lime-100 text-lime-800 border-lime-300",
-  SATISFACTORY: "bg-amber-100 text-amber-800 border-amber-300",
-  WEAK: "bg-orange-100 text-orange-800 border-orange-300",
-  DEFAULT: "bg-red-100 text-red-800 border-red-300",
+  STRONG: TONE.success,
+  GOOD: TONE.successSoft,
+  SATISFACTORY: TONE.warning,
+  WEAK: TONE.alert,
+  DEFAULT: TONE.danger,
 };
 const STAGE_COLORS: Record<number, string> = {
-  1: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  2: "bg-amber-100 text-amber-800 border-amber-300",
-  3: "bg-red-100 text-red-800 border-red-300",
+  1: TONE.success,
+  2: TONE.warning,
+  3: TONE.danger,
 };
 
 export function RiskMetricsCard({
@@ -65,7 +66,7 @@ export function RiskMetricsCard({
           <Badge className={SLOTTING_COLORS[m.slotting]}>{SLOTTING_LABELS[m.slotting]}</Badge>
           <Badge className={STAGE_COLORS[stage]}>IFRS 9 — Stage {stage}</Badge>
           {sicr.sicrTriggered && (
-            <Badge className="bg-purple-100 text-purple-800 border-purple-300">SICR — dégradé en Stage 2</Badge>
+            <Badge className={TONE.accent}>SICR — dégradé en Stage 2</Badge>
           )}
         </CardTitle>
       </CardHeader>
@@ -73,16 +74,16 @@ export function RiskMetricsCard({
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
           <Stat label="PD" value={formatPercent(m.pd * 100, 2)} hint="probabilité de défaut" />
           <Stat label="LGD" value={formatPercent(m.lgd * 100, 1)} hint="perte en cas de défaut" />
-          <Stat label="EAD" value={formatMAD(m.ead)} hint="exposition au défaut" />
-          <Stat label="Perte attendue (EL)" value={formatMAD(m.expectedLoss)} hint="PD × LGD × EAD" />
-          <Stat label="RWA" value={formatMAD(m.rwa)} hint={`pondération ${Math.round(m.riskWeight * 100)}%`} />
+          <Stat label="EAD" value={formatMADCompact(m.ead)} title={formatMAD(m.ead)} hint="exposition au défaut" />
+          <Stat label="Perte attendue (EL)" value={formatMADCompact(m.expectedLoss)} title={formatMAD(m.expectedLoss)} hint="PD × LGD × EAD" />
+          <Stat label="RWA" value={formatMADCompact(m.rwa)} title={formatMAD(m.rwa)} hint={`pondération ${Math.round(m.riskWeight * 100)}%`} />
         </div>
 
         <div className="rounded-md border border-border p-3">
           <div className="text-sm font-medium mb-2">Double cadre de provisionnement</div>
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-            <Stat label="ECL IFRS 9" value={formatMAD(ecl.ecl)} hint={ecl.horizon === "12M" ? "12 mois (Stage 1)" : `lifetime (Stage ${stage})`} />
-            {bkamProvision != null && <Stat label="Provision BKAM" value={formatMAD(bkamProvision)} hint="prudentiel" />}
+            <Stat label="ECL IFRS 9" value={formatMADCompact(ecl.ecl)} title={formatMAD(ecl.ecl)} hint={ecl.horizon === "12M" ? "12 mois (Stage 1)" : `lifetime (Stage ${stage})`} />
+            {bkamProvision != null && <Stat label="Provision BKAM" value={formatMADCompact(bkamProvision)} title={formatMAD(bkamProvision)} hint="prudentiel" />}
             {bkamProvision != null && (
               <Stat
                 label="Écart IFRS 9 − BKAM"
@@ -103,9 +104,9 @@ export function RiskMetricsCard({
           <div className="text-sm font-medium mb-2">Méthode standard (approche retenue) — exigence prudentielle BAM</div>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat label="Pondération" value={formatPercent(std.riskWeight * 100, 0)} hint={std.label} />
-            <Stat label="EAD nette" value={formatMAD(std.eadNet)} hint="EAD − provisions spécifiques" />
-            <Stat label="RWA (standard)" value={formatMAD(std.rwa)} />
-            <Stat label="Fonds propres requis" value={formatMAD(std.capitalRequirement)} hint={`ratio ${Math.round(BAM_SOLVENCY_RATIO * 100)} %`} />
+            <Stat label="EAD nette" value={formatMADCompact(std.eadNet)} title={formatMAD(std.eadNet)} hint="EAD − provisions spécifiques" />
+            <Stat label="RWA (standard)" value={formatMADCompact(std.rwa)} title={formatMAD(std.rwa)} />
+            <Stat label="Fonds propres requis" value={formatMADCompact(std.capitalRequirement)} title={formatMAD(std.capitalRequirement)} hint={`ratio ${Math.round(BAM_SOLVENCY_RATIO * 100)} %`} />
           </div>
           <p className="text-xs text-muted-foreground mt-2">{std.reason}</p>
         </div>

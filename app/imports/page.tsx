@@ -5,15 +5,16 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { getImportBatches } from "@/server/queries";
 import { formatDate } from "@/lib/utils";
 import { ImportForm } from "@/components/ImportForm";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
 const IMPORT_STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-slate-100 text-slate-700 border-slate-300",
-  PROCESSING: "bg-blue-100 text-blue-800 border-blue-300",
-  COMPLETED: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  FAILED: "bg-red-100 text-red-800 border-red-300",
-  PARTIAL: "bg-amber-100 text-amber-800 border-amber-300",
+  PENDING: TONE.neutral,
+  PROCESSING: TONE.info,
+  COMPLETED: TONE.success,
+  FAILED: TONE.danger,
+  PARTIAL: TONE.warning,
 };
 
 const TEMPLATE_COLUMNS = [

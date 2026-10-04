@@ -13,13 +13,14 @@ import {
   linkDisbursementToMilestone,
 } from "@/server/actions/disbursements";
 import { MILESTONE_STATUS_LABELS, type MilestoneStatus } from "@/lib/domain/disbursementPlan";
-import { formatMAD, formatDate } from "@/lib/utils";
+import { formatMAD, formatDate, formatMADCompact } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 const STATUS_COLORS: Record<MilestoneStatus, string> = {
-  A_VENIR: "bg-slate-100 text-slate-700 border-slate-300",
-  PARTIEL: "bg-amber-100 text-amber-800 border-amber-300",
-  DEBLOQUE: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  DEPASSE: "bg-red-100 text-red-800 border-red-300",
+  A_VENIR: TONE.neutral,
+  PARTIEL: TONE.warning,
+  DEBLOQUE: TONE.success,
+  DEPASSE: TONE.danger,
 };
 
 export interface MilestoneRowView {
@@ -93,7 +94,7 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
         <CardTitle className="flex items-center gap-2 flex-wrap">
           Planning des déblocages (business plan initial)
           {unlinked.length > 0 && (
-            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+            <Badge className={TONE.warning}>
               {unlinked.length} déblocage(s) à rattacher
             </Badge>
           )}
@@ -101,10 +102,10 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Stat label="Prévu au plan" value={formatMAD(totals.planned)} />
-          <Stat label="Débloqué (rattaché)" value={formatMAD(totals.realized)} />
+          <Stat label="Prévu au plan" value={formatMADCompact(totals.planned)} title={formatMAD(totals.planned)} />
+          <Stat label="Débloqué (rattaché)" value={formatMADCompact(totals.realized)} title={formatMAD(totals.realized)} />
           <Stat label="Exécution du plan" value={totals.executionPct != null ? `${totals.executionPct} %` : "—"} />
-          <Stat label="Débloqué non rattaché" value={formatMAD(totals.unlinkedAmount)} />
+          <Stat label="Débloqué non rattaché" value={formatMADCompact(totals.unlinkedAmount)} title={formatMAD(totals.unlinkedAmount)} />
         </div>
 
         {rows.length > 0 ? (
@@ -167,7 +168,7 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
                   <span className="font-medium whitespace-nowrap">{formatMAD(e.amount ?? 0)}</span>
                   {e.title && <span className="text-muted-foreground">{e.title}</span>}
                   {e.source && e.source !== "MANUAL" && (
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-300">{e.source}</Badge>
+                    <Badge className={TONE.info}>{e.source}</Badge>
                   )}
                   {canWrite && rows.length > 0 && (
                     <span className="ml-auto flex items-center gap-2">

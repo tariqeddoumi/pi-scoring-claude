@@ -4,10 +4,11 @@ import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { Card, CardContent, CardHeader, CardTitle, Stat, Badge, Table, Th, Td } from "@/components/ui";
 import { PortfolioChart } from "@/components/PortfolioChart";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
-import { formatMAD, formatDate } from "@/lib/utils";
+import { formatMAD, formatDate, formatMADCompact, formatDecimal } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { isFrontRole, hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,7 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat label="Dossiers en portefeuille" value={totalCount} />
         <Stat label="Mes dossiers (CA)" value={mine.length} />
-        <Stat label="Mon exposition" value={formatMAD(myExposure)} />
+        <Stat label="Mon exposition" value={formatMADCompact(myExposure)} title={formatMAD(myExposure)} />
         <Stat label="En attente de mon action" value={toProcess.length} />
         <Stat label="Scorings à rafraîchir" value={rescoreCount} hint="revue périodique / événement" />
       </div>
@@ -57,7 +58,7 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             À traiter
-            <Badge className="bg-blue-100 text-blue-800 border-blue-300">{toProcess.length}</Badge>
+            <Badge className={TONE.info}>{toProcess.length}</Badge>
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -74,7 +75,7 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
                   <Td><Link className="text-primary hover:underline" href={`/projects/${p.id}`}>{p.reference}</Link></Td>
                   <Td>{p.name}</Td>
                   <Td>{p.promoter}</Td>
-                  <Td><Badge className="bg-slate-100 text-slate-700 border-slate-300">{p.stateLabel}</Badge></Td>
+                  <Td><Badge className={TONE.neutral}>{p.stateLabel}</Badge></Td>
                   <Td className="whitespace-nowrap">{formatMAD(p.exposure)}</Td>
                   <Td className="whitespace-nowrap text-muted-foreground">{formatDate(p.since)}</Td>
                 </tr>
@@ -116,7 +117,7 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
                   <tr key={p.id} className="hover:bg-muted/50">
                     <Td><Link className="text-primary hover:underline" href={`/projects/${p.id}`}>{p.reference}</Link></Td>
                     <Td>{p.name}</Td>
-                    <Td><Badge className="bg-slate-100 text-slate-700 border-slate-300">{p.stateLabel}</Badge></Td>
+                    <Td><Badge className={TONE.neutral}>{p.stateLabel}</Badge></Td>
                     <Td>
                       {p.score != null ? (
                         <span className="flex items-center gap-2">
@@ -175,9 +176,9 @@ async function RiskDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <Stat label="Projets suivis" value={total} />
-        <Stat label="Exposition totale" value={formatMAD(totalExposure)} />
-        <Stat label="Provisions BKAM" value={formatMAD(totalProvision)} />
-        <Stat label="Taux de couverture" value={`${coverage.toFixed(1)} %`} />
+        <Stat label="Exposition totale" value={formatMADCompact(totalExposure)} title={formatMAD(totalExposure)} />
+        <Stat label="Provisions BKAM" value={formatMADCompact(totalProvision)} title={formatMAD(totalProvision)} />
+        <Stat label="Taux de couverture" value={`${formatDecimal(coverage, 1)} %`} />
         <Stat label="Scorings à rafraîchir" value={rescoreItems.length} hint="revue périodique / événement" />
       </div>
 
@@ -186,7 +187,7 @@ async function RiskDashboard() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               Scorings à rafraîchir
-              <Badge className="bg-amber-100 text-amber-800 border-amber-300">{rescoreItems.length}</Badge>
+              <Badge className={TONE.warning}>{rescoreItems.length}</Badge>
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -202,7 +203,7 @@ async function RiskDashboard() {
                     <Td>{it.promoter}</Td>
                     <Td>{it.cls ? <Badge className={CLASS_COLORS[it.cls]}>{CLASS_LABELS[it.cls]}</Badge> : "—"}</Td>
                     <Td>
-                      <Badge className={it.freshness.status === "EVENT_TRIGGERED" ? "bg-purple-100 text-purple-800 border-purple-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                      <Badge className={it.freshness.status === "EVENT_TRIGGERED" ? TONE.accent : TONE.warning}>
                         {FRESHNESS_LABELS[it.freshness.status]}
                       </Badge>
                     </Td>

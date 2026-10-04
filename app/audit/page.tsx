@@ -4,14 +4,15 @@ import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatDate } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
 const ACTION_COLORS: Record<string, string> = {
-  CALCULATE: "bg-blue-100 text-blue-800 border-blue-300",
-  CLASSIFY: "bg-purple-100 text-purple-800 border-purple-300",
-  PROVISION: "bg-amber-100 text-amber-800 border-amber-300",
-  CREATE: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  CALCULATE: TONE.info,
+  CLASSIFY: TONE.accent,
+  PROVISION: TONE.warning,
+  CREATE: TONE.success,
   UPDATE: "bg-slate-100 text-slate-800 border-slate-300",
 };
 

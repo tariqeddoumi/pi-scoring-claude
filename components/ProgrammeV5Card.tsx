@@ -13,6 +13,7 @@ import {
 import { EQUIPMENT_FUNDERS, EQUIPMENT_KINDS, EQUIPMENT_ORIGINS } from "@/lib/domain/programmeV5";
 import { INPUT_LABELS } from "@/lib/inputLabels";
 import { formatMAD, formatDate } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 export interface ProgrammeV5View {
   region: string | null;
@@ -129,7 +130,7 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
           <h3 className="font-semibold text-sm">2. Équipements exigés (mosquée, école, voirie…)</h3>
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span>Obligations :</span>
-            <Badge className={declared === null ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
+            <Badge className={declared === null ? TONE.warning : TONE.neutral}>
               {declared === null ? "non déclarées (critère au plancher)" : declared ? `${view.equipments.length} équipement(s) exigé(s)` : "aucun équipement exigé"}
             </Badge>
             {canWrite && (
@@ -156,7 +157,7 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
                     <Td className="text-xs">{labelOf(EQUIPMENT_FUNDERS, e.fundedBy)}{e.budgeted ? " · budgété" : " · non budgété"}</Td>
                     <Td>{e.handedOver ? "Remis" : `${e.progressPct.toFixed(0)} %`}</Td>
                     <Td>{e.dueDate ? formatDate(e.dueDate) : "—"}</Td>
-                    <Td>{e.conditionsDelivery ? <Badge className="bg-amber-100 text-amber-800 border-amber-300">conditionne la réception</Badge> : "—"}</Td>
+                    <Td>{e.conditionsDelivery ? <Badge className={TONE.warning}>conditionne la réception</Badge> : "—"}</Td>
                     {canWrite && (
                       <Td className="whitespace-nowrap">
                         <Button variant="ghost" disabled={pending} onClick={() => setForm({ ...e, estimatedCost: e.estimatedCost ?? "", progressPct: String(e.progressPct), dueDate: e.dueDate ?? "", note: e.note ?? "" })}>Modifier</Button>

@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/compo
 import { createProjectEvent, resolveProjectEvent } from "@/server/actions/events";
 import { EVENT_TYPES_LIST, EVENT_SEVERITIES } from "@/lib/domain/referentiels";
 import { formatMAD, formatDate } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 export interface TimelineEntryView {
   kind: "EVENT" | "VISIT" | "BP_REVISION" | "WORKFLOW" | "SCORING";
@@ -34,9 +35,9 @@ const KIND_LABELS: Record<TimelineEntryView["kind"], string> = {
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  INFO: "bg-slate-100 text-slate-700 border-slate-300",
-  WARNING: "bg-amber-100 text-amber-800 border-amber-300",
-  CRITICAL: "bg-red-100 text-red-800 border-red-300",
+  INFO: TONE.neutral,
+  WARNING: TONE.warning,
+  CRITICAL: TONE.danger,
 };
 
 export function ProjectEventsPanel({ projectId, timeline, canWrite }: {
@@ -162,10 +163,10 @@ export function ProjectEventsPanel({ projectId, timeline, canWrite }: {
                   )}
                   <span className="font-medium">{t.title}</span>
                   {t.kind === "EVENT" && t.affectsScoring && !t.resolved && (
-                    <Badge className="bg-purple-100 text-purple-800 border-purple-300">Matériel — impacte le scoring</Badge>
+                    <Badge className={TONE.accent}>Matériel — impacte le scoring</Badge>
                   )}
                   {t.kind === "EVENT" && t.resolved && (
-                    <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Clôturé</Badge>
+                    <Badge className={TONE.success}>Clôturé</Badge>
                   )}
                 </span>
                 <span className="block text-muted-foreground">

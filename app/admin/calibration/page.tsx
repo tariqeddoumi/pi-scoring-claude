@@ -5,6 +5,7 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatDate } from "@/lib/utils";
 import { CalibrationForm } from "@/components/CalibrationForm";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +66,7 @@ export default async function CalibrationPage() {
                     <Td className="whitespace-nowrap">{pct(h.pdStrong, 2)} / {pct(h.pdGood, 2)} / {pct(h.pdSatisfactory, 1)} / {pct(h.pdWeak, 1)}</Td>
                     <Td className="whitespace-nowrap">{pct(h.lgdUnsecured, 0)} / {pct(h.lgdFloor, 0)}</Td>
                     <Td>{h.maturityYears} ans</Td>
-                    <Td>{h.active ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Active</Badge> : <span className="text-muted-foreground text-xs">historique</span>}</Td>
+                    <Td>{h.active ? <Badge className={TONE.success}>Active</Badge> : <span className="text-muted-foreground text-xs">historique</span>}</Td>
                   </tr>
                 ))}
               </tbody>

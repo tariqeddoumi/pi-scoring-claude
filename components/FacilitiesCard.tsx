@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle, Table, Th, Td, Badge, Stat } from "@/components/ui";
-import { formatMAD, formatDate } from "@/lib/utils";
+import { formatMAD, formatDate, formatMADCompact } from "@/lib/utils";
 import {
   facilityEad,
   projectEad,
@@ -7,6 +7,7 @@ import {
   scheduleDpd,
   totalOverdue,
 } from "@/lib/domain/facility";
+import { TONE } from "@/lib/tones";
 
 interface InstallmentRow {
   id: string;
@@ -26,9 +27,9 @@ interface FacilityRow {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-blue-100 text-blue-800 border-blue-300",
-  CLOSED: "bg-slate-100 text-slate-700 border-slate-300",
-  DEFAULTED: "bg-red-100 text-red-800 border-red-300",
+  ACTIVE: TONE.info,
+  CLOSED: TONE.neutral,
+  DEFAULTED: TONE.danger,
 };
 
 export function FacilitiesCard({
@@ -50,10 +51,10 @@ export function FacilitiesCard({
       <CardHeader><CardTitle>Facilités & EAD réel</CardTitle></CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Stat label="EAD réel" value={formatMAD(ead)} hint={`vs autorisé ${formatMAD(loanAmount)}`} />
+          <Stat label="EAD réel" value={formatMADCompact(ead)} title={formatMAD(ead)} hint={`vs autorisé ${formatMAD(loanAmount)}`} />
           <Stat label="Tranches" value={facilities.length} />
           <Stat label="Retard max (DPD)" value={`${dpd} j`} />
-          <Stat label="Impayé échu" value={formatMAD(overdue)} />
+          <Stat label="Impayé échu" value={formatMADCompact(overdue)} title={formatMAD(overdue)} />
         </div>
 
         {facilities.map((f) => {
@@ -86,11 +87,11 @@ export function FacilitiesCard({
                           <Td className="whitespace-nowrap">{formatMAD(i.amountPaid)}</Td>
                           <Td>
                             {paid ? (
-                              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Soldée</Badge>
+                              <Badge className={TONE.success}>Soldée</Badge>
                             ) : od > 0 ? (
-                              <Badge className="bg-red-100 text-red-800 border-red-300">Impayé {od}j</Badge>
+                              <Badge className={TONE.danger}>Impayé {od}j</Badge>
                             ) : (
-                              <Badge className="bg-slate-100 text-slate-700 border-slate-300">À échoir</Badge>
+                              <Badge className={TONE.neutral}>À échoir</Badge>
                             )}
                           </Td>
                         </tr>

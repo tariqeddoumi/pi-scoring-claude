@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
 import { createVisitReport, extractVisitReportWithAI } from "@/server/actions/projects";
 import { extractReportFields, type ExtractedReportFields, type ReportDocument } from "@/lib/domain/visitReportExtraction";
+import { TONE } from "@/lib/tones";
 
 // Lit un fichier (image/PDF) en base64 sans le préfixe data: pour l'envoi au serveur.
 function fileToDocument(file: File): Promise<ReportDocument> {
@@ -172,7 +173,7 @@ export function VisitReportForm({ projectId }: { projectId: string }) {
             {detected && (
               <p className="text-xs text-muted-foreground flex items-center gap-1 flex-wrap">
                 {detected.length === 0 ? "Aucun champ détecté." : <><span>Champs détectés :</span>{detected.map((d) => (
-                  <Badge key={d} className="bg-emerald-100 text-emerald-800 border-emerald-300">{FIELD_LABELS[d] ?? d}</Badge>
+                  <Badge key={d} className={TONE.success}>{FIELD_LABELS[d] ?? d}</Badge>
                 ))}</>}
               </p>
             )}

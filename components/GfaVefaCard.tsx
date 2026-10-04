@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/compo
 import { updateGfaVefa } from "@/server/actions/projects";
 import { computeGfaRelief } from "@/lib/domain/gfaVefa";
 import { formatMAD } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 interface Props {
   projectId: string;
@@ -63,10 +64,10 @@ export function GfaVefaCard(p: Props) {
         <CardTitle className="flex items-center justify-between">
           <span className="flex items-center gap-2 flex-wrap">
             Commercialisation & GFA
-            <Badge className={p.assetType === "EXPLOITATION" ? "bg-orange-100 text-orange-800 border-orange-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
+            <Badge className={p.assetType === "EXPLOITATION" ? TONE.alert : TONE.neutral}>
               {p.assetType === "EXPLOITATION" ? "Actif d'exploitation" : "Promotion"}
             </Badge>
-            <Badge className={p.saleMode === "VEFA" ? "bg-blue-100 text-blue-800 border-blue-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
+            <Badge className={p.saleMode === "VEFA" ? TONE.info : TONE.neutral}>
               {p.saleMode === "VEFA" ? "VEFA (sur plan)" : "Vente classique"}
             </Badge>
           </span>
@@ -85,7 +86,7 @@ export function GfaVefaCard(p: Props) {
               </p>
             )}
             <div className="flex flex-wrap items-center gap-3">
-              <Badge className={p.hasGFA ? "bg-emerald-100 text-emerald-800 border-emerald-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+              <Badge className={p.hasGFA ? TONE.success : TONE.warning}>
                 {p.hasGFA ? "GFA en place" : "Sans GFA"}
               </Badge>
               {p.hasGFA && p.gfaAmount != null && <span>Montant garanti : <span className="font-medium">{formatMAD(p.gfaAmount)}</span></span>}

@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
 import { analyzeDossierDocuments, applyDossierExtraction } from "@/server/actions/dossierAi";
 import { INPUT_LABELS } from "@/lib/inputLabels";
+import { TONE } from "@/lib/tones";
 
 interface DocPayload { base64: string; mediaType: string; name: string }
 
@@ -162,7 +163,7 @@ export function DossierAiPanel({ projectId }: { projectId: string }) {
                       <span className="font-medium">{INPUT_LABELS[c.key] ?? c.key}</span>
                       <span>→ {fmt(c.value)}</span>
                       {c.alreadyFilled && (
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                        <Badge className={TONE.warning}>
                           déjà saisi — cocher pour remplacer
                         </Badge>
                       )}

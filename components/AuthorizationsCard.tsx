@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
 import { saveProjectAuthorizations, updateProgramSettings } from "@/server/actions/morocco";
+import { TONE } from "@/lib/tones";
 
 export interface AuthorizationRow {
   code: string;
@@ -92,13 +93,13 @@ export function AuthorizationsCard(p: Props) {
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <CardTitle>Foncier, autorisations & désengagement</CardTitle>
           <div className="flex items-center gap-2">
-            <Badge className="bg-slate-100 text-slate-700 border-slate-300">
+            <Badge className={TONE.neutral}>
               {KIND_LABELS[p.programKind] ?? p.programKind}
             </Badge>
             {p.worksBlocked ? (
-              <Badge className="bg-red-100 text-red-800 border-red-300">Tirage travaux bloqué</Badge>
+              <Badge className={TONE.danger}>Tirage travaux bloqué</Badge>
             ) : (
-              <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Tirage travaux autorisé</Badge>
+              <Badge className={TONE.success}>Tirage travaux autorisé</Badge>
             )}
             {p.canEdit && !editing && (
               <Button onClick={() => setEditing(true)}>Modifier</Button>
@@ -193,14 +194,14 @@ export function AuthorizationsCard(p: Props) {
                   </Td>
                   <Td>{STAGE_LABELS[r.stage] ?? r.stage}</Td>
                   <Td>
-                    {r.blocksWorks ? <Badge className="bg-red-100 text-red-800 border-red-300">Travaux</Badge>
-                      : r.blocksDelivery ? <Badge className="bg-amber-100 text-amber-800 border-amber-300">Livraison</Badge>
+                    {r.blocksWorks ? <Badge className={TONE.danger}>Travaux</Badge>
+                      : r.blocksDelivery ? <Badge className={TONE.warning}>Livraison</Badge>
                       : <span className="text-muted-foreground">—</span>}
                   </Td>
                   <Td>
                     {r.obtained
-                      ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Obtenue</Badge>
-                      : <Badge className="bg-slate-100 text-slate-700 border-slate-300">Manquante</Badge>}
+                      ? <Badge className={TONE.success}>Obtenue</Badge>
+                      : <Badge className={TONE.neutral}>Manquante</Badge>}
                   </Td>
                   <Td>{r.obtainedAt ? new Date(r.obtainedAt).toLocaleDateString("fr-MA") : "—"}</Td>
                   <Td className="text-muted-foreground">{r.reference ?? "—"}</Td>

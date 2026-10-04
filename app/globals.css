@@ -14,3 +14,17 @@ body {
 .card {
   @apply rounded-lg border border-border bg-background shadow-sm;
 }
+
+/* Focus clavier visible partout (accessibilité) ; pas d'anneau au clic souris. */
+:focus-visible {
+  outline: 2px solid hsl(221 83% 53%);
+  outline-offset: 2px;
+  border-radius: 0.25rem;
+}
+
+/* Chiffres alignés dans les tableaux et indicateurs. */
+table, .tabular-nums { font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}

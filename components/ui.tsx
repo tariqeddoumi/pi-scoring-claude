@@ -63,17 +63,22 @@ export function Stat({
   label,
   value,
   hint,
+  title,
   className,
 }: {
   label: string;
   value: React.ReactNode;
   hint?: string;
+  /** Valeur complète (infobulle) quand la valeur affichée est abrégée. */
+  title?: string;
   className?: string;
 }) {
   return (
-    <Card className={cn("p-4", className)}>
+    <Card className={cn("p-4 min-w-0", className)}>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-1 text-2xl font-semibold">{value}</div>
+      <div className="mt-1 text-xl sm:text-2xl font-semibold tabular-nums break-words" title={title ?? (typeof value === "string" ? value : undefined)}>
+        {value}
+      </div>
       {hint && <div className="mt-1 text-xs text-muted-foreground">{hint}</div>}
     </Card>
   );

@@ -10,16 +10,17 @@ import {
 } from "@/lib/workflow";
 import { hasPermission, type RoleName } from "@/lib/rbac";
 import { transitionWorkflow } from "@/server/actions/workflow";
+import { TONE } from "@/lib/tones";
 
 const STATE_COLORS: Record<WorkflowStateName, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
-  SUBMITTED: "bg-blue-100 text-blue-800 border-blue-300",
+  DRAFT: TONE.neutral,
+  SUBMITTED: TONE.info,
   BRANCH_REVIEW: "bg-cyan-100 text-cyan-800 border-cyan-300",
   ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
   MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
-  COMMITTEE: "bg-amber-100 text-amber-800 border-amber-300",
-  APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  REJECTED: "bg-red-100 text-red-800 border-red-300",
+  COMMITTEE: TONE.warning,
+  APPROVED: TONE.success,
+  REJECTED: TONE.danger,
 };
 
 export function WorkflowPanel({

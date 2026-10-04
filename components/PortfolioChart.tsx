@@ -32,14 +32,23 @@ export function PortfolioChart({ data }: { data: Record<string, number> }) {
   const order = ["SAIN", "SENSIBLE", "PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
   const rows = order
     .map((code) => ({ code, name: CLASS_FR[code], value: data[code] ?? 0 }))
-    .filter((r) => r.value > 0 || true);
+  ;
+  const total = rows.reduce((n, r) => n + r.value, 0);
+  if (total === 0) {
+    return (
+      <div className="flex h-[260px] flex-col items-center justify-center text-center text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">Aucune classification établie</p>
+        <p className="mt-1 max-w-xs">La répartition apparaîtra après la première classification BKAM des dossiers.</p>
+      </div>
+    );
+  }
 
   return (
     <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={rows} margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
+      <BarChart data={rows} accessibilityLayer margin={{ top: 8, right: 8, bottom: 8, left: -16 }}>
         <XAxis dataKey="name" fontSize={12} tickLine={false} />
         <YAxis allowDecimals={false} fontSize={12} tickLine={false} axisLine={false} />
-        <Tooltip formatter={(v: number) => [`${v} projet(s)`, "Encours"]} />
+        <Tooltip formatter={(v: number) => [`${v} projet(s)`, "Dossiers"]} />
         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
           {rows.map((r) => (
             <Cell key={r.code} fill={CLASS_HEX[r.code]} />

@@ -83,6 +83,7 @@ export async function getProjectsWithLatestRun() {
       scoringRuns: { orderBy: { createdAt: "desc" }, take: 1 },
       classificationRuns: { orderBy: { createdAt: "desc" }, take: 1 },
       provisionRuns: { orderBy: { createdAt: "desc" }, take: 1 },
+      workflowSteps: { orderBy: { createdAt: "desc" }, take: 1, select: { toState: true } },
     },
   });
   return projects;

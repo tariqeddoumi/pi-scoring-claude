@@ -5,6 +5,7 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { formatPercent, formatMAD, formatDate } from "@/lib/utils";
 import { CLASS_LABELS } from "@/lib/labels";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +23,7 @@ export default async function RegimesPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {r.name}
-              {r.active && <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Actif</Badge>}
+              {r.active && <Badge className={TONE.success}>Actif</Badge>}
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
               En vigueur dès {formatDate(r.effectiveFrom)} · seuil évaluation hyp. {formatMAD(r.hypEvaluationThreshold)} · restructuration {r.restructuringPolicy}

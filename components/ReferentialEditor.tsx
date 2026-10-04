@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td } from "@/components/ui";
 import { upsertReferentialItem, toggleReferentialItem } from "@/server/actions/morocco";
+import { TONE } from "@/lib/tones";
 
 export interface RefRow {
   kind: string;
@@ -107,8 +108,8 @@ export function ReferentialEditor(p: Props) {
                 <Td><code className="text-xs text-muted-foreground">{r.config}</code></Td>
                 <Td>
                   {r.active
-                    ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Actif</Badge>
-                    : <Badge className="bg-slate-100 text-slate-700 border-slate-300">Inactif</Badge>}
+                    ? <Badge className={TONE.success}>Actif</Badge>
+                    : <Badge className={TONE.neutral}>Inactif</Badge>}
                 </Td>
                 <Td>
                   {p.canEdit && (

@@ -5,6 +5,7 @@ import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { type RoleName } from "@/lib/rbac";
 import { formatMAD, formatDate } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export default async function QueuePage() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold">Mes dossiers à traiter</h1>
-        <Badge className="bg-blue-100 text-blue-800 border-blue-300">{total}</Badge>
+        <Badge className={TONE.info}>{total}</Badge>
       </div>
       <p className="text-sm text-muted-foreground">
         Dossiers en attente d'une action de votre rôle ({user.role.label}), selon l'état du
@@ -73,7 +74,7 @@ export default async function QueuePage() {
                     <Td>
                       <div className="flex flex-wrap gap-1">
                         {it.actions.map((a) => (
-                          <Badge key={a} className="bg-slate-100 text-slate-700 border-slate-300">{a}</Badge>
+                          <Badge key={a} className={TONE.neutral}>{a}</Badge>
                         ))}
                       </div>
                     </Td>

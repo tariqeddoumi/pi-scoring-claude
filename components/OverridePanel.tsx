@@ -6,6 +6,7 @@ import { Button, Badge, Table, Th, Td } from "@/components/ui";
 import { CLASS_LABELS } from "@/lib/labels";
 import { requestRegulatoryOverride, decideRegulatoryOverride } from "@/server/actions/overrides";
 import type { RegulatoryClassCode } from "@/lib/domain/types";
+import { TONE } from "@/lib/tones";
 
 export interface OverrideRow {
   id: string;
@@ -21,8 +22,8 @@ export interface OverrideRow {
 
 const CLASS_CODES: RegulatoryClassCode[] = ["SAIN", "SENSIBLE", "PRE_DOUTEUX", "DOUTEUX", "COMPROMIS", "CTX"];
 const STATUS_COLORS: Record<string, string> = {
-  PENDING: "bg-amber-100 text-amber-800 border-amber-300",
-  APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  PENDING: TONE.warning,
+  APPROVED: TONE.success,
   REJECTED: "bg-slate-100 text-slate-600 border-slate-300",
 };
 
@@ -57,7 +58,7 @@ export function OverridePanel({
           <tbody>
             {overrides.map((o) => (
               <tr key={o.id}>
-                <Td><Badge className="bg-purple-100 text-purple-800 border-purple-300">{CLASS_LABELS[o.forcedClass]}</Badge>{o.active && <span className="ml-1 text-xs text-emerald-700">(en vigueur)</span>}</Td>
+                <Td><Badge className={TONE.accent}>{CLASS_LABELS[o.forcedClass]}</Badge>{o.active && <span className="ml-1 text-xs text-emerald-700">(en vigueur)</span>}</Td>
                 <Td className="text-muted-foreground">{o.engineClass ? CLASS_LABELS[o.engineClass] : "—"}</Td>
                 <Td><Badge className={STATUS_COLORS[o.status]}>{o.status}</Badge></Td>
                 <Td className="text-xs max-w-xs">{o.justification}</Td>

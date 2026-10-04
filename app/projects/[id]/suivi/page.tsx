@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { getProjectMonitoring, getProjectCashflow, getProjectBuyerFinancing } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td } from "@/components/ui";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
-import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
+import { formatMAD, formatDate, formatPercent, formatMADCompact, formatDecimal } from "@/lib/utils";
 import { standingLabel, type StandingCode } from "@/lib/domain/commercialisation";
 import { TRANCHE_STATUSES, UNIT_STATUSES, UNIT_TYPES } from "@/lib/domain/referentiels";
 import type { RiskLevel } from "@/lib/domain/visitReports";
@@ -16,33 +16,35 @@ import { BuyerFinancingPanel } from "@/components/BuyerFinancingPanel";
 import { SyncCoreBankingButton } from "@/components/SyncCoreBankingButton";
 import { BusinessPlanRevisionForm } from "@/components/BusinessPlanRevisionForm";
 import { ProgrammeV5Card } from "@/components/ProgrammeV5Card";
+import { SectionNav, Anchor } from "@/components/SectionNav";
 import { loadProgrammeV5View } from "@/server/services/programmeV5Service";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
 const RISK_LABELS: Record<RiskLevel, string> = { FAIBLE: "Risque faible", MODERE: "Risque modéré", ELEVE: "Risque élevé" };
 const RISK_COLORS: Record<RiskLevel, string> = {
-  FAIBLE: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  MODERE: "bg-amber-100 text-amber-800 border-amber-300",
-  ELEVE: "bg-red-100 text-red-800 border-red-300",
+  FAIBLE: TONE.success,
+  MODERE: TONE.warning,
+  ELEVE: TONE.danger,
 };
 
 // Libellés : source unique = référentiels. Couleurs : spécifiques à cet écran.
 const TRANCHE_STATUS_COLORS: Record<string, string> = {
-  PLANIFIEE: "bg-slate-100 text-slate-700 border-slate-300",
-  EN_TRAVAUX: "bg-blue-100 text-blue-800 border-blue-300",
-  LIVREE: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  PLANIFIEE: TONE.neutral,
+  EN_TRAVAUX: TONE.info,
+  LIVREE: TONE.success,
   CLOTUREE: "bg-violet-100 text-violet-800 border-violet-300",
 };
 const UNIT_STATUS_COLORS: Record<string, string> = {
-  DISPONIBLE: "bg-slate-100 text-slate-700 border-slate-300",
-  RESERVE: "bg-amber-100 text-amber-800 border-amber-300",
-  COMPROMIS: "bg-blue-100 text-blue-800 border-blue-300",
-  VENDU: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  DISPONIBLE: TONE.neutral,
+  RESERVE: TONE.warning,
+  COMPROMIS: TONE.info,
+  VENDU: TONE.success,
   LIVRE: "bg-emerald-200 text-emerald-900 border-emerald-400",
-  DESISTE: "bg-red-100 text-red-800 border-red-300",
+  DESISTE: TONE.danger,
 };
 
 function ProgressBar({ value }: { value: number }) {
@@ -97,14 +99,37 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
 
   return (
     <div className="space-y-6">
-      <div>
-        <Link href={`/projects/${project.id}`} className="text-sm text-muted-foreground hover:underline">← {project.name}</Link>
-        <h1 className="text-2xl font-bold">Suivi & événements</h1>
-        <p className="text-muted-foreground text-sm">{project.reference} · {tranches.length} tranche(s) · {sales.totalUnits} lot(s) actif(s) · {reports.length} rapport(s) de visite</p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <Link href={`/projects/${project.id}`} className="text-sm text-muted-foreground hover:underline">← {project.name}</Link>
+          <h1 className="text-2xl font-bold">Suivi & événements</h1>
+          <p className="text-muted-foreground text-sm">{project.reference} · {tranches.length} tranche(s) · {sales.totalUnits} lot(s) actif(s) · {reports.length} rapport(s) de visite</p>
+        </div>
+        {canWrite && (
+          <div className="max-w-sm sm:text-right">
+            <SyncToScoringButton projectId={project.id} />
+          </div>
+        )}
       </div>
 
       <ProjectSubnav projectId={project.id} active="suivi" />
 
+      <SectionNav sections={[
+        { id: "chantier", label: "Chantier" },
+        { id: "deblocages", label: "Déblocages" },
+        ...(cashflow?.hasData ? [{ id: "tresorerie", label: "Trésorerie" }] : []),
+        ...(buyerFinancing && buyerFinancing.units.length > 0 ? [{ id: "acquereurs", label: "Acquéreurs" }] : []),
+        { id: "journal", label: "Journal" },
+        ...(programmeV5 ? [{ id: "programme", label: "Programme & équipements" }] : []),
+        ...(hasUnits ? [
+          { id: "commercialisation", label: "Commercialisation" },
+          { id: "business-plan", label: "Business plan" },
+          { id: "mainlevees", label: "Mainlevées" },
+          { id: "lots", label: "Lots" },
+        ] : []),
+      ]} />
+
+      <Anchor id="chantier" />
       {/* ===================== Rapports de visite & avancement chantier ===================== */}
       <Card>
         <CardHeader>
@@ -134,9 +159,9 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm font-medium">Anomalies ouvertes :</span>
               {visitAnalysis.anomalies.openIssues.includes("weather") && <Badge className="bg-sky-100 text-sky-800 border-sky-300">Intempéries</Badge>}
-              {visitAnalysis.anomalies.openIssues.includes("quality") && <Badge className="bg-orange-100 text-orange-800 border-orange-300">Qualité</Badge>}
-              {visitAnalysis.anomalies.openIssues.includes("safety") && <Badge className="bg-red-100 text-red-800 border-red-300">Sécurité</Badge>}
-              {visitAnalysis.anomalies.openIssues.includes("delay") && <Badge className="bg-amber-100 text-amber-800 border-amber-300">Retard</Badge>}
+              {visitAnalysis.anomalies.openIssues.includes("quality") && <Badge className={TONE.alert}>Qualité</Badge>}
+              {visitAnalysis.anomalies.openIssues.includes("safety") && <Badge className={TONE.danger}>Sécurité</Badge>}
+              {visitAnalysis.anomalies.openIssues.includes("delay") && <Badge className={TONE.warning}>Retard</Badge>}
             </div>
           )}
 
@@ -157,7 +182,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
                       {r.delayRisk && <span title="Retard">⏱️</span>}
                       {!r.weatherImpact && !r.qualityIssue && !r.safetyIssue && !r.delayRisk && <span className="text-muted-foreground">—</span>}
                     </Td>
-                    <Td>{r.status === "FINALIZED" ? <Badge className="bg-emerald-100 text-emerald-800 border-emerald-300">Finalisé</Badge> : <Badge className="bg-slate-100 text-slate-700 border-slate-300">Brouillon</Badge>}</Td>
+                    <Td>{r.status === "FINALIZED" ? <Badge className={TONE.success}>Finalisé</Badge> : <Badge className={TONE.neutral}>Brouillon</Badge>}</Td>
                     <Td className="text-muted-foreground">{r.inspectorName ?? r.author?.name ?? "—"}</Td>
                   </tr>
                 ))}
@@ -176,6 +201,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
         </div>
       )}
 
+      <Anchor id="deblocages" />
       {/* ===================== Planning des déblocages (BP initial) ===================== */}
       <DisbursementPlanCard
         projectId={project.id}
@@ -196,16 +222,17 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
 
       {canWrite && <SyncCoreBankingButton projectId={project.id} />}
 
+      <Anchor id="tresorerie" />
       {/* ===================== Trésorerie mensuelle & impasse (F07) ===================== */}
       {cashflow?.hasData && (
         <Card>
           <CardHeader><CardTitle>Trésorerie mensuelle & impasse de financement</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Stat label="Besoin de financement max." value={formatMAD(cashflow.base.maxAdditionalNeed)} hint="déficit maximal sur l'horizon" />
+              <Stat label="Besoin de financement max." value={formatMADCompact(cashflow.base.maxAdditionalNeed)} title={formatMAD(cashflow.base.maxAdditionalNeed)} hint="déficit maximal sur l'horizon" />
               <Stat label="Date de rupture" value={cashflow.base.breachMonthLabel ?? "aucune"} hint={cashflow.base.breachMonthLabel ? "1re trésorerie négative" : "pas d'impasse en base"} />
-              <Stat label="Cash coverage reconstitué" value={Number.isFinite(cashflow.base.cashCoverage) ? `${cashflow.base.cashCoverage.toFixed(2)}x` : "n/a"} hint="ressources / sorties de l'horizon" />
-              <Stat label="Impasse (stress combiné)" value={formatMAD(cashflow.stressed.maxAdditionalNeed)} hint="prix −10 %, coût +10 %, ventes −25 %, 40 % reportées, +200 bps" />
+              <Stat label="Cash coverage reconstitué" value={Number.isFinite(cashflow.base.cashCoverage) ? `${formatDecimal(cashflow.base.cashCoverage, 2)}x` : "n/a"} hint="ressources / sorties de l'horizon" />
+              <Stat label="Impasse (stress combiné)" value={formatMADCompact(cashflow.stressed.maxAdditionalNeed)} title={formatMAD(cashflow.stressed.maxAdditionalNeed)} hint="prix −10 %, coût +10 %, ventes −25 %, 40 % reportées, +200 bps" />
             </div>
 
             {cashflow.base.maxAdditionalNeed > 0 && (
@@ -233,12 +260,13 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
             <p className="text-xs text-muted-foreground">
               Trajectoire reconstituée depuis l&apos;échéancier de dette, les ventes attendues et les jalons de déblocage.
               Hypothèse : {cashflow.assumptions.note} Coût restant estimé : {formatMAD(cashflow.assumptions.remainingCost)}.
-              Ratios de liquidité reconstitués : cash coverage {Number.isFinite(cashflow.base.cashCoverage) ? cashflow.base.cashCoverage.toFixed(2) : "n/a"}, impasse {formatPercent(cashflow.base.fundingGapPct, 1)}{cashflow.base.fundingGapPersistent ? " (persistante)" : ""}.
+              Ratios de liquidité reconstitués : cash coverage {Number.isFinite(cashflow.base.cashCoverage) ? formatDecimal(cashflow.base.cashCoverage, 2) : "n/a"}, impasse {formatPercent(cashflow.base.fundingGapPct, 1)}{cashflow.base.fundingGapPersistent ? " (persistante)" : ""}.
             </p>
           </CardContent>
         </Card>
       )}
 
+      <Anchor id="acquereurs" />
       {/* ===================== Financement des acquéreurs ===================== */}
       {buyerFinancing && buyerFinancing.units.length > 0 && (
         <BuyerFinancingPanel
@@ -250,24 +278,14 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
         />
       )}
 
+      <Anchor id="journal" />
       {/* ===================== Journal du projet (tous événements) ===================== */}
       <ProjectEventsPanel projectId={project.id} timeline={timelineView} canWrite={canWrite} />
 
+      <Anchor id="programme" />
       {/* ===================== Modèle v5 : tranche financée, équipements, déblocages ===================== */}
       {programmeV5 && <ProgrammeV5Card projectId={project.id} view={programmeV5} canWrite={canWrite} />}
 
-      {canWrite && (
-        <Card>
-          <CardHeader><CardTitle>Alimenter le scoring depuis le suivi</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
-            <SyncToScoringButton projectId={project.id} />
-            <p className="text-xs text-muted-foreground">
-              Synchronise la commercialisation, l&apos;avancement chantier ET les événements matériels du journal
-              (arrêt de chantier, litige, saisie, restructuration…) vers les entrées de scoring/classification 1/W.
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {!hasUnits ? (
         <Card><CardContent className="py-10 text-center text-muted-foreground">
@@ -275,11 +293,12 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
         </CardContent></Card>
       ) : (
         <>
+          <Anchor id="commercialisation" />
           {/* KPIs */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <Stat label="Taux de prévente" value={formatPercent(sales.preSaleRatePct, 1)} hint={`${sales.committedUnits}/${sales.totalUnits} lots engagés`} />
             <Stat label="Ventes fermes" value={formatPercent(sales.firmSaleRatePct, 1)} hint={`${sales.firmUnits} vendus / livrés`} />
-            <Stat label="CA réalisé" value={formatMAD(revenue.caRealise)} hint={`sur ${formatMAD(revenue.caPrevu)} prévu`} />
+            <Stat label="CA réalisé" value={formatMADCompact(revenue.caRealise)} title={formatMAD(revenue.caRealise)} hint={`sur ${formatMAD(revenue.caPrevu)} prévu`} />
             <Stat label="Taux de réalisation CA" value={formatPercent(revenue.tauxRealisationPct, 1)} hint={`+ ${formatMAD(revenue.caReserve)} réservé`} />
           </div>
 
@@ -289,7 +308,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <Stat label="Lots en retard" value={String(businessPlan.unitsLate)} hint="date de vente dépassée" />
-                <Stat label="Écart de CA" value={formatMAD(businessPlan.caDeltaAmount)} hint={formatPercent(businessPlan.caDeltaPct, 1)} />
+                <Stat label="Écart de CA" value={formatMADCompact(businessPlan.caDeltaAmount)} title={formatMAD(businessPlan.caDeltaAmount)} hint={formatPercent(businessPlan.caDeltaPct, 1)} />
                 <Stat label="Écart prix moyen" value={formatPercent(businessPlan.avgPriceDeviationPct, 1)} hint="vs prix BP (pondéré)" />
                 <Stat label="Écarts de prix" value={String(businessPlan.priceDeviations.length)} hint="lots hors prix BP" />
               </div>
@@ -352,7 +371,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
                         <Td>{c.plannedLabel}</Td>
                         <Td>{c.currentLabel}</Td>
                         <Td>
-                          <Badge className={c.direction === "DOWNGRADE" ? "bg-red-100 text-red-800 border-red-300" : "bg-emerald-100 text-emerald-800 border-emerald-300"}>
+                          <Badge className={c.direction === "DOWNGRADE" ? TONE.danger : TONE.success}>
                             {c.direction === "DOWNGRADE" ? `Déclassement (−${c.rankDelta})` : `Montée en gamme (+${-c.rankDelta})`}
                           </Badge>
                         </Td>
@@ -365,6 +384,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
           )}
 
           {/* Révision & dérive du business plan */}
+          <Anchor id="business-plan" />
           <Card>
             <CardHeader><CardTitle>Business plan — révision & dérive vs origine</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -374,7 +394,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
                     <Stat label="Lots re-standingés" value={String(bpDrift.restandinged)} hint={`${bpDrift.downgraded} déclassés`} />
                     <Stat label="Prix cibles révisés" value={String(bpDrift.priceRevised)} />
                     <Stat label="Calendriers décalés" value={String(bpDrift.scheduleShifted)} />
-                    <Stat label="CA cible vs origine" value={formatMAD(bpDrift.targetCaDeltaAmount)} hint={formatPercent(bpDrift.targetCaDeltaPct, 1)} />
+                    <Stat label="CA cible vs origine" value={formatMADCompact(bpDrift.targetCaDeltaAmount)} title={formatMAD(bpDrift.targetCaDeltaAmount)} hint={formatPercent(bpDrift.targetCaDeltaPct, 1)} />
                   </div>
                   {bpDrift.items.length > 0 && (
                     <Table>
@@ -427,6 +447,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
           </Card>
 
           {/* Mainlevées */}
+          <Anchor id="mainlevees" />
           <Card>
             <CardHeader><CardTitle>Suivi des mainlevées</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -434,7 +455,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
                 <Stat label="Lots vendus" value={String(mainlevees.soldUnits)} />
                 <Stat label="Mainlevées obtenues" value={String(mainlevees.releasedUnits)} hint={formatPercent(mainlevees.releaseRatePct, 1)} />
                 <Stat label="En attente" value={String(mainlevees.pendingUnits)} hint="hypothèque à lever" />
-                <Stat label="Montant levé" value={formatMAD(mainlevees.releasedAmount)} />
+                <Stat label="Montant levé" value={formatMADCompact(mainlevees.releasedAmount)} title={formatMAD(mainlevees.releasedAmount)} />
               </div>
               {mainlevees.pendingReferences.length > 0 && (
                 <div>
@@ -501,6 +522,7 @@ export default async function ProjectMonitoringPage({ params }: { params: Promis
           </div>
 
           {/* Détail des lots */}
+          <Anchor id="lots" />
           <Card>
             <CardHeader><CardTitle>Détail des lots</CardTitle></CardHeader>
             <CardContent className="p-0">

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
 import { updateUnitsBuyerFinancing } from "@/server/actions/morocco";
+import { formatDecimal } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 export interface FinancingUnitRow {
   id: string;
@@ -84,7 +86,7 @@ export function BuyerFinancingPanel(p: Props) {
           <Stat label="Lots engagés" value={String(committed.length)} hint={`sur ${rows.length} lots`} />
           <Stat label="CA engagé" value={fmt(gross)} />
           <Stat label="CA sécurisé" value={fmt(secured)} hint="pondéré par le financement acquéreur" />
-          <Stat label="Taux de sécurisation" value={`${rate.toFixed(1)} %`}
+          <Stat label="Taux de sécurisation" value={`${formatDecimal(rate, 1)} %`}
                 hint={missing > 0 ? `${missing} lot(s) sans statut renseigné` : "tous les lots renseignés"} />
         </div>
 
@@ -150,9 +152,9 @@ export function BuyerFinancingPanel(p: Props) {
                     <Td>{fmt(r.price)}</Td>
                     <Td>
                       {r.financingStatus
-                        ? <Badge className={f >= 0.8 ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                            : f >= 0.4 ? "bg-amber-100 text-amber-800 border-amber-300"
-                            : "bg-red-100 text-red-800 border-red-300"}>
+                        ? <Badge className={f >= 0.8 ? TONE.success
+                            : f >= 0.4 ? TONE.warning
+                            : TONE.danger}>
                             {labelOf(r.financingStatus)} · {Math.round(f * 100)} %
                           </Badge>
                         : <span className="text-muted-foreground">non renseigné</span>}

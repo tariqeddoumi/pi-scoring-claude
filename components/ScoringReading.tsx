@@ -5,6 +5,8 @@
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat } from "@/components/ui";
 import { INPUT_LABELS } from "@/lib/inputLabels";
 import type { ScoringRunDetails } from "@/lib/domain/scoringRunDetails";
+import { formatDecimal } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 const STAGE_LABELS: Record<string, string> = {
   ETUDE: "étude",
@@ -13,7 +15,7 @@ const STAGE_LABELS: Record<string, string> = {
   TIRAGE: "tirage",
 };
 
-const pct = (v: number) => `${(v * 100).toFixed(2).replace(".", ",")} %`;
+const pct = (v: number) => `${formatDecimal(v * 100, 2).replace(".", ",")} %`;
 const sign = (v: number) => (v === 0 ? "0 %" : `${v > 0 ? "+" : "−"}${Math.abs(v * 100).toFixed(0)} %`);
 
 export function ScoringReading({
@@ -41,12 +43,12 @@ export function ScoringReading({
           <CardTitle>Lecture du résultat</CardTitle>
           <div className="flex items-center gap-2">
             {runVersion && (
-              <Badge className={stale ? "bg-amber-100 text-amber-800 border-amber-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
+              <Badge className={stale ? TONE.warning : TONE.neutral}>
                 Modèle {runVersion}
                 {stale ? " — version retirée" : ""}
               </Badge>
             )}
-            {details && <Badge className="bg-slate-100 text-slate-700 border-slate-300">Classe interne : {details.internalClass}</Badge>}
+            {details && <Badge className={TONE.neutral}>Classe interne : {details.internalClass}</Badge>}
           </div>
         </div>
       </CardHeader>
@@ -93,19 +95,19 @@ export function ScoringReading({
             )}
 
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-              <Stat label="Score économique brut" value={details.scoreEco.toFixed(2)} hint="S_éco (D1–D4)" />
+              <Stat label="Score économique brut" value={formatDecimal(details.scoreEco, 2)} hint="S_éco (D1–D4)" />
               <Stat label="Ajustements" value={`${sign(details.alphaSeg)} / ${sign(details.betaZone)}`} hint="segment / zone" />
-              <Stat label="Malus alertes" value={details.totalMalus > 0 ? `−${details.totalMalus}` : "0"} hint={scoreAfterPenalties != null ? `après : ${scoreAfterPenalties.toFixed(2)}` : undefined} />
-              <Stat label="Coefficient BAM" value={coeffBAM != null ? coeffBAM.toFixed(2) : "—"} hint={details.regulatoryClass ?? "classe non établie"} />
-              <Stat label="Score final" value={scoreFinal != null ? scoreFinal.toFixed(2) : "—"} />
+              <Stat label="Malus alertes" value={details.totalMalus > 0 ? `−${details.totalMalus}` : "0"} hint={scoreAfterPenalties != null ? `après : ${formatDecimal(scoreAfterPenalties, 2)}` : undefined} />
+              <Stat label="Coefficient BAM" value={coeffBAM != null ? formatDecimal(coeffBAM, 2) : "—"} hint={details.regulatoryClass ?? "classe non établie"} />
+              <Stat label="Score final" value={scoreFinal != null ? formatDecimal(scoreFinal, 2) : "—"} />
               <Stat label="PD indicative" value={pct(details.pdProxy)} hint="non calibrée" />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Stat label="Note économique" value={details.economicScore.toFixed(1)} hint="capacité de remboursement" />
+              <Stat label="Note économique" value={formatDecimal(details.economicScore, 1)} hint="capacité de remboursement" />
               <Stat
                 label="Note de sûretés"
-                value={details.guaranteeScore != null ? details.guaranteeScore.toFixed(1) : "—"}
+                value={details.guaranteeScore != null ? formatDecimal(details.guaranteeScore, 1) : "—"}
                 hint="couverture / rang / désengagement"
               />
             </div>
@@ -116,7 +118,7 @@ export function ScoringReading({
                 <ul className="space-y-1 text-sm">
                   {details.conditions.map((c) => (
                     <li key={c.code} className="flex items-center gap-2">
-                      <Badge className={c.blocking ? "bg-red-100 text-red-800 border-red-300" : "bg-slate-100 text-slate-700 border-slate-300"}>
+                      <Badge className={c.blocking ? TONE.danger : TONE.neutral}>
                         {c.blocking ? "bloquante" : "à lever"} · {STAGE_LABELS[c.stage] ?? c.stage}
                       </Badge>
                       <span>{c.label}</span>

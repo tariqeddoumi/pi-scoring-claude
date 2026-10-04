@@ -10,6 +10,7 @@ import {
   addOption, deleteOption, addRange, deleteRange,
   addRedFlag, deleteRedFlag,
 } from "@/server/actions/modelBuilder";
+import { TONE } from "@/lib/tones";
 
 // --- Types (sous-ensemble du modèle Prisma) ---------------------------------
 interface Opt { id: string; value: string; label: string; score: number }
@@ -213,7 +214,7 @@ function RedFlagsCard({ versionId, redFlags, run, pending }: { versionId: string
             {redFlags.map((r) => (
               <tr key={r.id}>
                 <Td className="font-mono">{r.code}</Td><Td>{r.name}</Td>
-                <Td><Badge className="bg-slate-100 text-slate-700 border-slate-300">{r.severity}</Badge></Td>
+                <Td><Badge className={TONE.neutral}>{r.severity}</Badge></Td>
                 <Td>{r.malus > 0 ? `−${r.malus}` : "auto"}</Td><Td>{r.impactDomains.join(", ")}</Td>
                 <Td><button className="text-red-600" disabled={pending} onClick={() => run(() => deleteRedFlag(r.id))}>✕</button></Td>
               </tr>

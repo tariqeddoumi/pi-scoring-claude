@@ -5,8 +5,9 @@ import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { CLASS_LABELS, CLASS_COLORS } from "@/lib/labels";
-import { formatMAD } from "@/lib/utils";
+import { formatMAD, formatMADCompact } from "@/lib/utils";
 import { classSeverity } from "@/lib/domain/groups";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function GroupsPage() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Groupes" value={groups.length} />
-        <Stat label="Exposition consolidée" value={formatMAD(totalExposure)} />
+        <Stat label="Exposition consolidée" value={formatMADCompact(totalExposure)} title={formatMAD(totalExposure)} />
         <Stat label="Groupes en risque" value={atRisk} hint="≥ pré-douteux sur un membre" />
         <Stat label="Entités liées" value={groups.reduce((s, g) => s + g.members.length, 0)} />
       </div>
@@ -84,8 +85,8 @@ export default async function GroupsPage() {
                       <Td>{m.name}{isDriver && <span className="ml-2 text-xs text-amber-700">● entité la plus dégradée</span>}</Td>
                       <Td>
                         {operated
-                          ? <Badge className="bg-orange-100 text-orange-800 border-orange-300">Exploitation</Badge>
-                          : <Badge className="bg-slate-100 text-slate-700 border-slate-300">Promotion</Badge>}
+                          ? <Badge className={TONE.alert}>Exploitation</Badge>
+                          : <Badge className={TONE.neutral}>Promotion</Badge>}
                       </Td>
                       <Td>{m.cls ? <Badge className={CLASS_COLORS[m.cls]}>{CLASS_LABELS[m.cls]}</Badge> : "—"}</Td>
                       <Td className="whitespace-nowrap">{operated ? <span className="text-muted-foreground text-xs">hors note</span> : (m.scoreFinal != null ? `${m.scoreFinal}/100` : "—")}</Td>

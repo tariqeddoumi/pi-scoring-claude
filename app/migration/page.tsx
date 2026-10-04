@@ -5,6 +5,7 @@ import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
 import { CLASS_LABELS, CLASS_COLORS } from "@/lib/labels";
 import { severityRank, type MigClass } from "@/lib/domain/migrationMatrix";
+import { formatDecimal } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function MigrationPage() {
   const { order, counts, rowTotals, totalTransitions, stable, upgrades, downgrades } = matrix;
 
   const pct = (n: number) => (totalTransitions > 0 ? `${Math.round((n / totalTransitions) * 100)}%` : "—");
-  const pct1 = (v: number) => `${(v * 100).toFixed(1)} %`;
+  const pct1 = (v: number) => `${formatDecimal(v * 100, 1)} %`;
 
   const btRes = await safe(getPdBacktest);
   const bt = btRes.ok ? btRes.data : null;
@@ -103,7 +104,7 @@ export default async function MigrationPage() {
             <Stat label="PD moyenne prédite" value={pct1(bt.meanPredictedPd)} />
             <Stat label="Taux de défaut observé" value={pct1(bt.observedDefaultRate)} hint={`${bt.defaults}/${bt.total} dossiers`} />
             <Stat label="Écart de calibration" value={pct1(bt.calibrationGap)} hint={bt.calibrationGap >= 0 ? "modèle prudent" : "modèle optimiste"} />
-            <Stat label="Score de Brier" value={bt.brier.toFixed(3)} hint="0 = parfait" />
+            <Stat label="Score de Brier" value={formatDecimal(bt.brier, 3)} hint="0 = parfait" />
           </div>
           <Card>
             <CardHeader><CardTitle>Courbe de calibration par tranche de score</CardTitle></CardHeader>
