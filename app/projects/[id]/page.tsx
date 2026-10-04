@@ -34,14 +34,27 @@ import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
+// Slug d'URL (?onglet=…) → onglet : lien direct vers une partie du dossier.
+const TAB_SLUGS: Record<string, string> = {
+  identification: "Identification", circuit: "Circuit & comité", promoteur: "Promoteur", foncier: "Foncier",
+  autorisations: "Autorisations", commercialisation: "Commercialisation", financement: "Financement",
+  programme: "Programme", "cash-flow": "Cash-flow", garanties: "Garanties", classification: "Classification BKAM",
+  risque: "Risque & provision", scoring: "Scoring",
+};
+
 const TABS = [
-  "Identification", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
-  "Financement", "Programme", "Cash-flow", "Garanties", "Classification BKAM", "Provisionnement", "Scoring", "Audit",
+  "Identification", "Circuit & comité", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
+  "Financement", "Programme", "Cash-flow", "Garanties", "Classification BKAM", "Risque & provision", "Scoring",
 ];
 
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const ongletParam = (await searchParams).onglet;
+  const initialTab = TAB_SLUGS[String(Array.isArray(ongletParam) ? ongletParam[0] : ongletParam ?? "")] ?? "Identification";
   const res = await safe(() => getProjectDetail(id));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const p = res.data;
@@ -179,6 +192,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 </p>
               )}
 
+              {p.committeeDecisions[0] && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Dernière décision de comité : </span>
+                  <span className="font-medium">{COMMITTEE_OUTCOME_LABELS[p.committeeDecisions[0].outcome as CommitteeOutcomeName]}</span>
+                  <span className="text-muted-foreground"> · {formatDate(p.committeeDecisions[0].createdAt)} · </span>
+                  <Link href={`/projects/${p.id}?onglet=circuit#onglets`} className="text-primary hover:underline">voir le détail</Link>
+                </p>
+              )}
+
               {action && (
                 <div className={`rounded-md border p-3 text-sm flex flex-wrap items-center gap-3 ${
                   action.actionable ? "border-blue-300 bg-blue-50 text-blue-900" : "border-border bg-muted/40 text-muted-foreground"
@@ -202,123 +224,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         );
       })()}
 
-      <RunScoringButton projectId={p.id} />
-
-      {actor && (
-        <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
-      )}
+      {/* Actions : calcul du score et circuit de décision, côte à côte. */}
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+        <Card>
+          <CardHeader><CardTitle>Calcul du score</CardTitle></CardHeader>
+          <CardContent><RunScoringButton projectId={p.id} /></CardContent>
+        </Card>
+        {actor && (
+          <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
+        )}
+      </div>
 
       {actor && currentState === "COMMITTEE" && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE) && (
         <CommitteeDecisionForm projectId={p.id} />
       )}
 
-      {p.committeeDecisions[0] && (
-        <Card>
-          <CardHeader><CardTitle>Dernière décision de comité</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {(() => {
-              const cd = p.committeeDecisions[0]!;
-              return (
-                <>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Badge className={cd.outcome.startsWith("FAVORABLE") ? TONE.success : cd.outcome === "DEFAVORABLE" ? TONE.danger : TONE.warning}>
-                      {COMMITTEE_OUTCOME_LABELS[cd.outcome as CommitteeOutcomeName]}
-                    </Badge>
-                    <span className="text-muted-foreground">
-                      Président : {cd.chair.name} · {formatDate(cd.createdAt)}
-                    </span>
-                  </div>
-                  <div className="grid sm:grid-cols-4 gap-2">
-                    <span>Quorum : {cd.presentCount}/{cd.quorum}</span>
-                    <span>Pour : {cd.votesFor}</span>
-                    <span>Contre : {cd.votesAgainst}</span>
-                    <span>Abst. : {cd.votesAbstain}</span>
-                  </div>
-                  {cd.approvedAmount != null && <p>Montant approuvé : <span className="font-medium">{formatMAD(cd.approvedAmount)}</span></p>}
-                  {cd.conditions && <p>Conditions : {cd.conditions}</p>}
-                  {cd.validUntil && <p>Validité jusqu'au {formatDate(cd.validUntil)}</p>}
-                  {cd.minutesRef && <p className="text-muted-foreground">PV : {cd.minutesRef}</p>}
-                </>
-              );
-            })()}
-          </CardContent>
-        </Card>
-      )}
-
-      {actor && (
-        <GfaVefaCard
-          projectId={p.id}
-          assetType={p.assetType}
-          saleMode={p.saleMode}
-          hasGFA={p.hasGFA}
-          gfaAmount={p.gfaAmount}
-          gfaProvider={p.gfaProvider}
-          exposure={p.loanAmount ?? 0}
-          canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
-        />
-      )}
-
-      <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
-
-      {p.attachments.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Pièces jointes</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <thead><tr><Th>Document</Th><Th>Section</Th><Th>Taille</Th><Th>Ajouté le</Th></tr></thead>
-              <tbody>
-                {p.attachments.map((a) => (
-                  <tr key={a.id}>
-                    <Td><a href={a.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{a.fileName}</a></Td>
-                    <Td>{a.section ?? "—"}</Td>
-                    <Td>{a.sizeBytes != null ? `${Math.round(a.sizeBytes / 1024)} Ko` : "—"}</Td>
-                    <Td className="whitespace-nowrap">{formatDate(a.createdAt)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      <RiskMetricsCard
-        score={run?.scoreFinal ?? null}
-        cls={cls?.resultClass ?? null}
-        ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
-        eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
-        bkamProvision={prov?.provisionAmount ?? null}
-        assetType={p.assetType as "PROMOTION" | "EXPLOITATION"}
-        calib={calib}
-        dpdDays={typeof inputs.dpd_days === "number" ? inputs.dpd_days : null}
-        initialScore={scoreHistory[0]?.scoreFinal ?? null}
-        restructured={inputs.restructured === "yes"}
-      />
-
-      {p.workflowSteps.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Historique du circuit</CardTitle></CardHeader>
-          <CardContent>
-            <ol className="space-y-3">
-              {p.workflowSteps.map((s) => (
-                <li key={s.id} className="flex items-start gap-3 text-sm">
-                  <span className="text-muted-foreground whitespace-nowrap w-32 shrink-0">{formatDate(s.createdAt)}</span>
-                  <span className="flex items-center gap-2 flex-wrap">
-                    <Badge className={WORKFLOW_STATE_COLORS[s.fromState as WorkflowStateName]}>{WORKFLOW_LABELS[s.fromState as WorkflowStateName]}</Badge>
-                    <span className="text-muted-foreground">→</span>
-                    <Badge className={WORKFLOW_STATE_COLORS[s.toState as WorkflowStateName]}>{WORKFLOW_LABELS[s.toState as WorkflowStateName]}</Badge>
-                  </span>
-                  <span className="text-muted-foreground">
-                    par {s.actor?.name ?? "—"}
-                    {s.comment ? ` · « ${s.comment} »` : ""}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
-      )}
-
-      <Tabs defaultValue="Identification">
+      <Tabs key={initialTab} defaultValue={initialTab} id="onglets" className="scroll-mt-20">
         <TabsList>
           {TABS.map((t) => <TabsTrigger key={t} value={t}>{t}</TabsTrigger>)}
         </TabsList>
@@ -360,6 +281,26 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {p.description && <p className="whitespace-pre-wrap border-t border-border pt-2">{p.description}</p>}
             </CardContent></Card>
           </div>
+          {p.attachments.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Pièces jointes</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <thead><tr><Th>Document</Th><Th>Section</Th><Th>Taille</Th><Th>Ajouté le</Th></tr></thead>
+                  <tbody>
+                    {p.attachments.map((a) => (
+                      <tr key={a.id}>
+                        <Td><a href={a.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{a.fileName}</a></Td>
+                        <Td>{a.section ?? "—"}</Td>
+                        <Td>{a.sizeBytes != null ? `${Math.round(a.sizeBytes / 1024)} Ko` : "—"}</Td>
+                        <Td className="whitespace-nowrap">{formatDate(a.createdAt)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
           </div>
         </TabsContent>
 
@@ -367,7 +308,25 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="Foncier">{sectionTable("foncier")}</TabsContent>
         <TabsContent value="Autorisations"><div className="space-y-4">{sectionTable("autorisations")}{sectionTable("maroc")}</div></TabsContent>
         <TabsContent value="Commercialisation">{sectionTable("commercialisation")}</TabsContent>
-        <TabsContent value="Financement">{sectionTable("financement")}</TabsContent>
+        <TabsContent value="Financement">
+          <div className="space-y-4">
+            {actor && (
+              <GfaVefaCard
+                projectId={p.id}
+                assetType={p.assetType}
+                saleMode={p.saleMode}
+                hasGFA={p.hasGFA}
+                gfaAmount={p.gfaAmount}
+                gfaProvider={p.gfaProvider}
+                exposure={p.loanAmount ?? 0}
+                canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
+              />
+            )}
+
+            <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
+            {sectionTable("financement")}
+          </div>
+        </TabsContent>
         <TabsContent value="Programme">{sectionTable("programme")}</TabsContent>
         <TabsContent value="Cash-flow">{sectionTable("cashflow")}</TabsContent>
 
@@ -506,33 +465,47 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
          </div>
         </TabsContent>
 
-        <TabsContent value="Provisionnement">
-          {prov ? (
-            <Card><CardHeader><CardTitle>Provisionnement BKAM</CardTitle></CardHeader><CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                <Stat label="EAD" value={formatMADCompact(prov.ead)} title={formatMAD(prov.ead)} />
-                <Stat label="Agios réservés" value={formatMADCompact(prov.reservedAgios)} title={formatMAD(prov.reservedAgios)} />
-                <Stat label="Garanties éligibles" value={formatMADCompact(prov.eligibleGuarantees)} title={formatMAD(prov.eligibleGuarantees)} />
-                <Stat label="Base provisionnable" value={formatMADCompact(prov.provisionBase)} title={formatMAD(prov.provisionBase)} />
-                <Stat label="Taux" value={formatPercent(prov.rate * 100, 0)} />
-                <Stat label="Provision" value={formatMADCompact(prov.provisionAmount)} title={formatMAD(prov.provisionAmount)} hint={prov.isIrregular ? "Créance irrégulière (couverte 100%)" : undefined} />
-              </div>
-              <p className="text-sm font-medium mb-1">Détail garanties éligibles</p>
-              <Table>
-                <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Quotité base</Th><Th>Quotité effective</Th><Th>Admise</Th></tr></thead>
-                <tbody>
-                  {(prov.guaranteeBreakdown as any[] ?? []).map((l, i) => (
-                    <tr key={i}>
-                      <Td>{l.typeCode}</Td><Td>{formatMAD(l.marketValue)}</Td>
-                      <Td>{formatPercent(l.baseQuotity * 100, 0)}</Td>
-                      <Td>{formatPercent(l.effectiveQuotity * 100, 0)}{l.abatementApplied ? " ↓" : ""}</Td>
-                      <Td className="font-medium">{formatMAD(l.eligibleValue)}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </CardContent></Card>
-          ) : <p className="text-muted-foreground text-sm">Aucun provisionnement calculé.</p>}
+        <TabsContent value="Risque & provision">
+          <div className="space-y-4">
+            <RiskMetricsCard
+              score={run?.scoreFinal ?? null}
+              cls={cls?.resultClass ?? null}
+              ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
+              eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
+              bkamProvision={prov?.provisionAmount ?? null}
+              assetType={p.assetType as "PROMOTION" | "EXPLOITATION"}
+              calib={calib}
+              dpdDays={typeof inputs.dpd_days === "number" ? inputs.dpd_days : null}
+              initialScore={scoreHistory[0]?.scoreFinal ?? null}
+              restructured={inputs.restructured === "yes"}
+            />
+            {prov ? (
+              <Card><CardHeader><CardTitle>Provisionnement BKAM</CardTitle></CardHeader><CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <Stat label="EAD" value={formatMADCompact(prov.ead)} title={formatMAD(prov.ead)} />
+                  <Stat label="Agios réservés" value={formatMADCompact(prov.reservedAgios)} title={formatMAD(prov.reservedAgios)} />
+                  <Stat label="Garanties éligibles" value={formatMADCompact(prov.eligibleGuarantees)} title={formatMAD(prov.eligibleGuarantees)} />
+                  <Stat label="Base provisionnable" value={formatMADCompact(prov.provisionBase)} title={formatMAD(prov.provisionBase)} />
+                  <Stat label="Taux" value={formatPercent(prov.rate * 100, 0)} />
+                  <Stat label="Provision" value={formatMADCompact(prov.provisionAmount)} title={formatMAD(prov.provisionAmount)} hint={prov.isIrregular ? "Créance irrégulière (couverte 100%)" : undefined} />
+                </div>
+                <p className="text-sm font-medium mb-1">Détail garanties éligibles</p>
+                <Table>
+                  <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Quotité base</Th><Th>Quotité effective</Th><Th>Admise</Th></tr></thead>
+                  <tbody>
+                    {(prov.guaranteeBreakdown as any[] ?? []).map((l, i) => (
+                      <tr key={i}>
+                        <Td>{l.typeCode}</Td><Td>{formatMAD(l.marketValue)}</Td>
+                        <Td>{formatPercent(l.baseQuotity * 100, 0)}</Td>
+                        <Td>{formatPercent(l.effectiveQuotity * 100, 0)}{l.abatementApplied ? " ↓" : ""}</Td>
+                        <Td className="font-medium">{formatMAD(l.eligibleValue)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </CardContent></Card>
+            ) : <p className="text-muted-foreground text-sm">Aucun provisionnement calculé.</p>}
+          </div>
         </TabsContent>
 
         <TabsContent value="Scoring">
@@ -660,23 +633,63 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           ) : <p className="text-muted-foreground text-sm">Aucun run de scoring. Cliquez sur « Lancer le scoring ».</p>}
         </TabsContent>
 
-        <TabsContent value="Audit">
-          <Card><CardHeader><CardTitle>Historique workflow</CardTitle></CardHeader><CardContent className="p-0">
-            <Table>
-              <thead><tr><Th>Date</Th><Th>Transition</Th><Th>Acteur</Th><Th>Commentaire</Th></tr></thead>
-              <tbody>
-                {p.workflowSteps.map((w) => (
-                  <tr key={w.id}>
-                    <Td className="whitespace-nowrap">{formatDate(w.createdAt)}</Td>
-                    <Td>{w.fromState ? `${WORKFLOW_LABELS[w.fromState as WorkflowStateName]} → ` : ""}{WORKFLOW_LABELS[w.toState as WorkflowStateName]}</Td>
-                    <Td>{w.actor.name}</Td>
-                    <Td className="text-muted-foreground">{w.comment ?? "—"}</Td>
-                  </tr>
-                ))}
-                {p.workflowSteps.length === 0 && <tr><Td className="text-muted-foreground">Aucune étape enregistrée.</Td></tr>}
-              </tbody>
-            </Table>
-          </CardContent></Card>
+        <TabsContent value="Circuit & comité">
+          <div className="space-y-4">
+            {p.committeeDecisions[0] && (
+              <Card>
+                <CardHeader><CardTitle>Dernière décision de comité</CardTitle></CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {(() => {
+                    const cd = p.committeeDecisions[0]!;
+                    return (
+                      <>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Badge className={cd.outcome.startsWith("FAVORABLE") ? TONE.success : cd.outcome === "DEFAVORABLE" ? TONE.danger : TONE.warning}>
+                            {COMMITTEE_OUTCOME_LABELS[cd.outcome as CommitteeOutcomeName]}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            Président : {cd.chair.name} · {formatDate(cd.createdAt)}
+                          </span>
+                        </div>
+                        <div className="grid sm:grid-cols-4 gap-2">
+                          <span>Quorum : {cd.presentCount}/{cd.quorum}</span>
+                          <span>Pour : {cd.votesFor}</span>
+                          <span>Contre : {cd.votesAgainst}</span>
+                          <span>Abst. : {cd.votesAbstain}</span>
+                        </div>
+                        {cd.approvedAmount != null && <p>Montant approuvé : <span className="font-medium">{formatMAD(cd.approvedAmount)}</span></p>}
+                        {cd.conditions && <p>Conditions : {cd.conditions}</p>}
+                        {cd.validUntil && <p>Validité jusqu'au {formatDate(cd.validUntil)}</p>}
+                        {cd.minutesRef && <p className="text-muted-foreground">PV : {cd.minutesRef}</p>}
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
+            <Card><CardHeader><CardTitle>Historique du circuit</CardTitle></CardHeader><CardContent className="p-0">
+              <Table>
+                <thead><tr><Th>Date</Th><Th>Transition</Th><Th>Acteur</Th><Th>Commentaire</Th></tr></thead>
+                <tbody>
+                  {p.workflowSteps.map((w) => (
+                    <tr key={w.id}>
+                      <Td className="whitespace-nowrap">{formatDate(w.createdAt)}</Td>
+                      <Td>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          {w.fromState && <Badge className={WORKFLOW_STATE_COLORS[w.fromState as WorkflowStateName]}>{WORKFLOW_LABELS[w.fromState as WorkflowStateName]}</Badge>}
+                          {w.fromState && <span className="text-muted-foreground" aria-label="vers">→</span>}
+                          <Badge className={WORKFLOW_STATE_COLORS[w.toState as WorkflowStateName]}>{WORKFLOW_LABELS[w.toState as WorkflowStateName]}</Badge>
+                        </span>
+                      </Td>
+                      <Td>{w.actor.name}</Td>
+                      <Td className="text-muted-foreground">{w.comment ?? "—"}</Td>
+                    </tr>
+                  ))}
+                  {p.workflowSteps.length === 0 && <tr><Td className="text-muted-foreground">Aucune étape enregistrée.</Td></tr>}
+                </tbody>
+              </Table>
+            </CardContent></Card>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/u
 import { WIZARD_STEPS, type FieldDef } from "@/lib/wizardFields";
 import { INPUT_LABELS } from "@/lib/inputLabels";
 import { saveProjectInputs, runScoringAction } from "@/server/actions/scoring";
+import { Field, FormMessage, Input, Select, type FieldErrors } from "@/components/form";
+import { cn } from "@/lib/utils";
+
+const filled = (v: unknown) => v !== null && v !== undefined && v !== "";
 
 export function ScoringWizard({
   projectId,
@@ -19,7 +23,8 @@ export function ScoringWizard({
   const [step, setStep] = useState(0);
   const [values, setValues] = useState<Record<string, any>>(initial);
   const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ text: string; error: boolean } | null>(null);
+  const [errs, setErrs] = useState<FieldErrors>({});
   const router = useRouter();
 
   const current = steps[step]!;
@@ -27,21 +32,29 @@ export function ScoringWizard({
 
   const save = (then?: "run") =>
     start(async () => {
+      setErrs({});
       const r = await saveProjectInputs(projectId, values);
       if (!r.ok) {
-        setMsg(
-          "error" in r && r.error
+        const fieldErrors = ("errors" in r && r.errors ? r.errors : {}) as FieldErrors;
+        setErrs(fieldErrors);
+        const keys = Object.keys(fieldErrors);
+        // Aller à la première étape qui contient une erreur.
+        const first = steps.findIndex((st) => st.fields.some((f) => keys.includes(f.key)));
+        if (first >= 0) setStep(first);
+        setMsg({
+          error: true,
+          text: "error" in r && r.error
             ? r.error
-            : "Valeurs invalides : " + Object.keys(r.errors ?? {}).map((k) => INPUT_LABELS[k] ?? k).join(", "),
-        );
+            : `Valeurs invalides : ${keys.map((k) => INPUT_LABELS[k] ?? k).join(", ")}.`,
+        });
         return;
       }
       if (then === "run") {
         const res = await runScoringAction(projectId);
-        setMsg(res.ok ? `Score ${res.scoreFinal} · ${res.decision} · ${res.resultClass}` : "Échec du calcul");
+        setMsg(res.ok ? { error: false, text: `Score ${res.scoreFinal} · ${res.decision} · ${res.resultClass}` } : { error: true, text: "Échec du calcul." });
         router.refresh();
       } else {
-        setMsg("Brouillon enregistré.");
+        setMsg({ error: false, text: "Brouillon enregistré." });
       }
     });
 
@@ -51,70 +64,64 @@ export function ScoringWizard({
         <CardTitle>Étape {step + 1}/{steps.length} — {current.title}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-1">
-          {steps.map((s, i) => (
-            <button
-              key={s.id}
-              onClick={() => setStep(i)}
-              className={`rounded-md px-2 py-1 text-xs ${i === step ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-            >
-              {i + 1}
-            </button>
-          ))}
-        </div>
+        <nav aria-label="Étapes de la saisie" className="flex flex-wrap gap-1.5">
+          {steps.map((st, i) => {
+            const n = st.fields.length;
+            const done = st.fields.filter((f) => filled(values[f.key])).length;
+            const hasError = st.fields.some((f) => errs[f.key]?.length);
+            return (
+              <button
+                key={st.id}
+                type="button"
+                onClick={() => setStep(i)}
+                aria-current={i === step ? "step" : undefined}
+                title={`${st.title} — ${done}/${n} renseigné(s)`}
+                aria-label={`Étape ${i + 1} : ${st.title}, ${done} sur ${n} renseigné(s)${hasError ? ", à corriger" : ""}`}
+                className={cn(
+                  "relative rounded-md border px-2.5 py-1 text-xs tabular-nums",
+                  i === step ? "border-primary bg-primary text-primary-foreground" : done === n ? "border-emerald-300 bg-emerald-50 text-emerald-800" : "border-border bg-muted",
+                  hasError && "ring-2 ring-red-500",
+                )}
+              >
+                {i + 1}
+                <span className="ml-1 opacity-75">{done}/{n}</span>
+              </button>
+            );
+          })}
+        </nav>
 
         <div className="grid sm:grid-cols-2 gap-4">
-          {current.fields.map((f) => (
-            <label key={f.key} className="text-sm space-y-1">
-              <span className="text-muted-foreground">{f.label ?? INPUT_LABELS[f.key] ?? f.key}</span>
-              {f.type === "select" ? (
-                <select
-                  className="w-full rounded-md border border-border bg-background px-2 py-1.5"
-                  value={values[f.key] ?? ""}
-                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value)}
-                >
-                  <option value="">— non renseigné</option>
-                  {f.options!.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              ) : f.type === "bool" ? (
-                <select
-                  className="w-full rounded-md border border-border bg-background px-2 py-1.5"
-                  value={values[f.key] === true ? "true" : values[f.key] === false ? "false" : ""}
-                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value === "true")}
-                >
-                  <option value="">— non renseigné</option>
-                  <option value="false">Non</option>
-                  <option value="true">Oui</option>
-                </select>
-              ) : f.type === "text" ? (
-                <input
-                  type="text"
-                  className="w-full rounded-md border border-border bg-background px-2 py-1.5"
-                  value={values[f.key] ?? ""}
-                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value)}
-                />
-              ) : (
-                <input
-                  type="number"
-                  step={f.step ?? "any"}
-                  className="w-full rounded-md border border-border bg-background px-2 py-1.5"
-                  value={values[f.key] ?? ""}
-                  // Champ vidé = donnée absente (null), jamais 0.
-                  onChange={(e) => setVal(f.key, e.target.value === "" ? null : Number(e.target.value))}
-                />
-              )}
-              {f.hint && <span className="block text-xs text-muted-foreground">{f.hint}</span>}
-            </label>
-          ))}
+          {current.fields.map((f) => {
+            const label = f.label ?? INPUT_LABELS[f.key] ?? f.key;
+            const v = values[f.key];
+            return (
+              <Field key={f.key} label={label} hint={f.hint} error={errs[f.key]}>
+                {f.type === "select" ? (
+                  <Select value={v ?? ""} onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value)}
+                    options={f.options!} placeholder="— non renseigné" />
+                ) : f.type === "bool" ? (
+                  <Select value={v === true ? "true" : v === false ? "false" : ""}
+                    onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value === "true")}
+                    options={[{ value: "false", label: "Non" }, { value: "true", label: "Oui" }]} placeholder="— non renseigné" />
+                ) : f.type === "text" ? (
+                  <Input value={v ?? ""} onChange={(e) => setVal(f.key, e.target.value === "" ? null : e.target.value)} />
+                ) : (
+                  <Input type="number" step={f.step ?? "any"} inputMode="decimal" value={v ?? ""}
+                    // Champ vidé = donnée absente (null), jamais 0.
+                    onChange={(e) => setVal(f.key, e.target.value === "" ? null : Number(e.target.value))} />
+                )}
+              </Field>
+            );
+          })}
         </div>
 
-        <div className="flex items-center justify-between pt-2 border-t border-border">
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border">
           <div className="flex gap-2">
             <Button variant="outline" disabled={step === 0} onClick={() => setStep((s) => s - 1)}>Précédent</Button>
             <Button variant="outline" disabled={step === steps.length - 1} onClick={() => setStep((s) => s + 1)}>Suivant</Button>
           </div>
-          <div className="flex gap-2 items-center">
-            {msg && <span className="text-sm text-muted-foreground">{msg}</span>}
+          <div className="flex flex-wrap gap-2 items-center justify-end">
+            {msg && (msg.error ? <FormMessage error={msg.text} /> : <span role="status" className="text-sm text-muted-foreground">{msg.text}</span>)}
             <Button variant="outline" disabled={pending} onClick={() => save()}>Enregistrer brouillon</Button>
             <Button disabled={pending} onClick={() => save("run")}>{pending ? "…" : "Enregistrer & calculer"}</Button>
           </div>

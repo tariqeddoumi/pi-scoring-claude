@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
 import { recordCommitteeDecision } from "@/server/actions/workflow";
 import { COMMITTEE_OUTCOME_LABELS, type CommitteeOutcomeName } from "@/lib/workflow";
+import { Field, FormMessage, Input, Select, readActionErrors, type FieldErrors } from "@/components/form";
 
 const OUTCOMES = Object.keys(COMMITTEE_OUTCOME_LABELS) as CommitteeOutcomeName[];
 
@@ -23,6 +24,7 @@ export function CommitteeDecisionForm({ projectId }: { projectId: string }) {
     minutesRef: "",
   });
   const [error, setError] = useState<string | null>(null);
+  const [errs, setErrs] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -31,14 +33,14 @@ export function CommitteeDecisionForm({ projectId }: { projectId: string }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setErrs({});
     setPending(true);
     try {
       const res = await recordCommitteeDecision(projectId, form);
       if (!res.ok) {
-        const msg = "error" in res && typeof res.error === "string"
-          ? res.error
-          : "Décision invalide (vérifiez les champs).";
-        setError(msg);
+        const r = readActionErrors(res);
+        setErrs(r.fieldErrors);
+        setError(r.message);
         return;
       }
       router.refresh();
@@ -47,7 +49,7 @@ export function CommitteeDecisionForm({ projectId }: { projectId: string }) {
     }
   }
 
-  const num = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const bind = (k: keyof typeof form) => ({ value: form[k], onChange: set(k) });
 
   return (
     <Card>
@@ -55,42 +57,29 @@ export function CommitteeDecisionForm({ projectId }: { projectId: string }) {
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-3">
           <div className="grid sm:grid-cols-2 gap-3">
-            <label className="space-y-1 text-sm">
-              <span className="font-medium">Sens de la décision</span>
-              <select value={form.outcome} onChange={set("outcome")} className={num}>
-                {OUTCOMES.map((o) => <option key={o} value={o}>{COMMITTEE_OUTCOME_LABELS[o]}</option>)}
-              </select>
-            </label>
-            <label className="space-y-1 text-sm">
-              <span className="font-medium">Montant approuvé (MAD)</span>
-              <input type="number" value={form.approvedAmount} onChange={set("approvedAmount")} className={num} />
-            </label>
+            <Field label="Sens de la décision" required error={errs.outcome}>
+              <Select {...bind("outcome")} options={OUTCOMES.map((o) => ({ value: o, label: COMMITTEE_OUTCOME_LABELS[o] }))} />
+            </Field>
+            <Field label="Montant approuvé (MAD)" error={errs.approvedAmount}><Input type="number" min={0} inputMode="decimal" {...bind("approvedAmount")} /></Field>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <label className="space-y-1 text-sm"><span className="font-medium">Quorum</span>
-              <input type="number" value={form.quorum} onChange={set("quorum")} className={num} /></label>
-            <label className="space-y-1 text-sm"><span className="font-medium">Présents</span>
-              <input type="number" value={form.presentCount} onChange={set("presentCount")} className={num} /></label>
-            <label className="space-y-1 text-sm"><span className="font-medium">Pour</span>
-              <input type="number" value={form.votesFor} onChange={set("votesFor")} className={num} /></label>
-            <label className="space-y-1 text-sm"><span className="font-medium">Contre</span>
-              <input type="number" value={form.votesAgainst} onChange={set("votesAgainst")} className={num} /></label>
-            <label className="space-y-1 text-sm"><span className="font-medium">Abstention</span>
-              <input type="number" value={form.votesAbstain} onChange={set("votesAbstain")} className={num} /></label>
-          </div>
+          <fieldset className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <legend className="sr-only">Quorum et votes</legend>
+            <Field label="Quorum" error={errs.quorum}><Input type="number" min={0} inputMode="numeric" {...bind("quorum")} /></Field>
+            <Field label="Présents" error={errs.presentCount}><Input type="number" min={0} inputMode="numeric" {...bind("presentCount")} /></Field>
+            <Field label="Pour" error={errs.votesFor}><Input type="number" min={0} inputMode="numeric" {...bind("votesFor")} /></Field>
+            <Field label="Contre" error={errs.votesAgainst}><Input type="number" min={0} inputMode="numeric" {...bind("votesAgainst")} /></Field>
+            <Field label="Abstention" error={errs.votesAbstain}><Input type="number" min={0} inputMode="numeric" {...bind("votesAbstain")} /></Field>
+          </fieldset>
 
           <div className="grid sm:grid-cols-2 gap-3">
-            <label className="space-y-1 text-sm"><span className="font-medium">Validité (jusqu'au)</span>
-              <input type="date" value={form.validUntil} onChange={set("validUntil")} className={num} /></label>
-            <label className="space-y-1 text-sm"><span className="font-medium">Réf. PV</span>
-              <input type="text" value={form.minutesRef} onChange={set("minutesRef")} className={num} /></label>
+            <Field label="Validité (jusqu'au)" error={errs.validUntil}><Input type="date" {...bind("validUntil")} /></Field>
+            <Field label="Réf. PV" error={errs.minutesRef}><Input {...bind("minutesRef")} /></Field>
           </div>
 
-          <label className="space-y-1 text-sm block"><span className="font-medium">Conditions / covenants</span>
-            <input type="text" value={form.conditions} onChange={set("conditions")} className={num} /></label>
+          <Field label="Conditions / covenants" error={errs.conditions}><Input {...bind("conditions")} /></Field>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <FormMessage error={error} />
           <Button type="submit" disabled={pending}>{pending ? "Enregistrement…" : "Enregistrer la décision"}</Button>
         </form>
       </CardContent>

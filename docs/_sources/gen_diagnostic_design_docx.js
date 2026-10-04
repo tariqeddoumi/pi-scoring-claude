@@ -53,7 +53,7 @@ const cover = [
   new Paragraph({ spacing: { before: 80 }, alignment: AlignmentType.CENTER, children: [T("Application de scoring des projets de promotion immobilière", { bold: true, size: 28, color: BLUE })] }),
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 12, color: LIGHT, space: 8 } }, children: [T("", { size: 2 })] }),
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, children: [T("Ergonomie · mobile · lisibilité · accessibilité · recherche et filtres · mise en place d'un environnement", { italics: true, size: 24, color: GREY })] }),
-  new Paragraph({ spacing: { before: 1400 }, alignment: AlignmentType.CENTER, children: [T("4 octobre 2026", { size: 20, color: GREY })] }),
+  new Paragraph({ spacing: { before: 1400 }, alignment: AlignmentType.CENTER, children: [T("4 octobre 2026 — mis à jour avec la réalisation de la priorité 1", { size: 20, color: GREY })] }),
   brk(),
   new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "Sommaire" })] }),
   new TableOfContents("Sommaire", { hyperlink: true, headingStyleRange: "1-2" }),
@@ -61,12 +61,12 @@ const cover = [
 ];
 
 const s1 = [H1("1. Synthèse")];
-s1.push(P("L'application a été lancée en local avec les données de démonstration (12 projets) et parcourue écran par écran, sur grand écran (1 440 px) et sur téléphone (390 px). Ce parcours, complété par une revue du code de l'interface, fait ressortir 14 constats. Les 10 plus utiles ont été corrigés ; les autres forment la feuille de route (section 5)."));
+s1.push(P("L'application a été lancée en local avec les données de démonstration (12 projets) et parcourue écran par écran, sur grand écran (1 440 px) et sur téléphone (390 px). Ce parcours, complété par une revue du code de l'interface, fait ressortir 14 constats. Les 10 plus utiles ont été corrigés, puis la priorité 1 de la feuille de route a été réalisée (section 6) ; le reste forme la feuille de route (section 5)."));
 s1.push(grid(["#", "Constat", "Gravité", "État"], [
   ["1", "Aucune navigation sur téléphone : le menu latéral disparaît sans être remplacé.", "Critique", "Corrigé"],
   ["2", "Indicateurs illisibles : montants en pleine longueur (« 866.000.000 MA… » tronqué), page plus large que l'écran sur mobile.", "Élevée", "Corrigé"],
   ["3", "Liste des projets sans recherche, ni filtre, ni tri.", "Élevée", "Corrigé"],
-  ["4", "Une base vierge ne peut pas être reconstruite : le jeu de démonstration échoue (groupe GRP_ATLAS jamais créé) et les migrations ne rejouent pas depuis zéro.", "Élevée", "Démonstration corrigée ; migrations : feuille de route"],
+  ["4", "Une base vierge ne peut pas être reconstruite : le jeu de démonstration échoue (groupe GRP_ATLAS jamais créé) et les migrations ne rejouent pas depuis zéro.", "Élevée", "Corrigé"],
   ["5", "Page Suivi de 15 blocs (≈ 4 500 px) sans sommaire ; action « Synchroniser vers le scoring » enfouie au milieu.", "Moyenne", "Corrigé"],
   ["6", "Lien de la page courante non signalé dans le menu ; pas de recherche rapide d'un dossier.", "Moyenne", "Corrigé"],
   ["7", "Accessibilité : aucun attribut ARIA, pas de focus clavier visible, pas de lien d'évitement.", "Moyenne", "Corrigé (bases)"],
@@ -75,13 +75,14 @@ s1.push(grid(["#", "Constat", "Gravité", "État"], [
   ["10", "Formats : point décimal (« 0.9 % ») au lieu de la virgule ; mélange de formats de montants.", "Faible", "Corrigé"],
   ["11", "Fiche projet : 5 boutons dont 2 doublent les onglets ; indicateurs « Étape » et « Fraîcheur » en très gros texte.", "Faible", "Corrigé"],
   ["12", "Graphique « Répartition par classe » vide sans explication ; icône d'onglet absente (erreur 404).", "Faible", "Corrigé"],
-  ["13", "Fiche projet : 10 cartes avant les onglets ; formulaires sans composant commun (30 copies du même style de champ).", "Moyenne", "Feuille de route"],
+  ["13", "Fiche projet : 10 cartes avant les onglets ; formulaires sans composant commun (30 copies du même style de champ), erreurs non affichées par champ.", "Moyenne", "Corrigé"],
   ["14", "Pas de pagination côté serveur, d'export de la liste filtrée, ni de notifications d'échéance.", "Moyenne", "Feuille de route"],
 ], [500, 6238, 1200, 1700], { center: [0, 2], color: (i, j, x) => (j === 2 ? sev(x) : j === 3 ? (x === "Corrigé" || x.startsWith("Corrigé") ? OKG : x === "Feuille de route" ? GREY : WARN) : undefined) }));
 s1.push(P("", { after: 60 }));
 s1.push(box("Vérifications", [
-  "367 tests automatiques passent (dont 6 nouveaux sur les formats et la recherche), contrôle des types et lint sans erreur, build de production réussi.",
-  "Parcours réel dans le navigateur : pages sans erreur, menu mobile opérationnel au clavier (Échap ferme et rend le focus), lien actif signalé, recherche « residence » → 4 dossiers sur 12, tri par score.",
+  "370 tests automatiques passent (dont 9 nouveaux : formats, recherche, erreurs de formulaire), contrôle des types et lint sans erreur, build de production réussi.",
+  "Parcours réel dans le navigateur : pages sans erreur, menu mobile opérationnel au clavier (Échap ferme et rend le focus), lien actif signalé, recherche « residence » → 4 dossiers sur 12, tri par score ; erreur de saisie affichée sous le champ et reliée à celui-ci.",
+  "Migrations : une base vide reconstruite par les seules migrations est identique, élément par élément, à la production et à schema.prisma (741 éléments, même empreinte).",
 ], OKG, "E4F2E5"));
 
 const s2 = [brk(), H1("2. Constats design et corrections")];
@@ -125,21 +126,49 @@ s3.push(png("suivi_after.png", 470), caption("Page Suivi : action de synchronisa
 const s4 = [brk(), H1("4. Mise en place d'un environnement")];
 s4.push(P("Pour ce diagnostic, une base vierge a été construite. Deux défauts ont été rencontrés :"));
 s4.push(bullet([T("Jeu de démonstration (npm run seed) : ", { bold: true }), T("il rattachait le premier projet au groupe GRP_ATLAS sans le créer, ce qui faisait échouer l'installation. Corrigé : le groupe est créé avant le projet ; les régions sont écrites en codes, comme en production.")]));
-s4.push(bullet([T("Migrations (prisma migrate deploy) : ", { bold: true }), T("l'historique ne rejoue pas sur une base vide (la table ProjectEvent n'est créée par aucune migration : les premières tables ont été créées par « db push »). La procédure documentée (prisma db push puis seed) fonctionne ; il reste à créer une migration de référence pour que l'historique soit autonome (feuille de route).")]));
+s4.push(bullet([T("Migrations (prisma migrate deploy) : ", { bold: true }), T("l'historique ne rejouait pas sur une base vide (la table ProjectEvent n'était créée par aucune migration : des objets avaient été créés en production par « db push »). Corrigé — voir section 6.1.")]));
 
 const s5 = [brk(), H1("5. Feuille de route recommandée")];
+s5.push(P("La priorité 1 a été réalisée (section 6). Restent :"));
 s5.push(grid(["Priorité", "Amélioration", "Pourquoi"], [
-  ["1", "Migration de référence (baseline) pour reconstruire une base vierge par les seules migrations.", "Reprise après incident, nouveaux environnements, recette."],
-  ["1", "Composants de formulaire communs (champ, liste, case) avec libellé, aide et message d'erreur liés.", "30 copies du même style ; erreurs aujourd'hui non rattachées aux champs."],
-  ["1", "Fiche projet : regrouper les 10 cartes situées avant les onglets (synthèse, comité, GFA, facilités, pièces, risque, circuit) en onglets ou en sections repliables.", "Lecture du dossier en 10 secondes."],
   ["2", "Indicateurs du tableau de bord cliquables vers la liste filtrée (ex. « Scorings à rafraîchir » → /projects?scored=unscored).", "Passer du constat à l'action en un clic."],
   ["2", "Export CSV / Excel de la liste filtrée.", "Reporting ad hoc sans retraitement."],
   ["2", "Notifications : revues périodiques échues, conditions de comité arrivant à expiration, alertes v5 déclenchées.", "Suivi proactif du risque."],
   ["2", "Fenêtres de confirmation intégrées à la place des confirmations du navigateur (suppression de domaine, de critère, de brouillon).", "Cohérence et accessibilité."],
+  ["2", "Étendre les composants de formulaire aux écrans d'administration (constructeur de modèle, référentiels, calibrage) et aux panneaux secondaires.", "Une quinzaine de champs restent au style ancien."],
   ["3", "Pagination et filtres côté base de données quand le portefeuille dépassera quelques centaines de dossiers.", "Performance."],
   ["3", "Mode sombre (les tons sémantiques le rendent possible).", "Confort, usage prolongé."],
   ["3", "Tests de bout en bout (Playwright) à partir du banc de captures utilisé pour ce diagnostic.", "Non-régression visuelle et fonctionnelle."],
 ], [1000, 4838, 3800], { center: [0] }));
+
+const s5b = [brk(), H1("6. Priorité 1 réalisée")];
+s5b.push(H2("6.1 Migrations rejouables sur une base vierge"));
+s5b.push(P("Constat : entre juin et septembre 2026, trois tables (journal des événements, planning des déblocages, liens entre promoteurs), 23 colonnes, 3 valeurs d'énumération et leurs index et clés étrangères avaient été créés en production par « db push », sans migration. La migration de septembre (v3) les supposait présents : « prisma migrate deploy » échouait sur une base vide."));
+[
+  "Migration 20260901000000_rattrapage_db_push : recrée ces objets, en SQL idempotent, avant la migration v3. Son contenu est obtenu par comparaison automatique entre l'état produit par les migrations antérieures et le schéma de l'époque. En production, elle est inscrite comme appliquée sans être exécutée (les objets existent).",
+  "Comparaison de la structure (colonnes, types, valeurs par défaut, contraintes, index, énumérations) entre la base reconstruite et la production : 741 éléments, 7 écarts, tous sur les dérogations comité et les autorisations du projet.",
+  "Migration 20261004000000_alignement_structure : aligne ces 7 écarts (règles des clés étrangères des dérogations, clé étrangère manquante des autorisations, valeurs par défaut de updatedAt) ; appliquée en production.",
+  "Résultat : base reconstruite par les migrations = production = schema.prisma (même empreinte sur les 741 éléments ; « prisma migrate diff » vide). Le jeu de démonstration et les jeux SQL s'installent sans erreur sur cette base.",
+  "Garde-fou : un job de CI rejoue les migrations sur une base PostgreSQL vide, vérifie l'absence d'écart avec schema.prisma et installe le jeu de démonstration, à chaque push. README, guide de déploiement et notice des migrations mis à jour (« migrate deploy » remplace « db push »).",
+].forEach((t) => s5b.push(bullet(t)));
+s5b.push(H2("6.2 Composants de formulaire communs"));
+[
+  "components/form.tsx : champ (libellé, aide, erreur reliés au contrôle par for/id, aria-describedby, aria-invalid), zone de texte, liste, case à cocher, groupe de champs (fieldset), message global annoncé aux lecteurs d'écran.",
+  "Les erreurs de validation renvoyées par le serveur s'affichent désormais sous chaque champ concerné, au lieu d'un message unique « Champs invalides ».",
+  "Formulaires migrés : projet, promoteur, rapport de visite, décision de comité, équipements exigés (v5) et saisie du scoring.",
+  "Défaut corrigé au passage : dans les formulaires projet et promoteur, les listes déroulantes étaient recréées à chaque frappe (composants définis dans le rendu) et perdaient le focus clavier. Vérifié dans le navigateur : la liste reste le même élément après saisie et choix.",
+  "Saisie du scoring : chaque pastille d'étape indique le nombre de champs renseignés (« 5/7 »), passe en vert quand l'étape est complète, et est entourée de rouge en cas d'erreur ; l'enregistrement conduit directement à la première étape à corriger.",
+].forEach((t) => s5b.push(bullet(t)));
+s5b.push(png("p1_form_error.png", 470), caption("Erreur de validation affichée sous le champ concerné, avec message global"));
+s5b.push(png("p1_wizard.png", 470), caption("Saisie du scoring : progression par étape"));
+s5b.push(H2("6.3 Fiche projet regroupée"));
+[
+  "Avant les onglets ne restent que la synthèse (score, classe, provision, étape, fraîcheur, saisie, prochaine action, rappel de la dernière décision de comité) et les deux actions : calcul du score et circuit de décision, côte à côte.",
+  "Déplacés dans les onglets : décision de comité et historique du circuit (nouvel onglet « Circuit & comité », qui remplace « Audit » ; l'historique y était en double), GFA / VEFA et facilités (« Financement »), pièces jointes (« Identification »), indicateurs PD / LGD / perte attendue (« Risque & provision »).",
+  "Lien direct vers un onglet (?onglet=circuit, financement, risque…), utilisé par le rappel de la décision de comité.",
+  "Hauteur de la fiche : 2 067 px → 1 469 px sur grand écran (−29 %), 3 544 px → 2 914 px sur téléphone (−18 %).",
+].forEach((t) => s5b.push(bullet(t)));
+s5b.push(png("p1_fiche.png", 470), caption("Fiche projet : synthèse, actions côte à côte, puis onglets"));
 
 const s6 = [brk(), H1("Annexe — Fichiers modifiés")];
 s6.push(grid(["Fichier", "Changement"], [
@@ -154,6 +183,10 @@ s6.push(grid(["Fichier", "Changement"], [
   ["components/PortfolioChart.tsx", "Graphique vide expliqué."],
   ["prisma/seed.ts", "Groupe créé avant rattachement ; régions en codes."],
   ["tests/formatters.test.ts, tests/projectFilters.test.ts", "6 tests."],
+  ["prisma/migrations/20260901000000_rattrapage_db_push, 20261004000000_alignement_structure, prisma/schema.prisma, .github/workflows/ci.yml", "Migrations rejouables, structure alignée, contrôle en CI."],
+  ["components/form.tsx, tests/formErrors.test.ts", "Composants de formulaire communs ; 3 tests."],
+  ["components/ProjectForm, PromoterForm, VisitReportForm, CommitteeDecisionForm, ProgrammeV5Card, ScoringWizard", "Formulaires migrés, erreurs par champ, progression de la saisie."],
+  ["app/projects/[id]/page.tsx", "Fiche regroupée en onglets ; lien direct vers un onglet."],
 ], [3800, 5838], { boldCols: [] }));
 
 const doc = new Document({
@@ -170,7 +203,7 @@ const doc = new Document({
     properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
     headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 0 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: LIGHT, space: 4 } }, children: [T("Diagnostic design et fonctionnalités", { size: 15, color: GREY })] })] }) },
     footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [T("Page ", { size: 16, color: GREY }), new TextRun({ children: [PageNumber.CURRENT], size: 16, color: GREY, font: "Calibri" }), T(" / ", { size: 16, color: GREY }), new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: GREY, font: "Calibri" })] })] }) },
-    children: [...cover, ...s1, ...s2, ...s3, ...s4, ...s5, ...s6],
+    children: [...cover, ...s1, ...s2, ...s3, ...s4, ...s5, ...s5b, ...s6],
   }],
 });
 Packer.toBuffer(doc).then((b) => { fs.writeFileSync(OUT, b); console.log("OK", OUT, b.length); });

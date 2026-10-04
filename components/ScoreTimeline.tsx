@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle, Badge, Table, Th, Td } from "@/components/ui";
 import { DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatDecimal } from "@/lib/utils";
 import type { Decision } from "@/lib/domain/types";
 import { scoreTrajectory } from "@/lib/domain/scoreTrajectory";
 
@@ -49,7 +49,7 @@ export function ScoreTimeline({ runs }: { runs: ScoreRunPoint[] }) {
           <CardTitle>Évolution du score</CardTitle>
           {delta != null && (
             <span className={`text-sm ${delta > 0 ? "text-emerald-600" : delta < 0 ? "text-red-600" : "text-muted-foreground"}`}>
-              {delta > 0 ? "▲ +" : delta < 0 ? "▼ " : "= "}{delta} pts vs run précédent{trajectory.comparable ? "" : " (changement de modèle)"}
+              {delta > 0 ? "▲ +" : delta < 0 ? "▼ " : "= "}{formatDecimal(Math.abs(delta), 1)} pts vs run précédent{trajectory.comparable ? "" : " (changement de modèle)"}
             </span>
           )}
         </div>

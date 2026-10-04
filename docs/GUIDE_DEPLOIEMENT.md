@@ -16,8 +16,8 @@ Sur Supabase : `DATABASE_URL` = connexion **poolée** (port 6543, `pgbouncer=tru
 ## 3. Base de données
 ```bash
 npm run prisma:generate
-npm run prisma:push          # ou prisma:migrate en environnement versionné
-npm run seed                 # référentiels BKAM + modèle V1.0 + démo
+npx prisma migrate deploy    # rejoue toutes les migrations (base vierge ou existante)
+npm run seed                 # référentiels BKAM + modèle publié + démo
 ```
 Le seed est **idempotent** sur les référentiels (upsert / recréation contrôlée).
 
@@ -31,12 +31,12 @@ npm run start                # production
 1. Importer le dépôt.
 2. Renseigner `DATABASE_URL` et `DIRECT_URL` (Project Settings → Environment Variables).
 3. Build command : `prisma generate && next build` (ou ajouter `postinstall: prisma generate`).
-4. Lancer `prisma db push` + `seed` une fois sur la base cible (job ou localement).
+4. Lancer `prisma migrate deploy` (à chaque déploiement) et `seed` une fois sur la base cible.
 
 ## 6. Qualité avant mise en production
 ```bash
 npm run typecheck    # TypeScript strict
-npm run test         # 44 tests unitaires des moteurs
+npm run test         # tests unitaires (moteurs, modèle, écrans)
 npm run build        # build Next.js
 ```
 
@@ -50,5 +50,5 @@ npm run build        # build Next.js
 ## 8. Sauvegarde / reprise
 La doctrine métier par défaut est versionnée dans le code
 (`lib/domain/referenceData.ts`) : une base peut être reconstruite via
-`prisma:push` + `seed`. Les **runs** (scoring, classification, provision, audit) sont
+`prisma migrate deploy` + `seed`. Les **runs** (scoring, classification, provision, audit) sont
 les données opérationnelles à sauvegarder.

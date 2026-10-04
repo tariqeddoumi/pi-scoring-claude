@@ -39,3 +39,39 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Les migrations doivent reconstruire une base vierge identique à schema.prisma,
+  # puis le jeu de démonstration doit s'y installer.
+  migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: pi
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/pi?schema=pi_scoring"
+      DIRECT_URL: "postgresql://postgres:postgres@localhost:5432/pi?schema=pi_scoring"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Rejouer toutes les migrations sur une base vierge
+        run: npx prisma migrate deploy
+
+      - name: Aucun écart entre les migrations et schema.prisma
+        run: npx prisma migrate diff --from-url "$DATABASE_URL" --to-schema-datamodel prisma/schema.prisma --exit-code
+
+      - name: Jeu de démonstration
+        run: npm run seed

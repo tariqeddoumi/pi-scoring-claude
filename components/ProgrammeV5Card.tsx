@@ -12,6 +12,7 @@ import {
 } from "@/server/actions/programme";
 import { EQUIPMENT_FUNDERS, EQUIPMENT_KINDS, EQUIPMENT_ORIGINS } from "@/lib/domain/programmeV5";
 import { INPUT_LABELS } from "@/lib/inputLabels";
+import { Checkbox, Field, Input, Select } from "@/components/form";
 import { formatMAD, formatDate } from "@/lib/utils";
 import { TONE } from "@/lib/tones";
 
@@ -92,7 +93,7 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
                     <Td>{t.units}</Td>
                     <Td>{t.progressPct.toFixed(0)} %</Td>
                     <Td>
-                      <input type="checkbox" checked={t.financed} disabled={!canWrite || pending}
+                      <input type="checkbox" aria-label={`Tranche ${t.code} financée par la banque`} checked={t.financed} disabled={!canWrite || pending}
                         onChange={(e) => run(() => setTrancheFinanced(projectId, t.id, e.target.checked))} />
                       {facilityTranches.has(t.id) && <span className="ml-2 text-xs text-muted-foreground">(portée par une facilité)</span>}
                     </Td>
@@ -112,7 +113,7 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
                     <Td>{formatMAD(f.authorizedAmount)}</Td>
                     <Td>{formatMAD(f.drawnAmount)}</Td>
                     <Td>
-                      <select className={inp} value={f.trancheId ?? ""} disabled={!canWrite || pending || view.tranches.length === 0}
+                      <select aria-label={`Tranche financée par ${f.label}`} className={inp} value={f.trancheId ?? ""} disabled={!canWrite || pending || view.tranches.length === 0}
                         onChange={(e) => run(() => setFacilityTranche(projectId, f.id, e.target.value || null))}>
                         <option value="">Programme entier</option>
                         {view.tranches.map((t) => <option key={t.id} value={t.id}>{t.code}</option>)}
@@ -171,26 +172,34 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
           )}
           {form && canWrite && (
             <div className="rounded-md border border-border p-3 space-y-2">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                <label className="text-xs">Type<select className={`${inp} w-full`} value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })}>
-                  {EQUIPMENT_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select></label>
-                <label className="text-xs">Libellé<input className={`${inp} w-full`} value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="ex. Mosquée du quartier" /></label>
-                <label className="text-xs">Origine de l&apos;obligation<select className={`${inp} w-full`} value={form.origin ?? ""} onChange={(e) => setForm({ ...form, origin: e.target.value || null })}>
-                  {EQUIPMENT_ORIGINS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select></label>
-                <label className="text-xs">Coût estimé (MAD)<input className={`${inp} w-full`} value={String(form.estimatedCost ?? "")} onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })} /></label>
-                <label className="text-xs">Financé par<select className={`${inp} w-full`} value={form.fundedBy ?? ""} onChange={(e) => setForm({ ...form, fundedBy: e.target.value || null })}>
-                  {EQUIPMENT_FUNDERS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}</select></label>
-                <label className="text-xs">Tranche<select className={`${inp} w-full`} value={form.trancheId ?? ""} onChange={(e) => setForm({ ...form, trancheId: e.target.value || null })}>
-                  <option value="">Programme</option>{view.tranches.map((t) => <option key={t.id} value={t.id}>{t.code}</option>)}</select></label>
-                <label className="text-xs">Avancement (%)<input className={`${inp} w-full`} value={String(form.progressPct ?? "")} onChange={(e) => setForm({ ...form, progressPct: e.target.value })} /></label>
-                <label className="text-xs">Échéance<input type="date" className={`${inp} w-full`} value={form.dueDate ?? ""} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></label>
-                <label className="text-xs">Note<input className={`${inp} w-full`} value={form.note ?? ""} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Field label="Type" required>
+                  <Select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} options={EQUIPMENT_KINDS} />
+                </Field>
+                <Field label="Libellé" required><Input value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} placeholder="ex. Mosquée du quartier" /></Field>
+                <Field label="Origine de l'obligation">
+                  <Select value={form.origin ?? ""} onChange={(e) => setForm({ ...form, origin: e.target.value || null })} options={EQUIPMENT_ORIGINS} />
+                </Field>
+                <Field label="Coût estimé (MAD)" hint="Vide = coût inconnu : le pourcentage non budgété n'est pas calculé.">
+                  <Input inputMode="decimal" value={String(form.estimatedCost ?? "")} onChange={(e) => setForm({ ...form, estimatedCost: e.target.value })} />
+                </Field>
+                <Field label="Financé par">
+                  <Select value={form.fundedBy ?? ""} onChange={(e) => setForm({ ...form, fundedBy: e.target.value || null })} options={EQUIPMENT_FUNDERS} />
+                </Field>
+                <Field label="Tranche">
+                  <Select value={form.trancheId ?? ""} onChange={(e) => setForm({ ...form, trancheId: e.target.value || null })}
+                    options={view.tranches.map((t) => ({ value: t.id, label: t.code }))} placeholder="Programme" />
+                </Field>
+                <Field label="Avancement (%)"><Input inputMode="decimal" value={String(form.progressPct ?? "")} onChange={(e) => setForm({ ...form, progressPct: e.target.value })} /></Field>
+                <Field label="Échéance"><Input type="date" value={form.dueDate ?? ""} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} /></Field>
+                <Field label="Note"><Input value={form.note ?? ""} onChange={(e) => setForm({ ...form, note: e.target.value })} /></Field>
               </div>
-              <div className="flex flex-wrap gap-4 text-sm">
-                <label><input type="checkbox" checked={!!form.budgeted} onChange={(e) => setForm({ ...form, budgeted: e.target.checked })} /> Prévu au budget du programme</label>
-                <label><input type="checkbox" checked={!!form.conditionsDelivery} onChange={(e) => setForm({ ...form, conditionsDelivery: e.target.checked })} /> Conditionne la réception / le permis d&apos;habiter</label>
-                <label><input type="checkbox" checked={!!form.handedOver} onChange={(e) => setForm({ ...form, handedOver: e.target.checked })} /> Remis à la commune</label>
-              </div>
+              <fieldset className="flex flex-wrap gap-x-6 gap-y-2">
+                <legend className="sr-only">Situation de l&apos;équipement</legend>
+                <Checkbox label="Prévu au budget du programme" checked={!!form.budgeted} onChange={(e) => setForm({ ...form, budgeted: e.target.checked })} />
+                <Checkbox label="Conditionne la réception / le permis d'habiter" checked={!!form.conditionsDelivery} onChange={(e) => setForm({ ...form, conditionsDelivery: e.target.checked })} />
+                <Checkbox label="Remis à la commune" checked={!!form.handedOver} onChange={(e) => setForm({ ...form, handedOver: e.target.checked })} />
+              </fieldset>
               <div className="flex gap-2">
                 <Button disabled={pending} onClick={() => run(() => saveEquipment(projectId, form), () => setForm(null))}>{form.id ? "Enregistrer" : "Ajouter"}</Button>
                 <Button variant="ghost" disabled={pending} onClick={() => setForm(null)}>Annuler</Button>
