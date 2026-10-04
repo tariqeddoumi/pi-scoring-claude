@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Badge, Table, Th, Td } from "@/components/ui";
@@ -83,14 +84,15 @@ export function OverridePanel({
         <div className="rounded-md border border-border p-3 space-y-2">
           <p className="text-sm font-medium">Demander une dérogation</p>
           <div className="flex flex-wrap items-start gap-2">
-            <select value={forcedClass} onChange={(e) => setForcedClass(e.target.value as RegulatoryClassCode)} className="rounded-md border border-border bg-background px-2 py-1.5 text-sm">
+            <select aria-label="Classe réglementaire retenue par dérogation" value={forcedClass} onChange={(e) => setForcedClass(e.target.value as RegulatoryClassCode)} className={CONTROL_COMPACT}>
               {CLASS_CODES.map((c) => <option key={c} value={c}>{CLASS_LABELS[c]}</option>)}
             </select>
             <textarea
               value={justification}
               onChange={(e) => setJustification(e.target.value)}
+              aria-label="Justification de la dérogation"
               placeholder="Justification (≥ 10 caractères) — motif de la dérogation comité"
-              className="flex-1 min-w-[16rem] rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+              className={`flex-1 min-w-[16rem] ${CONTROL_COMPACT}`}
               rows={2}
             />
             <Button disabled={pending || justification.trim().length < 10} onClick={() => run(() => requestRegulatoryOverride(projectId, forcedClass, justification))}>

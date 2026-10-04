@@ -16,7 +16,7 @@ export interface NavUser { name: string; email: string; role: string }
 
 export type IconName =
   | "home" | "inbox" | "folder" | "building" | "users" | "shield" | "trend" | "bolt" | "gauge"
-  | "sliders" | "scale" | "book" | "upload" | "history";
+  | "sliders" | "scale" | "book" | "upload" | "history" | "bell";
 
 // Tracés 24×24 (trait), sans dépendance.
 const PATHS: Record<IconName, string> = {
@@ -34,6 +34,7 @@ const PATHS: Record<IconName, string> = {
   book: "M4 4h7a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-5a3 3 0 0 0-3 3",
   upload: "M12 16V4M7 9l5-5 5 5M4 20h16",
   history: "M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2",
+  bell: "M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0",
 };
 
 export function Icon({ name, className }: { name: IconName; className?: string }) {

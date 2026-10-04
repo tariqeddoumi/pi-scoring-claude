@@ -41,6 +41,7 @@ export function ImportForm() {
         <input
           ref={inputRef}
           type="file"
+          aria-label="Fichier à importer (Excel ou CSV)"
           accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
           onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           className="block text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-sm"

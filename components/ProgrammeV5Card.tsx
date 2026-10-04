@@ -4,6 +4,7 @@
 // équipements exigés (mosquée, école, voirie…) et lecture des indicateurs v5
 // tels qu'ils seront reportés dans le scoring par « Synchroniser ».
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td } from "@/components/ui";
@@ -13,6 +14,7 @@ import {
 import { EQUIPMENT_FUNDERS, EQUIPMENT_KINDS, EQUIPMENT_ORIGINS } from "@/lib/domain/programmeV5";
 import { INPUT_LABELS } from "@/lib/inputLabels";
 import { Checkbox, Field, Input, Select } from "@/components/form";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { formatMAD, formatDate } from "@/lib/utils";
 import { TONE } from "@/lib/tones";
 
@@ -45,7 +47,7 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState<EquipmentInput | null>(null);
-  const inp = "rounded-md border border-border bg-background px-2 py-1.5 text-sm";
+  const inp = CONTROL_COMPACT;
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string }>, after?: () => void) =>
     start(async () => {
@@ -162,7 +164,9 @@ export function ProgrammeV5Card({ projectId, view, canWrite }: { projectId: stri
                     {canWrite && (
                       <Td className="whitespace-nowrap">
                         <Button variant="ghost" disabled={pending} onClick={() => setForm({ ...e, estimatedCost: e.estimatedCost ?? "", progressPct: String(e.progressPct), dueDate: e.dueDate ?? "", note: e.note ?? "" })}>Modifier</Button>
-                        <Button variant="ghost" disabled={pending} onClick={() => run(() => deleteEquipment(projectId, e.id))}>Supprimer</Button>
+                        <ConfirmButton variant="ghost" disabled={pending} title={`Supprimer l'équipement « ${e.label} » ?`}
+                          description="Il ne sera plus pris en compte dans le coût non budgété ni dans l'alerte de réception." confirmLabel="Supprimer"
+                          onConfirm={() => run(() => deleteEquipment(projectId, e.id))}>Supprimer</ConfirmButton>
                       </Td>
                     )}
                   </tr>

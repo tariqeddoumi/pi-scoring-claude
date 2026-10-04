@@ -15,6 +15,8 @@ export interface ProjectRow {
   regulatoryClass: string | null;
   state: string;
   updatedAt: Date | string;
+  /** Revue périodique échue ou événement matériel depuis le dernier score. */
+  needsRescoring?: boolean;
 }
 
 export const SORT_KEYS = ["reference", "name", "promoter", "loanAmount", "score", "updatedAt"] as const;
@@ -26,8 +28,8 @@ export interface ProjectFilters {
   decision: string;
   cls: string;
   state: string;
-  /** "unscored" : dossiers jamais scorés. */
-  scored: "" | "unscored" | "scored";
+  /** "unscored" : jamais scorés ; "stale" : score à rafraîchir (revue échue, événement, jamais scoré). */
+  scored: "" | "unscored" | "scored" | "stale";
   sort: SortKey;
   dir: "asc" | "desc";
 }
@@ -44,14 +46,14 @@ export function parseProjectFilters(sp: Params): ProjectFilters {
     decision: one(sp.decision),
     cls: one(sp.cls),
     state: one(sp.state),
-    scored: scored === "unscored" || scored === "scored" ? scored : "",
+    scored: scored === "unscored" || scored === "scored" || scored === "stale" ? scored : "",
     sort: SORT_KEYS.includes(sort) ? sort : "updatedAt",
     dir: one(sp.dir) === "asc" ? "asc" : one(sp.dir) === "desc" ? "desc" : SORT_KEYS.includes(sort) && sort !== "updatedAt" ? "asc" : "desc",
   };
 }
 
 /** Recherche insensible à la casse et aux accents. */
-export const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+export const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
 export function applyProjectFilters<T extends ProjectRow>(rows: T[], f: ProjectFilters): T[] {
   const terms = fold(f.q).split(/\s+/).filter(Boolean);
@@ -66,6 +68,7 @@ export function applyProjectFilters<T extends ProjectRow>(rows: T[], f: ProjectF
     if (f.state && r.state !== f.state) return false;
     if (f.scored === "unscored" && r.score != null) return false;
     if (f.scored === "scored" && r.score == null) return false;
+    if (f.scored === "stale" && !r.needsRescoring) return false;
     return true;
   });
   const val = (r: T): string | number | null => {
@@ -93,7 +96,8 @@ export function sortHref(f: ProjectFilters, key: SortKey): string {
   return toQuery({ ...f, sort: key, dir });
 }
 
-export function toQuery(f: Partial<ProjectFilters>): string {
+/** Chaîne de requête des filtres (et, pour l'export, du format de fichier). */
+export function toQuery(f: Partial<ProjectFilters> & { format?: "csv" | "xlsx" }): string {
   const p = new URLSearchParams();
   for (const [k, v] of Object.entries(f)) if (v) p.set(k, String(v));
   const s = p.toString();
@@ -102,4 +106,26 @@ export function toQuery(f: Partial<ProjectFilters>): string {
 
 export function hasActiveFilters(f: ProjectFilters): boolean {
   return !!(f.q || f.segment || f.decision || f.cls || f.state || f.scored);
+}
+
+/** Libellés fournis par l'appelant (référentiels, décisions, classes, étapes). */
+export interface ProjectTableLabels {
+  city: (code: string | null) => string;
+  segment: (code: string | null) => string;
+  decision: (code: string | null) => string;
+  cls: (code: string | null) => string;
+  state: (code: string) => string;
+}
+
+/** Tableau d'export de la liste (en-tête + lignes), mêmes colonnes en CSV et en Excel. */
+export function projectListTable(rows: ProjectRow[], l: ProjectTableLabels): (string | number | null)[][] {
+  const head = ["Référence", "Projet", "Promoteur", "Ville", "Segment", "Crédit (MAD)", "Score final", "Décision", "Classe BKAM", "Étape du circuit", "Score à rafraîchir", "Mis à jour"];
+  return [
+    head,
+    ...rows.map((r) => [
+      r.reference, r.name, r.promoter, l.city(r.city), l.segment(r.segment), r.loanAmount ?? null,
+      r.score != null ? Math.round(r.score * 100) / 100 : null, l.decision(r.decision), l.cls(r.regulatoryClass), l.state(r.state),
+      r.needsRescoring ? "Oui" : "Non", new Date(r.updatedAt).toISOString().slice(0, 10),
+    ]),
+  ];
 }

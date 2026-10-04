@@ -4,6 +4,7 @@
 // (montant/date), rapprochement avec les déblocages réels (saisis ou importés
 // du SI) et RATTACHEMENT MANUEL de chaque déblocage à son jalon.
 
+import { CONTROL } from "@/lib/formStyles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
@@ -12,6 +13,7 @@ import {
   deleteDisbursementMilestone,
   linkDisbursementToMilestone,
 } from "@/server/actions/disbursements";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { MILESTONE_STATUS_LABELS, type MilestoneStatus } from "@/lib/domain/disbursementPlan";
 import { formatMAD, formatDate, formatMADCompact } from "@/lib/utils";
 import { TONE } from "@/lib/tones";
@@ -56,7 +58,7 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
   const [form, setForm] = useState({ label: "", plannedDate: "", plannedAmount: "" });
   const [linkTo, setLinkTo] = useState<Record<string, string>>({});
 
-  const inp = "rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const inp = CONTROL;
 
   const addMilestone = () =>
     start(async () => {
@@ -127,7 +129,8 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
                   <Td><Badge className={STATUS_COLORS[r.status]}>{MILESTONE_STATUS_LABELS[r.status]}</Badge></Td>
                   {canWrite && (
                     <Td>
-                      <Button variant="outline" onClick={() => removeMilestone(r.id)} disabled={pending}>Retirer</Button>
+                      <ConfirmButton onConfirm={() => removeMilestone(r.id)} disabled={pending} title={`Retirer le jalon « ${r.label} » ?`}
+                        description="Les déblocages qui lui étaient rattachés redeviendront « non rattachés »." confirmLabel="Retirer">Retirer</ConfirmButton>
                     </Td>
                   )}
                 </tr>
@@ -144,10 +147,10 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
           <div className="rounded-md border border-dashed border-border p-3 space-y-2">
             <div className="text-sm font-medium">Ajouter un jalon du plan</div>
             <div className="flex flex-wrap gap-2">
-              <input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+              <input aria-label="Libellé du jalon" value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
                 placeholder="Ex. Déblocage 2 — gros œuvre" className={`${inp} flex-1 min-w-48`} />
-              <input type="date" value={form.plannedDate} onChange={(e) => setForm((f) => ({ ...f, plannedDate: e.target.value }))} className={inp} />
-              <input type="number" min={0} value={form.plannedAmount} onChange={(e) => setForm((f) => ({ ...f, plannedAmount: e.target.value }))}
+              <input type="date" aria-label="Date prévue" value={form.plannedDate} onChange={(e) => setForm((f) => ({ ...f, plannedDate: e.target.value }))} className={inp} />
+              <input type="number" min={0} inputMode="decimal" aria-label="Montant prévu (MAD)" value={form.plannedAmount} onChange={(e) => setForm((f) => ({ ...f, plannedAmount: e.target.value }))}
                 placeholder="Montant (MAD)" className={inp} />
               <Button onClick={addMilestone} disabled={pending || !form.label || !form.plannedAmount}>
                 {pending ? "Ajout…" : "Ajouter"}
@@ -173,6 +176,7 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
                   {canWrite && rows.length > 0 && (
                     <span className="ml-auto flex items-center gap-2">
                       <select
+                        aria-label="Jalon auquel rattacher ce déblocage"
                         value={linkTo[e.id] ?? ""}
                         onChange={(ev) => setLinkTo((p) => ({ ...p, [e.id]: ev.target.value }))}
                         className={inp}

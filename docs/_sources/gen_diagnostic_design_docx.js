@@ -53,7 +53,7 @@ const cover = [
   new Paragraph({ spacing: { before: 80 }, alignment: AlignmentType.CENTER, children: [T("Application de scoring des projets de promotion immobilière", { bold: true, size: 28, color: BLUE })] }),
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 12, color: LIGHT, space: 8 } }, children: [T("", { size: 2 })] }),
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, children: [T("Ergonomie · mobile · lisibilité · accessibilité · recherche et filtres · mise en place d'un environnement", { italics: true, size: 24, color: GREY })] }),
-  new Paragraph({ spacing: { before: 1400 }, alignment: AlignmentType.CENTER, children: [T("4 octobre 2026 — mis à jour avec la réalisation de la priorité 1", { size: 20, color: GREY })] }),
+  new Paragraph({ spacing: { before: 1400 }, alignment: AlignmentType.CENTER, children: [T("4 octobre 2026 — mis à jour avec la réalisation des priorités 1 et 2", { size: 20, color: GREY })] }),
   brk(),
   new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "Sommaire" })] }),
   new TableOfContents("Sommaire", { hyperlink: true, headingStyleRange: "1-2" }),
@@ -61,7 +61,7 @@ const cover = [
 ];
 
 const s1 = [H1("1. Synthèse")];
-s1.push(P("L'application a été lancée en local avec les données de démonstration (12 projets) et parcourue écran par écran, sur grand écran (1 440 px) et sur téléphone (390 px). Ce parcours, complété par une revue du code de l'interface, fait ressortir 14 constats. Les 10 plus utiles ont été corrigés, puis la priorité 1 de la feuille de route a été réalisée (section 6) ; le reste forme la feuille de route (section 5)."));
+s1.push(P("L'application a été lancée en local avec les données de démonstration (12 projets) et parcourue écran par écran, sur grand écran (1 440 px) et sur téléphone (390 px). Ce parcours, complété par une revue du code de l'interface, fait ressortir 14 constats. Les 10 plus utiles ont été corrigés, puis les priorités 1 et 2 de la feuille de route ont été réalisées (sections 6 et 7) ; la priorité 3 reste à faire (section 5)."));
 s1.push(grid(["#", "Constat", "Gravité", "État"], [
   ["1", "Aucune navigation sur téléphone : le menu latéral disparaît sans être remplacé.", "Critique", "Corrigé"],
   ["2", "Indicateurs illisibles : montants en pleine longueur (« 866.000.000 MA… » tronqué), page plus large que l'écran sur mobile.", "Élevée", "Corrigé"],
@@ -76,11 +76,11 @@ s1.push(grid(["#", "Constat", "Gravité", "État"], [
   ["11", "Fiche projet : 5 boutons dont 2 doublent les onglets ; indicateurs « Étape » et « Fraîcheur » en très gros texte.", "Faible", "Corrigé"],
   ["12", "Graphique « Répartition par classe » vide sans explication ; icône d'onglet absente (erreur 404).", "Faible", "Corrigé"],
   ["13", "Fiche projet : 10 cartes avant les onglets ; formulaires sans composant commun (30 copies du même style de champ), erreurs non affichées par champ.", "Moyenne", "Corrigé"],
-  ["14", "Pas de pagination côté serveur, d'export de la liste filtrée, ni de notifications d'échéance.", "Moyenne", "Feuille de route"],
+  ["14", "Pas de pagination côté serveur, d'export de la liste filtrée, ni de notifications d'échéance.", "Moyenne", "Export et notifications : corrigé ; pagination : priorité 3"],
 ], [500, 6238, 1200, 1700], { center: [0, 2], color: (i, j, x) => (j === 2 ? sev(x) : j === 3 ? (x === "Corrigé" || x.startsWith("Corrigé") ? OKG : x === "Feuille de route" ? GREY : WARN) : undefined) }));
 s1.push(P("", { after: 60 }));
 s1.push(box("Vérifications", [
-  "370 tests automatiques passent (dont 9 nouveaux : formats, recherche, erreurs de formulaire), contrôle des types et lint sans erreur, build de production réussi.",
+  "380 tests automatiques passent (dont 19 nouveaux : formats, recherche et export, erreurs de formulaire, notifications, conventions d'interface), contrôle des types et lint sans erreur, build de production réussi.",
   "Parcours réel dans le navigateur : pages sans erreur, menu mobile opérationnel au clavier (Échap ferme et rend le focus), lien actif signalé, recherche « residence » → 4 dossiers sur 12, tri par score ; erreur de saisie affichée sous le champ et reliée à celui-ci.",
   "Migrations : une base vide reconstruite par les seules migrations est identique, élément par élément, à la production et à schema.prisma (741 éléments, même empreinte).",
 ], OKG, "E4F2E5"));
@@ -129,16 +129,12 @@ s4.push(bullet([T("Jeu de démonstration (npm run seed) : ", { bold: true }), T(
 s4.push(bullet([T("Migrations (prisma migrate deploy) : ", { bold: true }), T("l'historique ne rejouait pas sur une base vide (la table ProjectEvent n'était créée par aucune migration : des objets avaient été créés en production par « db push »). Corrigé — voir section 6.1.")]));
 
 const s5 = [brk(), H1("5. Feuille de route recommandée")];
-s5.push(P("La priorité 1 a été réalisée (section 6). Restent :"));
+s5.push(P("Les priorités 1 et 2 ont été réalisées (sections 6 et 7). Reste la priorité 3 :"));
 s5.push(grid(["Priorité", "Amélioration", "Pourquoi"], [
-  ["2", "Indicateurs du tableau de bord cliquables vers la liste filtrée (ex. « Scorings à rafraîchir » → /projects?scored=unscored).", "Passer du constat à l'action en un clic."],
-  ["2", "Export CSV / Excel de la liste filtrée.", "Reporting ad hoc sans retraitement."],
-  ["2", "Notifications : revues périodiques échues, conditions de comité arrivant à expiration, alertes v5 déclenchées.", "Suivi proactif du risque."],
-  ["2", "Fenêtres de confirmation intégrées à la place des confirmations du navigateur (suppression de domaine, de critère, de brouillon).", "Cohérence et accessibilité."],
-  ["2", "Étendre les composants de formulaire aux écrans d'administration (constructeur de modèle, référentiels, calibrage) et aux panneaux secondaires.", "Une quinzaine de champs restent au style ancien."],
-  ["3", "Pagination et filtres côté base de données quand le portefeuille dépassera quelques centaines de dossiers.", "Performance."],
-  ["3", "Mode sombre (les tons sémantiques le rendent possible).", "Confort, usage prolongé."],
+  ["3", "Pagination et filtres côté base de données quand le portefeuille dépassera quelques centaines de dossiers (aujourd'hui, la liste est filtrée en mémoire).", "Performance."],
+  ["3", "Mode sombre (les tons sémantiques et les styles de champ centralisés le rendent possible).", "Confort, usage prolongé."],
   ["3", "Tests de bout en bout (Playwright) à partir du banc de captures utilisé pour ce diagnostic.", "Non-régression visuelle et fonctionnelle."],
+  ["3", "Envoi des alertes par e-mail (résumé hebdomadaire par chargé d'affaires).", "Les alertes sont aujourd'hui consultées dans l'application."],
 ], [1000, 4838, 3800], { center: [0] }));
 
 const s5b = [brk(), H1("6. Priorité 1 réalisée")];
@@ -170,6 +166,42 @@ s5b.push(H2("6.3 Fiche projet regroupée"));
 ].forEach((t) => s5b.push(bullet(t)));
 s5b.push(png("p1_fiche.png", 470), caption("Fiche projet : synthèse, actions côte à côte, puis onglets"));
 
+const s7 = [brk(), H1("7. Priorité 2 réalisée")];
+s7.push(H2("7.1 Indicateurs du tableau de bord cliquables"));
+[
+  "Chaque indicateur ouvre la liste correspondante : projets suivis → liste ; exposition → liste triée par crédit ; scorings à rafraîchir → liste filtrée « À rafraîchir » (nouveau filtre) ; provisions et couverture → vue risque ; côté réseau, mes dossiers et dossiers en attente → file de travail.",
+  "Les lignes « Décisions de scoring » ouvrent la liste filtrée par décision ; les barres du graphique par classe BKAM, et des pastilles accessibles au clavier, ouvrent la liste filtrée par classe.",
+].forEach((t) => s7.push(bullet(t)));
+s7.push(H2("7.2 Export de la liste filtrée"));
+[
+  "Boutons « Exporter · Excel » et « CSV » sur la liste des projets (profil autorisé à exporter) : le fichier reprend exactement les lignes affichées, avec les mêmes filtres et le même tri (la page et l'export partagent le même chargement).",
+  "Excel : filtre automatique, formats numériques (montants, scores) ; CSV : séparateur « ; » et encodage lisible par Excel. Chaque export est journalisé.",
+  "Vérifié : liste « À rafraîchir » de 10 dossiers → CSV de 10 lignes.",
+].forEach((t) => s7.push(bullet(t)));
+s7.push(png("p2_export.png", 470), caption("Liste filtrée « À rafraîchir » et boutons d'export"));
+s7.push(H2("7.3 Alertes & échéances"));
+[
+  "Nouvelle page « Alertes & échéances » (menu) et encart sur les tableaux de bord : revues périodiques dépassées ou proches, dossiers jamais scorés, événements survenus depuis le dernier score, décisions de comité expirées ou expirant sous 30 jours (tant que le crédit n'est pas mis en place), alertes déclenchées par le dernier score (dont les alertes v5), événements critiques non résolus, équipements exigés conditionnant la réception à échéance proche ou dépassée.",
+  "Trois niveaux (à traiter en priorité, vigilance, à prévoir), filtres par niveau et par type, et pour chaque alerte un lien « Traiter » vers l'endroit où agir (saisie, journal, onglet du comité, carte Programme).",
+  "Périmètre : un chargé d'affaires voit ses dossiers ; les autres profils voient tout le portefeuille. Règles écrites en fonctions pures, couvertes par 6 tests.",
+  "Sur la base de démonstration : 19 alertes sur 11 dossiers, dont 6 prioritaires (2 événements critiques non résolus, 4 alertes du dernier score).",
+].forEach((t) => s7.push(bullet(t)));
+s7.push(png("p2_dashboard.png", 470), caption("Tableau de bord : indicateurs cliquables et encart des alertes"));
+s7.push(png("p2_alerts.png", 470), caption("Page « Alertes & échéances »"));
+s7.push(H2("7.4 Fenêtres de confirmation intégrées"));
+[
+  "Composant ConfirmButton : fenêtre intégrée et accessible (rôle alertdialog, focus sur « Annuler » par sécurité, fermeture par Échap), à la place des confirmations du navigateur.",
+  "Appliqué : publication et suppression du brouillon de modèle, suppression de domaine, critère, modalité, tranche de barème et alerte (ces quatre dernières se faisaient sans aucune confirmation) ; suppression d'un équipement exigé, d'un jalon de déblocage, d'un lien entre promoteurs ; rejet d'un dossier dans le circuit (le motif saisi est rappelé) ; recalcul du portefeuille (avec l'avertissement sur les données non renseignées).",
+  "Vérifié : la fenêtre s'ouvre avec le focus sur « Annuler », Échap annule sans supprimer, la confirmation supprime.",
+].forEach((t) => s7.push(bullet(t)));
+s7.push(png("p2_confirm.png", 440), caption("Confirmation de suppression d'un équipement exigé"));
+s7.push(H2("7.5 Champs de formulaire harmonisés partout"));
+[
+  "Style de champ centralisé (lib/formStyles.ts) appliqué aux écrans d'administration (constructeur de modèle, référentiels, calibrage, réglages), aux panneaux secondaires (événements, déblocages, révision du business plan, GFA, autorisations, financement des acquéreurs, liens promoteurs, dérogations, analyse IA, import), au stress test et à la connexion.",
+  "Libellé accessible ajouté aux 18 champs qui n'en avaient pas (tableaux d'autorisations et de financement des acquéreurs, planning des déblocages, liens promoteurs, dérogation, commentaire du circuit, documents à analyser, fichier d'import…).",
+  "Garde-fou automatique : un test échoue si une confirmation du navigateur ou un style de champ recopié réapparaît.",
+].forEach((t) => s7.push(bullet(t)));
+
 const s6 = [brk(), H1("Annexe — Fichiers modifiés")];
 s6.push(grid(["Fichier", "Changement"], [
   ["app/layout.tsx, components/AppNav.tsx", "Navigation responsive (barre latérale / tiroir mobile), icônes, lien actif, recherche rapide, lien d'évitement."],
@@ -187,6 +219,11 @@ s6.push(grid(["Fichier", "Changement"], [
   ["components/form.tsx, tests/formErrors.test.ts", "Composants de formulaire communs ; 3 tests."],
   ["components/ProjectForm, PromoterForm, VisitReportForm, CommitteeDecisionForm, ProgrammeV5Card, ScoringWizard", "Formulaires migrés, erreurs par champ, progression de la saisie."],
   ["app/projects/[id]/page.tsx", "Fiche regroupée en onglets ; lien direct vers un onglet."],
+  ["components/ui.tsx (Stat href, Button ref), app/page.tsx, components/PortfolioChart.tsx", "Indicateurs et graphique cliquables ; encart des alertes."],
+  ["server/services/projectList.ts, app/api/export/projects, lib/projectFilters.ts", "Liste et export partagés ; filtre « À rafraîchir »."],
+  ["lib/domain/notifications.ts, server/services/notifications.ts, app/alerts, components/AlertsSummary.tsx", "Alertes & échéances ; 6 tests."],
+  ["components/ConfirmButton.tsx", "Confirmations intégrées : 12 actions dans 6 composants."],
+  ["lib/formStyles.ts, tests/uiConventions.test.ts", "Style de champ unique ; garde-fous."],
 ], [3800, 5838], { boldCols: [] }));
 
 const doc = new Document({
@@ -203,7 +240,7 @@ const doc = new Document({
     properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
     headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 0 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: LIGHT, space: 4 } }, children: [T("Diagnostic design et fonctionnalités", { size: 15, color: GREY })] })] }) },
     footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [T("Page ", { size: 16, color: GREY }), new TextRun({ children: [PageNumber.CURRENT], size: 16, color: GREY, font: "Calibri" }), T(" / ", { size: 16, color: GREY }), new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: GREY, font: "Calibri" })] })] }) },
-    children: [...cover, ...s1, ...s2, ...s3, ...s4, ...s5, ...s5b, ...s6],
+    children: [...cover, ...s1, ...s2, ...s3, ...s4, ...s5, ...s5b, ...s7, ...s6],
   }],
 });
 Packer.toBuffer(doc).then((b) => { fs.writeFileSync(OUT, b); console.log("OK", OUT, b.length); });

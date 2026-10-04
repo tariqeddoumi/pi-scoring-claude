@@ -5,6 +5,7 @@
 // clôture des événements ouverts. Les événements matériels (affectsScoring)
 // déclenchent l'indicateur « score à rafraîchir ».
 
+import { CONTROL } from "@/lib/formStyles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
@@ -59,7 +60,7 @@ export function ProjectEventsPanel({ projectId, timeline, canWrite }: {
     note: "",
   });
 
-  const inp = "rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const inp = CONTROL;
   const set = (k: keyof typeof form) =>
     (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));

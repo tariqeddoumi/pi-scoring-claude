@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
@@ -47,7 +48,7 @@ export function BuyerFinancingPanel(p: Props) {
   const rate = gross > 0 ? (secured / gross) * 100 : 0;
   const missing = committed.filter((r) => !r.financingStatus).length;
 
-  const input = "w-full rounded-md border border-border bg-background px-2 py-1 text-sm";
+  const input = `w-full ${CONTROL_COMPACT}`;
 
   function setRow(id: string, patch: Partial<FinancingUnitRow>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -109,7 +110,7 @@ export function BuyerFinancingPanel(p: Props) {
                     <Td>{r.trancheCode}</Td>
                     <Td>{fmt(r.price)}</Td>
                     <Td>
-                      <select className={input} value={r.financingStatus ?? ""}
+                      <select aria-label={`Financement acquéreur du lot ${r.reference}`} className={input} value={r.financingStatus ?? ""}
                               onChange={(e) => setRow(r.id, { financingStatus: e.target.value || null })}>
                         <option value="">— non renseigné —</option>
                         {p.financingOptions.map((o) => (
@@ -120,7 +121,7 @@ export function BuyerFinancingPanel(p: Props) {
                       </select>
                     </Td>
                     <Td>
-                      <select className={input} value={r.aidScheme ?? ""}
+                      <select aria-label={`Dispositif d'aide du lot ${r.reference}`} className={input} value={r.aidScheme ?? ""}
                               onChange={(e) => setRow(r.id, { aidScheme: e.target.value || null })}>
                         <option value="">—</option>
                         {p.aidOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

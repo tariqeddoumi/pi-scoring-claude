@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
@@ -54,8 +55,8 @@ export function ModelTuningForm({ initial }: { initial: ModelTuningInitial }) {
     }
   }
 
-  const inp = "w-28 rounded-md border border-border bg-background px-2 py-1.5 text-sm";
-  const adj = "w-24 rounded-md border border-border bg-background px-2 py-1.5 text-sm";
+  const inp = `w-28 ${CONTROL_COMPACT}`;
+  const adj = `w-24 ${CONTROL_COMPACT}`;
 
   return (
     <Card>

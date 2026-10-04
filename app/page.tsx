@@ -3,6 +3,9 @@ import { getPortfolioStats, getFrontDashboard, getRescoringQueue } from "@/serve
 import { FRESHNESS_LABELS } from "@/lib/domain/reviewPolicy";
 import { Card, CardContent, CardHeader, CardTitle, Stat, Badge, Table, Th, Td } from "@/components/ui";
 import { PortfolioChart } from "@/components/PortfolioChart";
+import { AlertsSummary } from "@/components/AlertsSummary";
+import { loadNotifications } from "@/server/services/notifications";
+import type { Notification } from "@/lib/domain/notifications";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { formatMAD, formatDate, formatMADCompact, formatDecimal } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
@@ -16,8 +19,8 @@ export const dynamic = "force-dynamic";
 //  Tableau de bord FRONT (chargé d'affaires, directeur de centre, région) :
 //  mes dossiers, dossiers en attente de mon action, pipeline du circuit.
 // ---------------------------------------------------------------------------
-async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
-  userId: string; role: RoleName; roleLabel: string; canCreate: boolean;
+async function FrontDashboard({ userId, role, roleLabel, canCreate, alerts }: {
+  userId: string; role: RoleName; roleLabel: string; canCreate: boolean; alerts: Notification[] | null;
 }) {
   const res = await safe(() => getFrontDashboard(userId, role));
   if (!res.ok) {
@@ -47,12 +50,14 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Stat label="Dossiers en portefeuille" value={totalCount} />
-        <Stat label="Mes dossiers (CA)" value={mine.length} />
+        <Stat label="Dossiers en portefeuille" value={totalCount} href="/projects" />
+        <Stat label="Mes dossiers (CA)" value={mine.length} href="/queue" />
         <Stat label="Mon exposition" value={formatMADCompact(myExposure)} title={formatMAD(myExposure)} />
-        <Stat label="En attente de mon action" value={toProcess.length} />
-        <Stat label="Scorings à rafraîchir" value={rescoreCount} hint="revue périodique / événement" />
+        <Stat label="En attente de mon action" value={toProcess.length} href="/queue" />
+        <Stat label="Scorings à rafraîchir" value={rescoreCount} hint="revue périodique / événement" href="/projects?scored=stale" />
       </div>
+
+      {alerts && <AlertsSummary items={alerts} />}
 
       <Card>
         <CardHeader>
@@ -147,7 +152,7 @@ async function FrontDashboard({ userId, role, roleLabel, canCreate }: {
 // ---------------------------------------------------------------------------
 //  Tableau de bord RISQUE / ADMIN / AUDIT : vue portefeuille (existant).
 // ---------------------------------------------------------------------------
-async function RiskDashboard() {
+async function RiskDashboard({ alerts }: { alerts: Notification[] | null }) {
   const res = await safe(getPortfolioStats);
   if (!res.ok) {
     return (
@@ -175,12 +180,14 @@ async function RiskDashboard() {
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Stat label="Projets suivis" value={total} />
-        <Stat label="Exposition totale" value={formatMADCompact(totalExposure)} title={formatMAD(totalExposure)} />
-        <Stat label="Provisions BKAM" value={formatMADCompact(totalProvision)} title={formatMAD(totalProvision)} />
-        <Stat label="Taux de couverture" value={`${formatDecimal(coverage, 1)} %`} />
-        <Stat label="Scorings à rafraîchir" value={rescoreItems.length} hint="revue périodique / événement" />
+        <Stat label="Projets suivis" value={total} href="/projects" />
+        <Stat label="Exposition totale" value={formatMADCompact(totalExposure)} title={formatMAD(totalExposure)} href="/projects?sort=loanAmount&dir=desc" />
+        <Stat label="Provisions BKAM" value={formatMADCompact(totalProvision)} title={formatMAD(totalProvision)} href="/risk" />
+        <Stat label="Taux de couverture" value={`${formatDecimal(coverage, 1)} %`} href="/risk" />
+        <Stat label="Scorings à rafraîchir" value={rescoreItems.length} hint="revue périodique / événement" href="/projects?scored=stale" />
       </div>
+
+      {alerts && <AlertsSummary items={alerts} />}
 
       {rescoreItems.length > 0 && (
         <Card>
@@ -228,12 +235,12 @@ async function RiskDashboard() {
               <p className="text-sm text-muted-foreground">Aucun scoring exécuté pour l&apos;instant.</p>
             )}
             {Object.entries(byDecision).map(([dec, n]) => (
-              <div key={dec} className="flex items-center justify-between">
+              <Link key={dec} href={`/projects?decision=${dec}`} className="flex items-center justify-between rounded-md px-2 py-1 -mx-2 hover:bg-muted">
                 <Badge className={DECISION_COLORS[dec as keyof typeof DECISION_COLORS]}>
                   {DECISION_LABELS[dec as keyof typeof DECISION_LABELS] ?? dec}
                 </Badge>
-                <span className="font-medium">{n}</span>
-              </div>
+                <span className="font-medium">{n} <span className="sr-only">dossier(s) — voir la liste</span><span aria-hidden="true" className="text-muted-foreground">›</span></span>
+              </Link>
             ))}
           </CardContent>
         </Card>
@@ -280,6 +287,9 @@ export default async function DashboardPage() {
   // pipeline ; le risque / l'admin / l'audit voient la vue portefeuille.
   const user = await getCurrentAppUser();
   const role = (user?.role.name ?? "AUDITOR") as RoleName;
+  // Alertes & échéances (best-effort : ne bloque pas le tableau de bord).
+  const notif = user ? await safe(() => loadNotifications(user)) : null;
+  const alerts = notif && notif.ok ? notif.data : null;
 
   if (user && isFrontRole(role)) {
     return (
@@ -288,8 +298,9 @@ export default async function DashboardPage() {
         role={role}
         roleLabel={user.role.label}
         canCreate={hasPermission(role, PERMISSIONS.PROJECT_WRITE)}
+        alerts={alerts}
       />
     );
   }
-  return <RiskDashboard />;
+  return <RiskDashboard alerts={alerts} />;
 }

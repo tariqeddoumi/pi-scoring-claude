@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
@@ -48,7 +49,7 @@ export function AuthorizationsCard(p: Props) {
     p.releaseQuotity != null ? String(Math.round(p.releaseQuotity * 10000) / 100) : "",
   );
 
-  const input = "w-full rounded-md border border-border bg-background px-2 py-1 text-sm";
+  const input = `w-full ${CONTROL_COMPACT}`;
 
   function setRow(code: string, patch: Partial<AuthorizationRow>) {
     setRows((rs) => rs.map((r) => (r.code === code ? { ...r, ...patch } : r)));
@@ -153,7 +154,7 @@ export function AuthorizationsCard(p: Props) {
                 {rows.map((r) => (
                   <tr key={r.code}>
                     <Td>
-                      <input type="checkbox" checked={r.obtained}
+                      <input type="checkbox" className="h-4 w-4" aria-label={`${r.label} obtenue`} checked={r.obtained}
                              onChange={(e) => setRow(r.code, { obtained: e.target.checked })} />
                     </Td>
                     <Td>
@@ -162,11 +163,11 @@ export function AuthorizationsCard(p: Props) {
                     </Td>
                     <Td>{STAGE_LABELS[r.stage] ?? r.stage}</Td>
                     <Td>
-                      <input type="date" className={input} value={r.obtainedAt ? r.obtainedAt.slice(0, 10) : ""}
+                      <input type="date" aria-label={`Date d'obtention — ${r.label}`} className={input} value={r.obtainedAt ? r.obtainedAt.slice(0, 10) : ""}
                              onChange={(e) => setRow(r.code, { obtainedAt: e.target.value || null })} />
                     </Td>
                     <Td>
-                      <input className={input} value={r.reference ?? ""} placeholder="n° acte"
+                      <input aria-label={`Référence de l'acte — ${r.label}`} className={input} value={r.reference ?? ""} placeholder="n° acte"
                              onChange={(e) => setRow(r.code, { reference: e.target.value || null })} />
                     </Td>
                   </tr>

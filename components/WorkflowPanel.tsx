@@ -1,5 +1,7 @@
 "use client";
 
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { Input } from "@/components/form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
@@ -72,24 +74,38 @@ export function WorkflowPanel({
           </p>
         ) : (
           <>
-            <input
-              type="text"
+            <Input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Commentaire (optionnel)"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              aria-label="Commentaire de la transition"
+              placeholder="Commentaire (optionnel, recommandé pour un renvoi ou un rejet)"
             />
             <div className="flex flex-wrap gap-2">
-              {transitions.map((t) => (
-                <Button
-                  key={t.to}
-                  variant={t.kind === "reject" ? "danger" : t.kind === "rework" ? "outline" : "primary"}
-                  disabled={pending !== null}
-                  onClick={() => onTransition(t.to)}
-                >
-                  {pending === t.to ? "…" : t.label}
-                </Button>
-              ))}
+              {transitions.map((t) =>
+                t.kind === "reject" ? (
+                  // Un rejet clôt le dossier : confirmation explicite.
+                  <ConfirmButton
+                    key={t.to}
+                    variant="danger"
+                    disabled={pending !== null}
+                    title="Rejeter le dossier ?"
+                    description={comment.trim() ? `Motif saisi : « ${comment.trim()} »` : "Aucun commentaire saisi : il est recommandé de motiver le rejet dans le champ ci-dessus."}
+                    confirmLabel="Rejeter le dossier"
+                    onConfirm={() => onTransition(t.to)}
+                  >
+                    {pending === t.to ? "…" : t.label}
+                  </ConfirmButton>
+                ) : (
+                  <Button
+                    key={t.to}
+                    variant={t.kind === "rework" ? "outline" : "primary"}
+                    disabled={pending !== null}
+                    onClick={() => onTransition(t.to)}
+                  >
+                    {pending === t.to ? "…" : t.label}
+                  </Button>
+                ),
+              )}
             </div>
           </>
         )}

@@ -7,10 +7,9 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { CONTROL } from "@/lib/formStyles";
 
-const control =
-  "w-full rounded-md border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground " +
-  "disabled:opacity-60 disabled:cursor-not-allowed aria-[invalid=true]:border-red-500 aria-[invalid=true]:bg-red-50/40";
+const control = `w-full ${CONTROL}`;
 
 export const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className, ...props }, ref) {

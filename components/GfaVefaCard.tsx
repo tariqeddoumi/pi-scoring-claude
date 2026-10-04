@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
@@ -56,7 +57,7 @@ export function GfaVefaCard(p: Props) {
     }
   }
 
-  const input = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const input = `w-full ${CONTROL}`;
 
   return (
     <Card>

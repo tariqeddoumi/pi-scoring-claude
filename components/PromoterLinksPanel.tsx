@@ -3,6 +3,8 @@
 // Panneau des liens entre promoteurs (parties liées) : liste + ajout +
 // suppression. L'application des droits se fait côté serveur (project.write).
 
+import { CONTROL } from "@/lib/formStyles";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -32,7 +34,7 @@ export function PromoterLinksPanel({ promoterId, links, others, canEdit }: {
   const [type, setType] = useState("");
   const [note, setNote] = useState("");
 
-  const inp = "rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const inp = CONTROL;
 
   const submit = () =>
     start(async () => {
@@ -81,9 +83,10 @@ export function PromoterLinksPanel({ promoterId, links, others, canEdit }: {
                   {l.note && <span className="text-muted-foreground"> — {l.note}</span>}
                 </span>
                 {canEdit && (
-                  <Button variant="outline" onClick={() => remove(l.id)} disabled={pending} className="shrink-0">
+                  <ConfirmButton onConfirm={() => remove(l.id)} disabled={pending} className="shrink-0"
+                    title={`Retirer le lien avec ${l.otherName} ?`} description="Le lien est utilisé pour l'exposition du groupe et la division des risques." confirmLabel="Retirer">
                     Retirer
-                  </Button>
+                  </ConfirmButton>
                 )}
               </li>
             ))}
@@ -94,19 +97,20 @@ export function PromoterLinksPanel({ promoterId, links, others, canEdit }: {
           <div className="rounded-md border border-dashed border-border p-3 space-y-2">
             <div className="text-sm font-medium">Déclarer un lien</div>
             <div className="flex flex-wrap gap-2">
-              <select value={type} onChange={(e) => setType(e.target.value)} className={inp}>
+              <select aria-label="Type de lien" value={type} onChange={(e) => setType(e.target.value)} className={inp}>
                 <option value="">— Type de lien —</option>
                 {PROMOTER_LINK_TYPES.items.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
-              <select value={toId} onChange={(e) => setToId(e.target.value)} className={inp}>
+              <select aria-label="Promoteur lié" value={toId} onChange={(e) => setToId(e.target.value)} className={inp}>
                 <option value="">— Promoteur lié —</option>
                 {others.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
+                aria-label="Précision sur le lien"
                 placeholder="Précision (optionnel)"
                 className={`${inp} flex-1 min-w-40`}
               />

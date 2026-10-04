@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getProjectsWithLatestRun } from "@/server/queries";
+import { CONTROL } from "@/lib/formStyles";
+import { loadProjectRows } from "@/server/services/projectList";
 import { Card, CardContent, Table, Th, Td, Badge, Button } from "@/components/ui";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
@@ -16,7 +17,7 @@ import {
 
 export const dynamic = "force-dynamic";
 
-const sel = "rounded-md border border-border bg-background px-2.5 py-2 text-sm min-w-0";
+const sel = `${CONTROL} min-w-0`;
 
 function SortTh({ f, k, children, className }: { f: ProjectFilters; k: SortKey; children: React.ReactNode; className?: string }) {
   const active = f.sort === k;
@@ -32,25 +33,12 @@ function SortTh({ f, k, children, className }: { f: ProjectFilters; k: SortKey; 
 }
 
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const res = await safe(getProjectsWithLatestRun);
+  const res = await safe(loadProjectRows);
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const canWrite = await currentUserCan(PERMISSIONS.PROJECT_WRITE);
+  const canExport = await currentUserCan(PERMISSIONS.EXPORT_RUN);
   const f = parseProjectFilters(await searchParams);
-
-  const rows: ProjectRow[] = res.data.map((p) => ({
-    id: p.id,
-    reference: p.reference,
-    name: p.name,
-    promoter: p.promoter.name,
-    city: p.city,
-    segment: p.segment,
-    loanAmount: p.loanAmount,
-    score: p.scoringRuns[0]?.scoreFinal ?? null,
-    decision: p.scoringRuns[0]?.decision ?? null,
-    regulatoryClass: p.classificationRuns[0]?.resultClass ?? null,
-    state: p.workflowSteps[0]?.toState ?? "DRAFT",
-    updatedAt: p.updatedAt,
-  }));
+  const rows: ProjectRow[] = res.data;
   const list = applyProjectFilters(rows, f);
   const exposure = list.reduce((s, r) => s + (r.loanAmount ?? 0), 0);
   const active = hasActiveFilters(f);
@@ -64,7 +52,22 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             {list.length} dossier(s){active ? ` sur ${rows.length}` : ""} · exposition {formatMADCompact(exposure)}
           </p>
         </div>
-        {canWrite && <Link href="/projects/new"><Button>+ Nouveau projet</Button></Link>}
+        <div className="flex flex-wrap items-center gap-2">
+          {canExport && list.length > 0 && (
+            <>
+              <a href={`/api/export/projects${toQuery({ ...f, format: "xlsx" })}`}
+                className="inline-flex items-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
+                title="Exporte la liste affichée (filtres et tri appliqués)">
+                Exporter · Excel
+              </a>
+              <a href={`/api/export/projects${toQuery({ ...f, format: "csv" })}`}
+                className="inline-flex items-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
+                CSV
+              </a>
+            </>
+          )}
+          {canWrite && <Link href="/projects/new"><Button>+ Nouveau projet</Button></Link>}
+        </div>
       </div>
 
       <Card>
@@ -98,6 +101,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
               <option value="">Scoring</option>
               <option value="scored">Déjà scorés</option>
               <option value="unscored">Jamais scorés</option>
+              <option value="stale">À rafraîchir</option>
             </select>
             <input type="hidden" name="sort" value={f.sort} />
             <input type="hidden" name="dir" value={f.dir} />

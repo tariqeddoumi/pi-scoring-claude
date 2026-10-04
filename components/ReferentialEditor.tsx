@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td } from "@/components/ui";
@@ -34,7 +35,7 @@ export function ReferentialEditor(p: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const input = "w-full rounded-md border border-border bg-background px-2 py-1 text-sm";
+  const input = `w-full ${CONTROL_COMPACT}`;
 
   function startEdit(r: RefRow) {
     setEditing(r.code);

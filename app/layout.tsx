@@ -27,6 +27,7 @@ const NAV_SECTIONS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/", label: "Tableau de bord", perm: PERMISSIONS.PROJECT_READ, icon: "home" },
       { href: "/queue", label: "Mes dossiers", perm: PERMISSIONS.PROJECT_READ, icon: "inbox" },
+      { href: "/alerts", label: "Alertes & échéances", perm: PERMISSIONS.PROJECT_READ, icon: "bell" },
       { href: "/projects", label: "Projets", perm: PERMISSIONS.PROJECT_READ, icon: "folder" },
       { href: "/promoters", label: "Promoteurs", perm: PERMISSIONS.PROJECT_READ, icon: "building" },
       { href: "/groups", label: "Groupes", perm: PERMISSIONS.PROJECT_READ, icon: "users" },

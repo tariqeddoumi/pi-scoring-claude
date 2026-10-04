@@ -21,6 +21,10 @@ describe("Liste des projets : recherche, filtres, tri", () => {
     expect(applyProjectFilters(rows, parseProjectFilters({ decision: "NO_GO", state: "RISK_REVIEW" })).map((r) => r.id)).toEqual(["b"]);
     expect(applyProjectFilters(rows, parseProjectFilters({ scored: "unscored" })).map((r) => r.id)).toEqual(["c"]);
   });
+  it("dossiers à rafraîchir (revue échue ou événement)", () => {
+    const rs = rows.map((r) => ({ ...r, needsRescoring: r.id !== "a" }));
+    expect(applyProjectFilters(rs, parseProjectFilters({ scored: "stale" })).map((r) => r.id)).toEqual(["b", "c"]);
+  });
   it("tri par score décroissant, valeurs absentes en dernier", () => {
     const f = parseProjectFilters({ sort: "score", dir: "desc" });
     expect(applyProjectFilters(rows, f).map((r) => r.id)).toEqual(["a", "b", "c"]);
@@ -32,5 +36,20 @@ describe("Liste des projets : recherche, filtres, tri", () => {
     expect(f.scored).toBe("");
     expect(hasActiveFilters(f)).toBe(false);
     expect(sortHref(parseProjectFilters({ sort: "name", dir: "asc", q: "a" }), "name")).toBe("?q=a&sort=name&dir=desc");
+  });
+});
+
+describe("Export de la liste filtrée", () => {
+  it("mêmes lignes que la liste, libellés lisibles, valeurs absentes vides", async () => {
+    const { projectListTable } = await import("@/lib/projectFilters");
+    const list = applyProjectFilters(rows, parseProjectFilters({ q: "residence", sort: "score", dir: "desc" }));
+    const t = projectListTable(list, {
+      city: (c) => c ?? "—", segment: (c) => c ?? "—", decision: (d) => (d ? `déc:${d}` : ""), cls: (c) => (c ? `cls:${c}` : ""), state: (s) => `étape:${s}`,
+    });
+    expect(t[0]).toContain("Score final");
+    expect(t.slice(1).map((r) => r[0])).toEqual(["PI-001", "PI-002"]);
+    expect(t[1]![6]).toBe(92);
+    expect(t[1]![7]).toBe("déc:GO");
+    expect(t[2]![9]).toBe("étape:RISK_REVIEW");
   });
 });
