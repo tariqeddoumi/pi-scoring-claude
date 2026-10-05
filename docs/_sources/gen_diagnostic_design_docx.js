@@ -53,7 +53,7 @@ const cover = [
   new Paragraph({ spacing: { before: 80 }, alignment: AlignmentType.CENTER, children: [T("Application de scoring des projets de promotion immobilière", { bold: true, size: 28, color: BLUE })] }),
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, border: { top: { style: BorderStyle.SINGLE, size: 12, color: LIGHT, space: 8 } }, children: [T("", { size: 2 })] }),
   new Paragraph({ spacing: { before: 240 }, alignment: AlignmentType.CENTER, children: [T("Ergonomie · mobile · lisibilité · accessibilité · recherche et filtres · mise en place d'un environnement", { italics: true, size: 24, color: GREY })] }),
-  new Paragraph({ spacing: { before: 1400 }, alignment: AlignmentType.CENTER, children: [T("4 octobre 2026 — mis à jour avec la réalisation des priorités 1 et 2", { size: 20, color: GREY })] }),
+  new Paragraph({ spacing: { before: 1400 }, alignment: AlignmentType.CENTER, children: [T("5 octobre 2026 — mis à jour avec la réalisation des priorités 1, 2 et 3", { size: 20, color: GREY })] }),
   brk(),
   new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: "Sommaire" })] }),
   new TableOfContents("Sommaire", { hyperlink: true, headingStyleRange: "1-2" }),
@@ -61,7 +61,7 @@ const cover = [
 ];
 
 const s1 = [H1("1. Synthèse")];
-s1.push(P("L'application a été lancée en local avec les données de démonstration (12 projets) et parcourue écran par écran, sur grand écran (1 440 px) et sur téléphone (390 px). Ce parcours, complété par une revue du code de l'interface, fait ressortir 14 constats. Les 10 plus utiles ont été corrigés, puis les priorités 1 et 2 de la feuille de route ont été réalisées (sections 6 et 7) ; la priorité 3 reste à faire (section 5)."));
+s1.push(P("L'application a été lancée en local avec les données de démonstration (12 projets) et parcourue écran par écran, sur grand écran (1 440 px) et sur téléphone (390 px). Ce parcours, complété par une revue du code de l'interface, fait ressortir 14 constats. Les 10 plus utiles ont été corrigés, puis les trois priorités de la feuille de route ont été réalisées (sections 6, 7 et 8)."));
 s1.push(grid(["#", "Constat", "Gravité", "État"], [
   ["1", "Aucune navigation sur téléphone : le menu latéral disparaît sans être remplacé.", "Critique", "Corrigé"],
   ["2", "Indicateurs illisibles : montants en pleine longueur (« 866.000.000 MA… » tronqué), page plus large que l'écran sur mobile.", "Élevée", "Corrigé"],
@@ -76,7 +76,7 @@ s1.push(grid(["#", "Constat", "Gravité", "État"], [
   ["11", "Fiche projet : 5 boutons dont 2 doublent les onglets ; indicateurs « Étape » et « Fraîcheur » en très gros texte.", "Faible", "Corrigé"],
   ["12", "Graphique « Répartition par classe » vide sans explication ; icône d'onglet absente (erreur 404).", "Faible", "Corrigé"],
   ["13", "Fiche projet : 10 cartes avant les onglets ; formulaires sans composant commun (30 copies du même style de champ), erreurs non affichées par champ.", "Moyenne", "Corrigé"],
-  ["14", "Pas de pagination côté serveur, d'export de la liste filtrée, ni de notifications d'échéance.", "Moyenne", "Export et notifications : corrigé ; pagination : priorité 3"],
+  ["14", "Pas de pagination côté serveur, d'export de la liste filtrée, ni de notifications d'échéance.", "Moyenne", "Corrigé (export, notifications : priorité 2 ; pagination : priorité 3)"],
 ], [500, 6238, 1200, 1700], { center: [0, 2], color: (i, j, x) => (j === 2 ? sev(x) : j === 3 ? (x === "Corrigé" || x.startsWith("Corrigé") ? OKG : x === "Feuille de route" ? GREY : WARN) : undefined) }));
 s1.push(P("", { after: 60 }));
 s1.push(box("Vérifications", [
@@ -128,14 +128,14 @@ s4.push(P("Pour ce diagnostic, une base vierge a été construite. Deux défauts
 s4.push(bullet([T("Jeu de démonstration (npm run seed) : ", { bold: true }), T("il rattachait le premier projet au groupe GRP_ATLAS sans le créer, ce qui faisait échouer l'installation. Corrigé : le groupe est créé avant le projet ; les régions sont écrites en codes, comme en production.")]));
 s4.push(bullet([T("Migrations (prisma migrate deploy) : ", { bold: true }), T("l'historique ne rejouait pas sur une base vide (la table ProjectEvent n'était créée par aucune migration : des objets avaient été créés en production par « db push »). Corrigé — voir section 6.1.")]));
 
-const s5 = [brk(), H1("5. Feuille de route recommandée")];
-s5.push(P("Les priorités 1 et 2 ont été réalisées (sections 6 et 7). Reste la priorité 3 :"));
-s5.push(grid(["Priorité", "Amélioration", "Pourquoi"], [
-  ["3", "Pagination et filtres côté base de données quand le portefeuille dépassera quelques centaines de dossiers (aujourd'hui, la liste est filtrée en mémoire).", "Performance."],
-  ["3", "Mode sombre (les tons sémantiques et les styles de champ centralisés le rendent possible).", "Confort, usage prolongé."],
-  ["3", "Tests de bout en bout (Playwright) à partir du banc de captures utilisé pour ce diagnostic.", "Non-régression visuelle et fonctionnelle."],
-  ["3", "Envoi des alertes par e-mail (résumé hebdomadaire par chargé d'affaires).", "Les alertes sont aujourd'hui consultées dans l'application."],
-], [1000, 4838, 3800], { center: [0] }));
+const s5 = [brk(), H1("5. Feuille de route")];
+s5.push(P("Les trois niveaux de priorité ont été réalisés (sections 6, 7 et 8) :"));
+s5.push(grid(["Priorité", "Amélioration", "Section"], [
+  ["1", "Migrations rejouables sur base vierge ; composants de formulaire communs ; fiche projet regroupée.", "6"],
+  ["2", "Indicateurs cliquables ; export de la liste filtrée ; alertes & échéances ; confirmations intégrées ; champs harmonisés.", "7"],
+  ["3", "Pagination et filtres côté base ; mode sombre ; résumé hebdomadaire des alertes par e-mail ; tests de bout en bout.", "8"],
+], [1000, 7438, 1200], { center: [0, 2] }));
+s5.push(P("Suites possibles, non engagées : préférence individuelle d'abonnement au résumé (nécessite une colonne en base), relais SMTP interne si la banque n'utilise pas de fournisseur d'e-mail externe, index composites (projet, date) sur les runs au-delà de quelques milliers de dossiers.", { before: 120 }));
 
 const s5b = [brk(), H1("6. Priorité 1 réalisée")];
 s5b.push(H2("6.1 Migrations rejouables sur une base vierge"));
@@ -202,6 +202,56 @@ s7.push(H2("7.5 Champs de formulaire harmonisés partout"));
   "Garde-fou automatique : un test échoue si une confirmation du navigateur ou un style de champ recopié réapparaît.",
 ].forEach((t) => s7.push(bullet(t)));
 
+const s8 = [brk(), H1("8. Priorité 3 réalisée")];
+s8.push(H2("8.1 Pagination et filtres exécutés par la base"));
+[
+  "La liste des projets n'est plus chargée entièrement puis filtrée en mémoire : recherche, filtres, tri et pagination sont exécutés par PostgreSQL, en une requête paramétrée (dernier score, dernière classe et étape du circuit obtenus par jointure latérale).",
+  "Recherche insensible aux accents et à la casse, sans extension de base (repli des accents par translate) ; caractères spéciaux de la recherche neutralisés.",
+  "Filtre « À rafraîchir » calculé en SQL avec les règles de la politique de revue : jamais scoré, périodicité de la classe atteinte (365 j sain, 90 j sensible, 30 j au-delà), ou événement matériel / imposant un comité postérieur au dernier score.",
+  "25, 50 ou 100 dossiers par page ; navigation précédente / suivante et numéros de page (liens : fonctionne sans JavaScript) ; une page au-delà de la dernière affiche la dernière. Le nombre de dossiers et l'exposition portent sur tout le filtre.",
+  "L'export Excel / CSV utilise la même requête, sans pagination : il contient toute la liste filtrée.",
+  "Contrôle : 4 tests d'intégration sur une base PostgreSQL réelle vérifient, sur 30 combinaisons de filtres et de tris, que la base renvoie exactement la liste de la définition de référence, que l'indicateur « à rafraîchir » coïncide avec la file de re-scoring, et que les pages enchaînées redonnent la liste complète, sans perte ni doublon. Ils passent sur la base de test (32 dossiers) et sur la base de démonstration.",
+].forEach((t) => s8.push(bullet(t)));
+s8.push(png("p3_pagination.png", 470), caption("Liste des projets, page 2 sur 2 : pagination et choix du nombre de dossiers par page"));
+s8.push(H2("8.2 Mode sombre"));
+[
+  "Toutes les couleurs passent par des variables CSS : les jetons de l'interface (fond, texte, bordure, primaire, danger) et la palette des tons (badges, bandeaux, graphiques). En sombre, l'échelle de chaque teinte est inversée — les fonds clairs deviennent foncés, les textes foncés deviennent clairs — sans modifier les composants.",
+  "Choix « Système / Clair / Sombre » en bas de la barre latérale ; par défaut, l'application suit le réglage de l'appareil. Le choix est conservé (cookie) et rendu directement par le serveur : pas de flash clair au chargement.",
+  "Contrastes vérifiés par test, dans les deux thèmes : texte principal ≥ 7:1, texte secondaire, liens, boutons et tous les tons sémantiques ≥ 4,5:1 (norme WCAG AA). Le texte secondaire du thème clair a été légèrement foncé à cette occasion (4,3:1 → 5,9:1 sur fond gris).",
+  "Graphiques (graduations, axes, infobulles) et bouton « danger » adaptés ; le thème clair est inchangé par ailleurs.",
+].forEach((t) => s8.push(bullet(t)));
+s8.push(png("p3_dark_dashboard.png", 470), caption("Tableau de bord en mode sombre"));
+s8.push(png("p3_dark_fiche.png", 470), caption("Fiche projet en mode sombre"));
+s8.push(png("p3_theme_toggle.png", 200), caption("Sélecteur de thème (barre latérale)"));
+s8.push(png("p3_dark_mobile.png", 220), caption("Liste des projets sur téléphone, en mode sombre"));
+s8.push(H2("8.3 Résumé hebdomadaire des alertes par e-mail"));
+[
+  "Chaque lundi à 8 h (heure de Casablanca), chaque chargé d'affaires actif ayant au moins une alerte sur ses dossiers reçoit un e-mail : alertes classées par gravité, avec pour chacune le dossier, le motif et un lien direct vers l'endroit où agir, puis un bouton vers la page des alertes. Aucun e-mail quand il n'y a rien à signaler ; 40 alertes détaillées au plus, le reste dans l'application.",
+  "Mêmes règles que la page « Alertes & échéances » (une seule source). Contenu en texte brut et HTML, compatible avec les messageries ; tout le contenu saisi est échappé.",
+  "Tâche planifiée Vercel (vercel.json) protégée par un secret (CRON_SECRET, comparaison à temps constant ; sans secret, la tâche est refusée). Envoi par l'API Resend quand RESEND_API_KEY et MAIL_FROM sont renseignés ; sinon, la tâche calcule les résumés sans rien envoyer. Un appel « ?apercu=1 » renvoie le contenu sans envoi. Chaque exécution laisse une trace d'exploitation (nombre de destinataires, d'envois, d'erreurs).",
+  "Page « Résumé hebdomadaire par e-mail » (depuis Alertes) : aperçu exact de l'e-mail de l'utilisateur, et état de la configuration de l'envoi.",
+  "Sur la base de test : 1 chargé d'affaires, 14 alertes sur 10 dossiers. 8 tests couvrent le contenu, l'échappement, la limite, l'appel au fournisseur (succès, refus, panne réseau) et le contrôle du secret.",
+].forEach((t) => s8.push(bullet(t)));
+s8.push(png("p3_digest.png", 380), caption("Aperçu du résumé hebdomadaire d'un chargé d'affaires"));
+s8.push(box("À faire pour activer l'envoi en production", [
+  "Sur Vercel (Project Settings → Environment Variables) : CRON_SECRET (au moins 16 caractères), RESEND_API_KEY, MAIL_FROM (adresse d'un domaine vérifié chez le fournisseur) et, si le domaine diffère du domaine Vercel, APP_URL.",
+  "Sans ces variables, rien n'est envoyé ; la tâche planifiée est refusée tant que CRON_SECRET manque.",
+], WARN, "FFF4E5"));
+s8.push(H2("8.4 Tests de bout en bout"));
+[
+  "13 parcours Playwright dans un navigateur réel, sur grand écran et sur téléphone : pagination et taille de page ; recherche sans accents ; filtre « à rafraîchir » et tri par montant ; export CSV de la liste filtrée (toutes pages) ; création d'un projet avec erreurs sous les champs puis enregistrement ; onglets de la fiche par lien direct ; confirmation du rejet (focus sur « Annuler », Échap annule) ; alertes par gravité ; vue d'un chargé d'affaires et aperçu de son résumé ; tâche planifiée refusée sans secret ; bascule clair / sombre conservée ; menu en tiroir et cartes sur mobile.",
+  "Jeu de test reproductible (scripts/seed-e2e.ts) : 30 dossiers couvrant les segments, villes, décisions, classes, étapes, scores anciens et récents, événements, comités proches de l'expiration et équipements à échéance.",
+  "Connexion de test : identité fixée par E2E_AUTH_EMAIL, changeable par un cookie pour tester un autre profil. Elle n'existe qu'en mode développement : vérifié qu'un build de production lancé avec cette variable renvoie toujours vers la page de connexion.",
+  "Intégration continue : à chaque push, un job rejoue migrations, jeu de démonstration et jeu de test puis lance les tests d'intégration ; un second job lance les 13 parcours et conserve le rapport en cas d'échec.",
+  "Amélioration trouvée par ces tests : l'onglet choisi sur la fiche projet est désormais reporté dans l'adresse (?onglet=…) — le lien copié et le rechargement ouvrent le même onglet.",
+].forEach((t) => s8.push(bullet(t)));
+s8.push(grid(["Suite", "Nombre", "Résultat"], [
+  ["Tests unitaires (vitest)", "405 (+25)", "Tous réussis"],
+  ["Tests d'intégration (PostgreSQL réel)", "4", "Tous réussis"],
+  ["Tests de bout en bout (Playwright)", "13", "Tous réussis"],
+  ["Typage, lint, build de production", "—", "Sans erreur"],
+], [4638, 2000, 3000], { center: [1, 2] }));
+
 const s6 = [brk(), H1("Annexe — Fichiers modifiés")];
 s6.push(grid(["Fichier", "Changement"], [
   ["app/layout.tsx, components/AppNav.tsx", "Navigation responsive (barre latérale / tiroir mobile), icônes, lien actif, recherche rapide, lien d'évitement."],
@@ -224,6 +274,12 @@ s6.push(grid(["Fichier", "Changement"], [
   ["lib/domain/notifications.ts, server/services/notifications.ts, app/alerts, components/AlertsSummary.tsx", "Alertes & échéances ; 6 tests."],
   ["components/ConfirmButton.tsx", "Confirmations intégrées : 12 actions dans 6 composants."],
   ["lib/formStyles.ts, tests/uiConventions.test.ts", "Style de champ unique ; garde-fous."],
+  ["server/services/projectList.ts, lib/projectFilters.ts, app/projects/page.tsx, app/api/export/projects", "Liste filtrée, triée et paginée par la base ; export sur la même requête."],
+  ["tests/integration, vitest.integration.config.ts, scripts/seed-e2e.ts", "Tests d'intégration sur base réelle ; jeu de test de 30 dossiers."],
+  ["lib/themePalette.ts, lib/theme.ts, components/ThemeToggle.tsx, tailwind.config.ts, app/globals.css, app/layout.tsx, tests/theme.test.ts", "Mode sombre, choix du thème, contrôle des contrastes."],
+  ["lib/domain/alertDigest.ts, server/services/alertDigest.ts, server/services/mailer.ts, lib/cronAuth.ts, app/api/cron/alert-digest, app/alerts/resume, vercel.json, tests/alertDigest.test.ts", "Résumé hebdomadaire des alertes par e-mail."],
+  ["playwright.config.ts, tests/e2e, lib/testAuth.ts, middleware.ts, .github/workflows/ci.yml", "Tests de bout en bout, identité de test hors production, jobs CI."],
+  ["components/Tabs.tsx (UrlTabs)", "Onglet de la fiche reporté dans l'adresse."],
 ], [3800, 5838], { boldCols: [] }));
 
 const doc = new Document({
@@ -240,7 +296,7 @@ const doc = new Document({
     properties: { page: { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } } },
     headers: { default: new Header({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, spacing: { after: 0 }, border: { bottom: { style: BorderStyle.SINGLE, size: 4, color: LIGHT, space: 4 } }, children: [T("Diagnostic design et fonctionnalités", { size: 15, color: GREY })] })] }) },
     footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.CENTER, children: [T("Page ", { size: 16, color: GREY }), new TextRun({ children: [PageNumber.CURRENT], size: 16, color: GREY, font: "Calibri" }), T(" / ", { size: 16, color: GREY }), new TextRun({ children: [PageNumber.TOTAL_PAGES], size: 16, color: GREY, font: "Calibri" })] })] }) },
-    children: [...cover, ...s1, ...s2, ...s3, ...s4, ...s5, ...s5b, ...s7, ...s6],
+    children: [...cover, ...s1, ...s2, ...s3, ...s4, ...s5, ...s5b, ...s7, ...s8, ...s6],
   }],
 });
 Packer.toBuffer(doc).then((b) => { fs.writeFileSync(OUT, b); console.log("OK", OUT, b.length); });
