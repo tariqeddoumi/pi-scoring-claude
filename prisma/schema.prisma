@@ -379,6 +379,7 @@ model RealEstateProject {
   workflowSteps          WorkflowStep[]
   comments               Comment[]
   attachments            Attachment[]
+  dossierPieces          DossierPiece[]
   committeeDecisions     CommitteeDecision[]
   tranches               Tranche[]
   authorizations         ProjectAuthorization[]
@@ -1235,6 +1236,30 @@ model Attachment {
   sizeBytes Int?
   section   String?
   createdAt DateTime          @default(now())
+
+  @@index([projectId])
+}
+
+// Pièce du dossier de crédit : reçue (lue par l'IA, classée d'après son nom ou
+// déclarée à la main) ou sans objet pour ce dossier. Le fichier n'est pas
+// conservé : seuls le type, le résumé et les valeurs lues (avec page et
+// citation) sont gardés.
+model DossierPiece {
+  id           String            @id @default(cuid())
+  projectId    String
+  project      RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  docType      String
+  status       String            @default("RECU") // RECU | NON_APPLICABLE
+  fileName     String?
+  source       String            @default("manuel") // ia | nom | manuel
+  title        String?
+  issuer       String?
+  documentDate String?
+  summary      String?
+  attention    Json?
+  extracted    Json?
+  createdById  String?
+  createdAt    DateTime          @default(now())
 
   @@index([projectId])
 }
