@@ -56,7 +56,7 @@ test("filtre les scores à rafraîchir et trie par montant", async ({ page }) =>
   await expect(page).toHaveURL(/sort=loanAmount&dir=desc/);
   await expect(page).toHaveURL(/scored=stale/);
   // Attendre le rendu de la liste triée (l'état de chargement remplace le tableau pendant la navigation).
-  await expect(page.getByRole("link", { name: /Crédit/ })).toHaveAttribute("aria-sort", "descending");
+  await expect(page.getByRole("columnheader", { name: /Crédit/ })).toHaveAttribute("aria-sort", "descending");
   await expect(tableRows(page)).toHaveCount(Math.min(stale.total, 25));
   const amounts = await page.locator("table tbody tr td:nth-child(5) span[title]").evaluateAll((els) =>
     els.map((e) => Number((e.getAttribute("title") ?? "").replace(/\D/g, "")) || 0));

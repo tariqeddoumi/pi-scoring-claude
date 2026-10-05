@@ -111,9 +111,14 @@ export function Table({ children, className }: { children: React.ReactNode; clas
   );
 }
 
-export function Th({ children, className }: { children?: React.ReactNode; className?: string }) {
+export function Th({ children, className, "aria-sort": ariaSort }: {
+  children?: React.ReactNode;
+  className?: string;
+  /** Sens du tri de la colonne (exposé par l'en-tête de colonne, pas par le lien qu'il contient). */
+  "aria-sort"?: "ascending" | "descending" | "none" | "other";
+}) {
   return (
-    <th className={cn("text-left font-medium text-muted-foreground px-3 py-2 border-b border-border", className)}>
+    <th aria-sort={ariaSort} className={cn("text-left font-medium text-muted-foreground px-3 py-2 border-b border-border", className)}>
       {children}
     </th>
   );

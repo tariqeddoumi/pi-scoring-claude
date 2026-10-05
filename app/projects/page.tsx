@@ -22,9 +22,8 @@ const sel = `${CONTROL} min-w-0`;
 function SortTh({ f, k, children, className }: { f: ProjectFilters; k: SortKey; children: React.ReactNode; className?: string }) {
   const active = f.sort === k;
   return (
-    <Th className={className}>
-      <Link href={`/projects${sortHref(f, k)}`} className="inline-flex items-center gap-1 hover:text-foreground"
-        aria-sort={active ? (f.dir === "asc" ? "ascending" : "descending") : undefined}>
+    <Th className={className} aria-sort={active ? (f.dir === "asc" ? "ascending" : "descending") : undefined}>
+      <Link href={`/projects${sortHref(f, k)}`} className="inline-flex items-center gap-1 hover:text-foreground">
         {children}
         <span aria-hidden="true" className={active ? "text-foreground" : "opacity-30"}>{active && f.dir === "asc" ? "▲" : "▼"}</span>
       </Link>

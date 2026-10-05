@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import type { ThemePreference } from "@/lib/theme";
@@ -54,10 +54,12 @@ function isActive(pathname: string, href: string) {
 }
 
 function SearchBox({ onDone }: { onDone?: () => void }) {
+  // Identifiant unique : la barre latérale et le tiroir mobile peuvent être montés ensemble.
+  const id = useId();
   return (
     <form action="/projects" method="get" role="search" onSubmit={() => onDone?.()} className="px-3">
-      <label htmlFor="recherche-globale" className="sr-only">Rechercher un dossier</label>
-      <input id="recherche-globale" name="q" type="search" placeholder="Rechercher un dossier…"
+      <label htmlFor={id} className="sr-only">Rechercher un dossier</label>
+      <input id={id} name="q" type="search" placeholder="Rechercher un dossier…"
         className="w-full rounded-md border border-border bg-muted/60 px-3 py-1.5 text-sm placeholder:text-muted-foreground focus:bg-background" />
     </form>
   );
