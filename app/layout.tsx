@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import "./globals.css";
 import { getCurrentAppUser } from "@/lib/supabase/server";
 import { hasPermission, isFrontRole, PERMISSIONS, type PermissionCode, type RoleName } from "@/lib/rbac";
 import { AppNav, type IconName } from "@/components/AppNav";
 import { APP_NAME, APP_NAME_SHORT, APP_TAGLINE, APP_LOGO_URL } from "@/lib/appConfig";
+import { THEME_COOKIE, parseThemePreference, themeAttribute } from "@/lib/theme";
 
 export const metadata: Metadata = {
   title: APP_NAME,
@@ -75,10 +77,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // applicatif pour afficher son identité et la déconnexion. Hors session
   // (page /login), on rend un shell minimal sans navigation.
   const user = await getCurrentAppUser();
+  // Thème choisi (cookie) rendu côté serveur ; sans choix, le CSS suit le système.
+  const theme = parseThemePreference((await cookies()).get(THEME_COOKIE)?.value);
 
   if (!user) {
     return (
-      <html lang="fr">
+      <html lang="fr" data-theme={themeAttribute(theme)}>
         <body>{children}</body>
       </html>
     );
@@ -103,7 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   );
 
   return (
-    <html lang="fr">
+    <html lang="fr" data-theme={themeAttribute(theme)}>
       <body>
         <a href="#contenu" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:shadow">
           Aller au contenu
@@ -111,7 +115,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <div className="min-h-screen md:flex">
           <AppNav
             sections={visibleSections(user.role.name as RoleName)}
-            user={{ name: user.name, email: user.email, role: user.role.label }}
+            user={{ name: user.name, email: user.email, role: user.role.label, theme }}
             brand={brand}
             brandCompact={brandCompact}
           />

@@ -43,7 +43,7 @@ export function Checkbox({ label, hint, className, ...props }: React.InputHTMLAt
   const hintId = hint ? `${id}-aide` : undefined;
   return (
     <div className={cn("flex items-start gap-2 text-sm", className)}>
-      <input id={id} type="checkbox" aria-describedby={hintId} className="mt-0.5 h-4 w-4 rounded border-border accent-[hsl(221_83%_53%)]" {...props} />
+      <input id={id} type="checkbox" aria-describedby={hintId} className="mt-0.5 h-4 w-4 rounded border-border accent-primary" {...props} />
       <div>
         <label htmlFor={id} className="cursor-pointer">{label}</label>
         {hint && <p id={hintId} className="text-xs text-muted-foreground">{hint}</p>}

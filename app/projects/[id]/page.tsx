@@ -8,7 +8,7 @@ import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS } from "@/lib/wizardFields";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
+import { UrlTabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
 import { OverridePanel, type OverrideRow } from "@/components/OverridePanel";
@@ -41,6 +41,7 @@ const TAB_SLUGS: Record<string, string> = {
   programme: "Programme", "cash-flow": "Cash-flow", garanties: "Garanties", classification: "Classification BKAM",
   risque: "Risque & provision", scoring: "Scoring",
 };
+const SLUG_OF_TAB = Object.fromEntries(Object.entries(TAB_SLUGS).map(([slug, tab]) => [tab, slug]));
 
 const TABS = [
   "Identification", "Circuit & comité", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
@@ -239,7 +240,7 @@ export default async function ProjectDetailPage({ params, searchParams }: {
         <CommitteeDecisionForm projectId={p.id} />
       )}
 
-      <Tabs key={initialTab} defaultValue={initialTab} id="onglets" className="scroll-mt-20">
+      <UrlTabs key={initialTab} defaultValue={initialTab} param="onglet" slugs={SLUG_OF_TAB} id="onglets" className="scroll-mt-20">
         <TabsList>
           {TABS.map((t) => <TabsTrigger key={t} value={t}>{t}</TabsTrigger>)}
         </TabsList>
@@ -691,7 +692,7 @@ export default async function ProjectDetailPage({ params, searchParams }: {
             </CardContent></Card>
           </div>
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

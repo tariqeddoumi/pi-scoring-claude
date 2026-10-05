@@ -9,10 +9,12 @@ import { usePathname } from "next/navigation";
 import * as Dialog from "@radix-ui/react-dialog";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "@/components/ThemeToggle";
+import type { ThemePreference } from "@/lib/theme";
 
 export interface NavLink { href: string; label: string; icon: IconName }
 export interface NavSection { title: string; items: NavLink[] }
-export interface NavUser { name: string; email: string; role: string }
+export interface NavUser { name: string; email: string; role: string; theme: ThemePreference }
 
 export type IconName =
   | "home" | "inbox" | "folder" | "building" | "users" | "shield" | "trend" | "bolt" | "gauge"
@@ -92,6 +94,7 @@ function NavBody({ sections, user, brand, onNavigate }: {
       <div className="p-4 border-t border-border space-y-2">
         <div className="text-sm font-medium leading-tight">{user.name}</div>
         <div className="text-xs text-muted-foreground break-all">{user.email} · {user.role}</div>
+        <ThemeToggle initial={user.theme} />
         <form action="/auth/signout" method="post">
           <button type="submit" className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
             Se déconnecter

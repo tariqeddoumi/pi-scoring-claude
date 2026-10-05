@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { TEST_USER_COOKIE, testAuthEmail } from "@/lib/testAuth";
 
 // Client Supabase côté serveur (App Router) — lecture de session via cookies.
 // Sert de socle à l'authentification ; le RBAC applicatif reste géré par
@@ -37,9 +38,9 @@ export async function createClient() {
  */
 export async function getCurrentAppUser() {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase.auth.getUser();
-    const email = data.user?.email;
+    // Identité de test (hors production uniquement, cf. lib/testAuth.ts).
+    const testEmail = testAuthEmail((await cookies()).get(TEST_USER_COOKIE)?.value);
+    const email = testEmail ?? (await (await createClient()).auth.getUser()).data.user?.email;
     if (!email) return null;
     const { prisma } = await import("@/lib/prisma");
     const user = await prisma.user.findUnique({ where: { email }, include: { role: true } });

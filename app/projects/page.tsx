@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CONTROL } from "@/lib/formStyles";
-import { loadProjectRows } from "@/server/services/projectList";
+import { loadProjectPage } from "@/server/services/projectList";
 import { Card, CardContent, Table, Th, Td, Badge, Button } from "@/components/ui";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
@@ -11,8 +11,8 @@ import { WORKFLOW_LABELS, type WorkflowStateName } from "@/lib/workflow";
 import { SEGMENTS, CITIES } from "@/lib/domain/referentiels";
 import type { Decision, RegulatoryClassCode } from "@/lib/domain/types";
 import {
-  applyProjectFilters, hasActiveFilters, parseProjectFilters, sortHref, toQuery,
-  type ProjectFilters, type ProjectRow, type SortKey,
+  hasActiveFilters, pageHref, pageWindow, parseProjectFilters, sortHref, toQuery,
+  DEFAULT_PAGE_SIZE, PAGE_SIZES, type ProjectFilters, type SortKey,
 } from "@/lib/projectFilters";
 
 export const dynamic = "force-dynamic";
@@ -32,16 +32,48 @@ function SortTh({ f, k, children, className }: { f: ProjectFilters; k: SortKey; 
   );
 }
 
+/** Navigation entre les pages et taille de page (liens : fonctionne sans JavaScript). */
+function Pager({ f, page, pageCount, total }: { f: ProjectFilters; page: number; pageCount: number; total: number }) {
+  const link = "inline-flex min-w-9 items-center justify-center rounded-md px-2.5 py-1.5 text-sm";
+  const sizes = total > PAGE_SIZES[0] && (
+    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+      <span>Par page :</span>
+      {PAGE_SIZES.map((n) => n === f.size
+        ? <span key={n} aria-current="true" className="rounded px-1.5 py-0.5 font-semibold text-foreground">{n}</span>
+        : <Link key={n} href={`/projects${toQuery({ ...f, size: n, page: 1 })}`} aria-label={`${n} dossiers par page`} className="rounded px-1.5 py-0.5 hover:bg-muted hover:text-foreground">{n}</Link>)}
+    </div>
+  );
+  if (pageCount <= 1) return sizes ? <div className="flex justify-end">{sizes}</div> : null;
+  return (
+    <div className="flex flex-col items-center gap-2 sm:flex-row sm:justify-between">
+    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-center gap-1">
+      {page > 1
+        ? <Link href={`/projects${pageHref(f, page - 1)}`} rel="prev" className={`${link} hover:bg-muted`}>← Précédente</Link>
+        : <span className={`${link} text-muted-foreground opacity-50`} aria-hidden="true">← Précédente</span>}
+      {pageWindow(page, pageCount).map((n, i) => n == null
+        ? <span key={`e${i}`} className={`${link} text-muted-foreground`} aria-hidden="true">…</span>
+        : n === page
+          ? <span key={n} aria-current="page" className={`${link} bg-primary font-semibold text-primary-foreground`}>{n}</span>
+          : <Link key={n} href={`/projects${pageHref(f, n)}`} aria-label={`Page ${n}`} className={`${link} hover:bg-muted`}>{n}</Link>)}
+      {page < pageCount
+        ? <Link href={`/projects${pageHref(f, page + 1)}`} rel="next" className={`${link} hover:bg-muted`}>Suivante →</Link>
+        : <span className={`${link} text-muted-foreground opacity-50`} aria-hidden="true">Suivante →</span>}
+    </nav>
+    {sizes}
+    </div>
+  );
+}
+
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const res = await safe(loadProjectRows);
+  const f = parseProjectFilters(await searchParams);
+  const res = await safe(() => loadProjectPage(f));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const canWrite = await currentUserCan(PERMISSIONS.PROJECT_WRITE);
   const canExport = await currentUserCan(PERMISSIONS.EXPORT_RUN);
-  const f = parseProjectFilters(await searchParams);
-  const rows: ProjectRow[] = res.data;
-  const list = applyProjectFilters(rows, f);
-  const exposure = list.reduce((s, r) => s + (r.loanAmount ?? 0), 0);
+  const { rows: list, total, all, exposure, page, pageCount, from, to } = res.data;
   const active = hasActiveFilters(f);
+  // L'export reprend les filtres et le tri, pas la page : il contient toute la liste.
+  const exportQuery = (format: "csv" | "xlsx") => toQuery({ ...f, page: 1, size: undefined, format });
 
   return (
     <div className="space-y-4">
@@ -49,18 +81,19 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
         <div>
           <h1 className="text-2xl font-bold">Projets de promotion immobilière</h1>
           <p className="text-sm text-muted-foreground">
-            {list.length} dossier(s){active ? ` sur ${rows.length}` : ""} · exposition {formatMADCompact(exposure)}
+            {total} dossier(s){active ? ` sur ${all}` : ""} · exposition {formatMADCompact(exposure)}
+            {pageCount > 1 && <> · {from}–{to} affichés</>}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canExport && list.length > 0 && (
+          {canExport && total > 0 && (
             <>
-              <a href={`/api/export/projects${toQuery({ ...f, format: "xlsx" })}`}
+              <a href={`/api/export/projects${exportQuery("xlsx")}`}
                 className="inline-flex items-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted"
                 title="Exporte la liste affichée (filtres et tri appliqués)">
                 Exporter · Excel
               </a>
-              <a href={`/api/export/projects${toQuery({ ...f, format: "csv" })}`}
+              <a href={`/api/export/projects${exportQuery("csv")}`}
                 className="inline-flex items-center rounded-md border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-muted">
                 CSV
               </a>
@@ -105,9 +138,10 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
             </select>
             <input type="hidden" name="sort" value={f.sort} />
             <input type="hidden" name="dir" value={f.dir} />
+            {f.size !== DEFAULT_PAGE_SIZE && <input type="hidden" name="size" value={f.size} />}
             <div className="flex gap-2">
               <Button type="submit">Filtrer</Button>
-              {active && <Link href={`/projects${toQuery({ sort: f.sort, dir: f.dir })}`} className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted">Effacer</Link>}
+              {active && <Link href={`/projects${toQuery({ sort: f.sort, dir: f.dir, size: f.size })}`} className="inline-flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-muted">Effacer</Link>}
             </div>
           </form>
         </CardContent>
@@ -115,7 +149,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
       {list.length === 0 ? (
         <Card><CardContent className="py-12 text-center">
-          <p className="font-medium">{rows.length === 0 ? "Aucun projet pour l'instant." : "Aucun dossier ne correspond à ces critères."}</p>
+          <p className="font-medium">{all === 0 ? "Aucun projet pour l'instant." : "Aucun dossier ne correspond à ces critères."}</p>
           {active && <Link href="/projects" className="mt-2 inline-block text-sm text-primary hover:underline">Afficher tous les projets</Link>}
         </CardContent></Card>
       ) : (
@@ -159,7 +193,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                     <SortTh f={f} k="loanAmount" className="text-right">Crédit</SortTh>
                     <SortTh f={f} k="score" className="text-right">Score</SortTh>
                     <Th>Classe</Th><Th>Décision</Th><Th>Étape</Th>
-                    <SortTh f={f} k="updatedAt" className="hidden xl:table-cell">Mis à jour</SortTh>
+                    <SortTh f={f} k="updatedAt" className="hidden 2xl:table-cell">Mis à jour</SortTh>
                   </tr>
                 </thead>
                 <tbody>
@@ -174,13 +208,14 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
                       <Td>{r.regulatoryClass ? <Badge className={CLASS_COLORS[r.regulatoryClass as RegulatoryClassCode]}>{CLASS_LABELS[r.regulatoryClass as RegulatoryClassCode]}</Badge> : "—"}</Td>
                       <Td>{r.decision ? <Badge className={DECISION_COLORS[r.decision as Decision]}>{DECISION_LABELS[r.decision as Decision]}</Badge> : <span className="text-xs text-muted-foreground">non scoré</span>}</Td>
                       <Td className="whitespace-nowrap"><Badge className={WORKFLOW_STATE_COLORS[r.state as WorkflowStateName]}>{WORKFLOW_LABELS[r.state as WorkflowStateName] ?? r.state}</Badge></Td>
-                      <Td className="hidden xl:table-cell whitespace-nowrap text-muted-foreground">{formatDate(r.updatedAt)}</Td>
+                      <Td className="hidden 2xl:table-cell whitespace-nowrap text-muted-foreground">{formatDate(r.updatedAt)}</Td>
                     </tr>
                   ))}
                 </tbody>
               </Table>
             </CardContent>
           </Card>
+          <Pager f={f} page={page} pageCount={pageCount} total={total} />
         </>
       )}
     </div>

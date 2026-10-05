@@ -4,7 +4,7 @@ import { PERMISSIONS } from "@/lib/rbac";
 import { securityEvent } from "@/lib/securityLog";
 import { toCsv } from "@/server/export";
 import { loadProjectRows } from "@/server/services/projectList";
-import { applyProjectFilters, parseProjectFilters, projectListTable } from "@/lib/projectFilters";
+import { parseProjectFilters, projectListTable } from "@/lib/projectFilters";
 import { CLASS_LABELS, DECISION_LABELS } from "@/lib/labels";
 import { WORKFLOW_LABELS, type WorkflowStateName } from "@/lib/workflow";
 import { CITIES, SEGMENTS } from "@/lib/domain/referentiels";
@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 
 /**
  * Export de la liste des projets avec les mêmes filtres et le même tri que la
- * page /projects (paramètres d'URL identiques). ?format=xlsx (défaut) ou csv.
+ * page /projects (paramètres d'URL identiques), toutes pages confondues.
+ * ?format=xlsx (défaut) ou csv.
  * Réservé à export.run.
  */
 export async function GET(req: Request) {
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
   securityEvent("export", { actorId: actor.id, role: actor.role.name, resource: `projects_${format}` });
 
   try {
-    const rows = applyProjectFilters(await loadProjectRows(), f);
+    const rows = await loadProjectRows(f);
     const table = projectListTable(rows, {
       city: (c) => (c ? CITIES.labelOf(c) : ""),
       segment: (c) => (c ? SEGMENTS.labelOf(c) : ""),
