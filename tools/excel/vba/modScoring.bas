@@ -52,7 +52,7 @@ Public Sub Journaliser(ByVal dossier As String, ByVal res As Variant)
     Dim ws As Worksheet
     Dim r As Long
     Set ws = ThisWorkbook.Worksheets("Historique")
-    r = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row + 1
+    r = DerniereLigne(ws, 1) + 1
     If r < 5 Then r = 5
     ws.Cells(r, 1).Value = Now
     ws.Cells(r, 1).NumberFormat = "dd/mm/yyyy hh:mm:ss"
@@ -60,7 +60,7 @@ Public Sub Journaliser(ByVal dossier As String, ByVal res As Variant)
     ws.Cells(r, 3).Value = dossier
     ws.Cells(r, 4).Value = NomPlage("P_Version").Value
     ws.Cells(r, 5).Value = res(0)
-    ws.Cells(r, 6).Value = res(1)
+    ws.Cells(r, 6).Value = LibelleDecision(res(1))
     ws.Cells(r, 7).Value = res(2)
     ws.Cells(r, 8).Value = res(3)
     ws.Cells(r, 9).Value = res(4)
@@ -72,16 +72,16 @@ Public Sub ScorerDossier()
     Application.Calculate
     res = LireResultat()
     Journaliser CStr(ThisWorkbook.Worksheets("Saisie").Range("C4").Value), res
-    ThisWorkbook.Worksheets("Resultat").Activate
+    ThisWorkbook.Worksheets("Fiche").Activate
     Dim txt As String
-    txt = "Decision : " & res(1) & vbCrLf & "Score final : " & Format(res(0), "0.00") & vbCrLf & _
-          "Classe interne : " & res(2) & vbCrLf & "Malus D5 : " & res(3) & vbCrLf & _
+    txt = FR("D~ecision : ") & LibelleDecision(res(1)) & vbCrLf & "Score final : " & Format(res(0), "0.00") & vbCrLf & _
+          "Classe interne : " & res(2) & vbCrLf & "Malus des alertes : " & res(3) & vbCrLf & _
           "Dossier complet : " & res(4)
-    If Len(CStr(res(13))) > 0 Then txt = txt & vbCrLf & vbCrLf & "Donnees manquantes : " & res(13)
-    If Len(CStr(res(14))) > 0 Then txt = txt & vbCrLf & vbCrLf & "Conditions : " & res(14)
-    If Len(CStr(res(12))) > 0 Then txt = txt & vbCrLf & vbCrLf & "Alertes : " & res(12)
-    If EstVrai(NomPlage("Res_Comite").Value2) Then txt = txt & vbCrLf & vbCrLf & "Retour en comite requis."
-    MsgBox txt, vbInformation, "Scoring - modele " & CStr(NomPlage("P_Version").Value)
+    If Len(CStr(res(13))) > 0 Then txt = txt & vbCrLf & vbCrLf & FR("Donn~ees manquantes : ") & res(13)
+    If Len(CStr(res(14))) > 0 Then txt = txt & vbCrLf & vbCrLf & FR("Conditions ~a lever : ") & res(14)
+    If Len(CStr(NomPlage("Res_AlertesLib").Value)) > 0 Then txt = txt & vbCrLf & vbCrLf & FR("Alertes : ") & NomPlage("Res_AlertesLib").Value
+    If EstVrai(NomPlage("Res_Comite").Value2) Then txt = txt & vbCrLf & vbCrLf & FR("Retour en comit~e requis.")
+    MsgBox txt, vbInformation, FR("Scoring - mod~ele ") & CStr(NomPlage("P_Version").Value)
 End Sub
 
 ' Score toutes les lignes de l'onglet Portefeuille. L'onglet Saisie est restaure a la fin.
@@ -97,9 +97,9 @@ Public Sub ScorerPortefeuille()
         Exit Sub
     End If
     colRes = 6 + nCles
-    dern = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    dern = DerniereLigne(ws, 1)
     If dern < 5 Then
-        MsgBox "Aucun dossier a scorer (reference en colonne A a partir de la ligne 5).", vbInformation
+        MsgBox FR("Aucun dossier ~a scorer (r~ef~erence en colonne A ~a partir de la ligne 5)."), vbInformation
         Exit Sub
     End If
     calcInitial = Application.Calculation
@@ -107,14 +107,13 @@ Public Sub ScorerPortefeuille()
     On Error GoTo Fin
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
+    CalculateursActifs False
     For r = 5 To dern
         If Len(CStr(ws.Cells(r, 1).Value)) > 0 Then
             ChargerLigne ws, r, nCles
             Application.Calculate
             res = LireResultat()
-            For i = 0 To 14
-                ws.Cells(r, colRes + i).Value = res(i)
-            Next i
+            EcrireResultat ws, r, colRes, res
             Journaliser CStr(ws.Cells(r, 1).Value), res
             nb = nb + 1
         End If
@@ -123,6 +122,7 @@ Fin:
     Dim erreur As String
     erreur = Err.Description
     On Error Resume Next
+    CalculateursActifs True
     RestaurerSaisie
     Application.Calculation = calcInitial
     Application.Calculate
@@ -131,7 +131,7 @@ Fin:
     If Len(erreur) > 0 Then
         MsgBox "Traitement interrompu : " & erreur, vbCritical
     Else
-        MsgBox nb & " dossier(s) score(s). Resultats a droite du tableau.", vbInformation, "Portefeuille"
+        MsgBox nb & FR(" dossier(s) scor~e(s). R~esultats ~a droite du tableau."), vbInformation, "Portefeuille"
     End If
 End Sub
 
@@ -149,12 +149,13 @@ Public Sub ExecuterAutotests()
         Exit Sub
     End If
     c0 = 6 + nCles                                   ' 1re colonne "Attendu"
-    dern = ws.Cells(ws.Rows.Count, 1).End(xlUp).Row
+    dern = DerniereLigne(ws, 1)
     calcInitial = Application.Calculation
     SauvegarderSaisie
     On Error GoTo Fin
     Application.ScreenUpdating = False
     Application.Calculation = xlCalculationManual
+    CalculateursActifs False
     For r = 5 To dern
         If Len(CStr(ws.Cells(r, 1).Value)) > 0 Then
             nTot = nTot + 1
@@ -178,6 +179,7 @@ Fin:
     Dim erreur As String
     erreur = Err.Description
     On Error Resume Next
+    CalculateursActifs True
     RestaurerSaisie
     Application.Calculation = calcInitial
     Application.Calculate
@@ -186,7 +188,7 @@ Fin:
     If Len(erreur) > 0 Then
         MsgBox "Autotests interrompus : " & erreur, vbCritical
     Else
-        MsgBox nOk & " / " & nTot & " cas conformes.", IIf(nOk = nTot, vbInformation, vbExclamation), "Autotests du modele"
+        MsgBox nOk & " / " & nTot & " cas conformes.", IIf(nOk = nTot, vbInformation, vbExclamation), FR("Autotests du mod~ele")
     End If
 End Sub
 
@@ -226,8 +228,8 @@ End Function
 ' Nouveau dossier : vide la saisie et les calculateurs apres confirmation.
 ' Les parametres de l'etablissement (fonds propres, limites) sont conserves.
 Public Sub NouveauDossier()
-    If MsgBox("Vider le dossier en cours (saisie et calculateurs) ?" & vbCrLf & _
-              "Le journal et les parametres ne sont pas modifies.", vbYesNo + vbQuestion, "Nouveau dossier") <> vbYes Then Exit Sub
+    If MsgBox(FR("Vider le dossier en cours (saisie et calculateurs) ?") & vbCrLf & _
+              FR("Le portefeuille, le journal et les param~etres ne sont pas modifi~es."), vbYesNo + vbQuestion, "Nouveau dossier") <> vbYes Then Exit Sub
     ViderDossier
     ThisWorkbook.Worksheets("Saisie").Activate
     ThisWorkbook.Worksheets("Saisie").Range("C4").Select
@@ -245,5 +247,18 @@ Public Sub ViderDossier()
         NomPlage(CStr(noms(i))).ClearContents
     Next i
     ThisWorkbook.Worksheets("Calculateurs").Range("B5").Value = "CONSTRUCTION"
+    CalculateursActifs True
     Application.Calculate
+End Sub
+
+' Ecrit les colonnes de resultat d'une ligne de portefeuille (decision en clair).
+Public Sub EcrireResultat(ByVal ws As Worksheet, ByVal r As Long, ByVal colRes As Long, ByVal res As Variant)
+    Dim i As Long
+    For i = 0 To 14
+        If i = 1 Then
+            ws.Cells(r, colRes + i).Value = LibelleDecision(res(i))
+        Else
+            ws.Cells(r, colRes + i).Value = res(i)
+        End If
+    Next i
 End Sub

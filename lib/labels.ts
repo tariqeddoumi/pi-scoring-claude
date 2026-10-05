@@ -1,6 +1,8 @@
 // Libellés métier centralisés (FR) pour une UX claire et cohérente.
 
 import type { Decision, RegulatoryClassCode, Severity } from "./domain/types";
+import { TONE } from "@/lib/tones";
+import type { WorkflowStateName } from "@/lib/workflow";
 
 export const DECISION_LABELS: Record<Decision, string> = {
   GO: "Favorable (GO)",
@@ -11,10 +13,10 @@ export const DECISION_LABELS: Record<Decision, string> = {
 };
 
 export const DECISION_COLORS: Record<Decision, string> = {
-  GO: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  GO_WITH_CONDITIONS: "bg-lime-100 text-lime-800 border-lime-300",
-  WATCH_LIST: "bg-amber-100 text-amber-800 border-amber-300",
-  NO_GO: "bg-red-100 text-red-800 border-red-300",
+  GO: TONE.success,
+  GO_WITH_CONDITIONS: TONE.successSoft,
+  WATCH_LIST: TONE.warning,
+  NO_GO: TONE.danger,
   DOSSIER_INCOMPLET: "bg-slate-200 text-slate-800 border-slate-400",
 };
 
@@ -28,11 +30,11 @@ export const CLASS_LABELS: Record<RegulatoryClassCode, string> = {
 };
 
 export const CLASS_COLORS: Record<RegulatoryClassCode, string> = {
-  SAIN: "bg-emerald-100 text-emerald-800 border-emerald-300",
+  SAIN: TONE.success,
   SENSIBLE: "bg-yellow-100 text-yellow-800 border-yellow-300",
-  PRE_DOUTEUX: "bg-orange-100 text-orange-800 border-orange-300",
+  PRE_DOUTEUX: TONE.alert,
   DOUTEUX: "bg-orange-200 text-orange-900 border-orange-400",
-  COMPROMIS: "bg-red-100 text-red-800 border-red-300",
+  COMPROMIS: TONE.danger,
   CTX: "bg-red-200 text-red-900 border-red-500",
 };
 
@@ -44,8 +46,20 @@ export const SEVERITY_LABELS: Record<Severity, string> = {
 };
 
 export const SEVERITY_COLORS: Record<Severity, string> = {
-  LOW: "bg-slate-100 text-slate-700 border-slate-300",
-  MEDIUM: "bg-amber-100 text-amber-800 border-amber-300",
-  HIGH: "bg-orange-100 text-orange-800 border-orange-300",
+  LOW: TONE.neutral,
+  MEDIUM: TONE.warning,
+  HIGH: TONE.alert,
   BLOCKING: "bg-red-100 text-red-800 border-red-400",
+};
+
+/** Étape du circuit d'octroi : couleur du badge (une seule définition). */
+export const WORKFLOW_STATE_COLORS: Record<WorkflowStateName, string> = {
+  DRAFT: TONE.neutral,
+  SUBMITTED: TONE.info,
+  BRANCH_REVIEW: "bg-cyan-100 text-cyan-800 border-cyan-300",
+  ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
+  MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
+  COMMITTEE: TONE.warning,
+  APPROVED: TONE.success,
+  REJECTED: TONE.danger,
 };

@@ -1,5 +1,7 @@
 "use client";
 
+import { ConfirmButton } from "@/components/ConfirmButton";
+import { Input } from "@/components/form";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
@@ -10,16 +12,17 @@ import {
 } from "@/lib/workflow";
 import { hasPermission, type RoleName } from "@/lib/rbac";
 import { transitionWorkflow } from "@/server/actions/workflow";
+import { TONE } from "@/lib/tones";
 
 const STATE_COLORS: Record<WorkflowStateName, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
-  SUBMITTED: "bg-blue-100 text-blue-800 border-blue-300",
+  DRAFT: TONE.neutral,
+  SUBMITTED: TONE.info,
   BRANCH_REVIEW: "bg-cyan-100 text-cyan-800 border-cyan-300",
   ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
   MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
-  COMMITTEE: "bg-amber-100 text-amber-800 border-amber-300",
-  APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  REJECTED: "bg-red-100 text-red-800 border-red-300",
+  COMMITTEE: TONE.warning,
+  APPROVED: TONE.success,
+  REJECTED: TONE.danger,
 };
 
 export function WorkflowPanel({
@@ -71,24 +74,38 @@ export function WorkflowPanel({
           </p>
         ) : (
           <>
-            <input
-              type="text"
+            <Input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Commentaire (optionnel)"
-              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+              aria-label="Commentaire de la transition"
+              placeholder="Commentaire (optionnel, recommandé pour un renvoi ou un rejet)"
             />
             <div className="flex flex-wrap gap-2">
-              {transitions.map((t) => (
-                <Button
-                  key={t.to}
-                  variant={t.kind === "reject" ? "danger" : t.kind === "rework" ? "outline" : "primary"}
-                  disabled={pending !== null}
-                  onClick={() => onTransition(t.to)}
-                >
-                  {pending === t.to ? "…" : t.label}
-                </Button>
-              ))}
+              {transitions.map((t) =>
+                t.kind === "reject" ? (
+                  // Un rejet clôt le dossier : confirmation explicite.
+                  <ConfirmButton
+                    key={t.to}
+                    variant="danger"
+                    disabled={pending !== null}
+                    title="Rejeter le dossier ?"
+                    description={comment.trim() ? `Motif saisi : « ${comment.trim()} »` : "Aucun commentaire saisi : il est recommandé de motiver le rejet dans le champ ci-dessus."}
+                    confirmLabel="Rejeter le dossier"
+                    onConfirm={() => onTransition(t.to)}
+                  >
+                    {pending === t.to ? "…" : t.label}
+                  </ConfirmButton>
+                ) : (
+                  <Button
+                    key={t.to}
+                    variant={t.kind === "rework" ? "outline" : "primary"}
+                    disabled={pending !== null}
+                    onClick={() => onTransition(t.to)}
+                  >
+                    {pending === t.to ? "…" : t.label}
+                  </Button>
+                ),
+              )}
             </div>
           </>
         )}

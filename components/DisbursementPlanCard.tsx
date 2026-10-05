@@ -4,6 +4,7 @@
 // (montant/date), rapprochement avec les déblocages réels (saisis ou importés
 // du SI) et RATTACHEMENT MANUEL de chaque déblocage à son jalon.
 
+import { CONTROL } from "@/lib/formStyles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
@@ -12,14 +13,16 @@ import {
   deleteDisbursementMilestone,
   linkDisbursementToMilestone,
 } from "@/server/actions/disbursements";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { MILESTONE_STATUS_LABELS, type MilestoneStatus } from "@/lib/domain/disbursementPlan";
-import { formatMAD, formatDate } from "@/lib/utils";
+import { formatMAD, formatDate, formatMADCompact } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 const STATUS_COLORS: Record<MilestoneStatus, string> = {
-  A_VENIR: "bg-slate-100 text-slate-700 border-slate-300",
-  PARTIEL: "bg-amber-100 text-amber-800 border-amber-300",
-  DEBLOQUE: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  DEPASSE: "bg-red-100 text-red-800 border-red-300",
+  A_VENIR: TONE.neutral,
+  PARTIEL: TONE.warning,
+  DEBLOQUE: TONE.success,
+  DEPASSE: TONE.danger,
 };
 
 export interface MilestoneRowView {
@@ -55,7 +58,7 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
   const [form, setForm] = useState({ label: "", plannedDate: "", plannedAmount: "" });
   const [linkTo, setLinkTo] = useState<Record<string, string>>({});
 
-  const inp = "rounded-md border border-border bg-background px-3 py-2 text-sm";
+  const inp = CONTROL;
 
   const addMilestone = () =>
     start(async () => {
@@ -93,7 +96,7 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
         <CardTitle className="flex items-center gap-2 flex-wrap">
           Planning des déblocages (business plan initial)
           {unlinked.length > 0 && (
-            <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+            <Badge className={TONE.warning}>
               {unlinked.length} déblocage(s) à rattacher
             </Badge>
           )}
@@ -101,10 +104,10 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <Stat label="Prévu au plan" value={formatMAD(totals.planned)} />
-          <Stat label="Débloqué (rattaché)" value={formatMAD(totals.realized)} />
+          <Stat label="Prévu au plan" value={formatMADCompact(totals.planned)} title={formatMAD(totals.planned)} />
+          <Stat label="Débloqué (rattaché)" value={formatMADCompact(totals.realized)} title={formatMAD(totals.realized)} />
           <Stat label="Exécution du plan" value={totals.executionPct != null ? `${totals.executionPct} %` : "—"} />
-          <Stat label="Débloqué non rattaché" value={formatMAD(totals.unlinkedAmount)} />
+          <Stat label="Débloqué non rattaché" value={formatMADCompact(totals.unlinkedAmount)} title={formatMAD(totals.unlinkedAmount)} />
         </div>
 
         {rows.length > 0 ? (
@@ -126,7 +129,8 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
                   <Td><Badge className={STATUS_COLORS[r.status]}>{MILESTONE_STATUS_LABELS[r.status]}</Badge></Td>
                   {canWrite && (
                     <Td>
-                      <Button variant="outline" onClick={() => removeMilestone(r.id)} disabled={pending}>Retirer</Button>
+                      <ConfirmButton onConfirm={() => removeMilestone(r.id)} disabled={pending} title={`Retirer le jalon « ${r.label} » ?`}
+                        description="Les déblocages qui lui étaient rattachés redeviendront « non rattachés »." confirmLabel="Retirer">Retirer</ConfirmButton>
                     </Td>
                   )}
                 </tr>
@@ -143,10 +147,10 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
           <div className="rounded-md border border-dashed border-border p-3 space-y-2">
             <div className="text-sm font-medium">Ajouter un jalon du plan</div>
             <div className="flex flex-wrap gap-2">
-              <input value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
+              <input aria-label="Libellé du jalon" value={form.label} onChange={(e) => setForm((f) => ({ ...f, label: e.target.value }))}
                 placeholder="Ex. Déblocage 2 — gros œuvre" className={`${inp} flex-1 min-w-48`} />
-              <input type="date" value={form.plannedDate} onChange={(e) => setForm((f) => ({ ...f, plannedDate: e.target.value }))} className={inp} />
-              <input type="number" min={0} value={form.plannedAmount} onChange={(e) => setForm((f) => ({ ...f, plannedAmount: e.target.value }))}
+              <input type="date" aria-label="Date prévue" value={form.plannedDate} onChange={(e) => setForm((f) => ({ ...f, plannedDate: e.target.value }))} className={inp} />
+              <input type="number" min={0} inputMode="decimal" aria-label="Montant prévu (MAD)" value={form.plannedAmount} onChange={(e) => setForm((f) => ({ ...f, plannedAmount: e.target.value }))}
                 placeholder="Montant (MAD)" className={inp} />
               <Button onClick={addMilestone} disabled={pending || !form.label || !form.plannedAmount}>
                 {pending ? "Ajout…" : "Ajouter"}
@@ -167,11 +171,12 @@ export function DisbursementPlanCard({ projectId, rows, unlinked, totals, canWri
                   <span className="font-medium whitespace-nowrap">{formatMAD(e.amount ?? 0)}</span>
                   {e.title && <span className="text-muted-foreground">{e.title}</span>}
                   {e.source && e.source !== "MANUAL" && (
-                    <Badge className="bg-blue-100 text-blue-800 border-blue-300">{e.source}</Badge>
+                    <Badge className={TONE.info}>{e.source}</Badge>
                   )}
                   {canWrite && rows.length > 0 && (
                     <span className="ml-auto flex items-center gap-2">
                       <select
+                        aria-label="Jalon auquel rattacher ce déblocage"
                         value={linkTo[e.id] ?? ""}
                         onChange={(ev) => setLinkTo((p) => ({ ...p, [e.id]: ev.target.value }))}
                         className={inp}

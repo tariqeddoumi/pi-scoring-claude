@@ -1,7 +1,14 @@
 import type { Config } from "tailwindcss";
+import plugin from "tailwindcss/plugin";
+import { tailwindColors, themeBaseStyles } from "./lib/themePalette";
 
 const config: Config = {
-  darkMode: ["class"],
+  // Thème sombre : choix explicite (data-theme="dark" sur <html>) ou préférence
+  // du système quand l'utilisateur n'a pas choisi « Clair » (cf. lib/themePalette.ts).
+  darkMode: ["variant", [
+    "@media (prefers-color-scheme: dark) { &:not([data-theme=light] *) }",
+    "&:is([data-theme=dark] *)",
+  ]],
   content: [
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -10,13 +17,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        border: "hsl(214 32% 91%)",
-        background: "hsl(0 0% 100%)",
-        foreground: "hsl(222 47% 11%)",
-        muted: "hsl(210 40% 96%)",
-        "muted-foreground": "hsl(215 16% 47%)",
-        primary: "hsl(221 83% 53%)",
-        "primary-foreground": "hsl(210 40% 98%)",
+        // Jetons (fond, texte, bordure, primaire, danger) et palette des tons :
+        // variables CSS redéfinies par le thème sombre.
+        ...tailwindColors(),
         // Couleurs métier classification BKAM
         bkam: {
           sain: "hsl(142 71% 45%)",
@@ -34,7 +37,7 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [plugin(({ addBase }) => addBase(themeBaseStyles()))],
 };
 
 export default config;

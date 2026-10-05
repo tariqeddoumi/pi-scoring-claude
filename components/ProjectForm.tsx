@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
+import { Field, FieldGroup, FormMessage, Input, Select, Textarea, readActionErrors, type FieldErrors } from "@/components/form";
 import { upsertProject } from "@/server/actions/projects";
 import {
   SEGMENTS, ZONES, ASSET_TYPES, PROJECT_TYPES, PROJECT_STATUSES, SALE_MODES,
@@ -87,6 +88,7 @@ export function ProjectForm({ options, initial }: { options: Options; initial?: 
     coreBankingRef: str(initial?.coreBankingRef),
   });
   const [error, setError] = useState<string | null>(null);
+  const [errs, setErrs] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
 
   const set = (k: keyof typeof form) =>
@@ -96,12 +98,15 @@ export function ProjectForm({ options, initial }: { options: Options; initial?: 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setErrs({});
     setPending(true);
     try {
       const res = await upsertProject({ ...form, id: initial?.id });
       // En cas de succès, l'action redirige (pas de retour). Un retour = erreur.
       if (res && !res.ok) {
-        setError("error" in res && typeof res.error === "string" ? res.error : "Champs invalides — vérifiez le formulaire.");
+        const r = readActionErrors(res);
+        setErrs(r.fieldErrors);
+        setError(r.message);
       }
     } catch (err) {
       // NEXT_REDIRECT est relancé par Next pour effectuer la navigation : ne pas l'avaler.
@@ -112,108 +117,88 @@ export function ProjectForm({ options, initial }: { options: Options; initial?: 
     }
   }
 
-  const inp = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
-  const Select = ({ k, items, placeholder }: { k: keyof typeof form; items: readonly RefItem[]; placeholder?: string }) => (
-    <select value={form[k]} onChange={set(k)} className={inp}>
-      {placeholder && <option value="">{placeholder}</option>}
-      {items.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{title}</h3>
-      {children}
-    </div>
-  );
+  // Propriétés communes d'un contrôle lié à une clé du formulaire.
+  const bind = (k: keyof typeof form) => ({ value: form[k], onChange: set(k) });
+  const opts = (items: readonly RefItem[]) => items.map((o) => ({ value: o.value, label: o.label }));
 
   return (
     <Card>
       <CardHeader><CardTitle>{isEdit ? "Éditer le projet" : "Nouveau projet"}</CardTitle></CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
-          <Section title="Identification">
+          <FieldGroup title="Identification">
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Référence *</span>
-                <input value={form.reference} onChange={set("reference")} className={inp} required placeholder="PI-2026-XXX" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Nom du projet *</span>
-                <input value={form.name} onChange={set("name")} className={inp} required /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Promoteur *</span>
-                <Select k="promoterId" items={options.promoters.map((p) => ({ value: p.id, label: p.name }))} placeholder="— Sélectionner —" />
-                <span className="block text-xs text-muted-foreground">
-                  Promoteur absent ? <Link href="/promoters/new" className="text-primary hover:underline">Créer sa signalétique</Link>
-                </span></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Chargé d&apos;affaires</span>
-                <Select k="rmId" items={options.managers.map((m) => ({ value: m.id, label: m.name }))} placeholder="— Aucun —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Groupe d&apos;intérêt (effet groupe BKAM)</span>
-                <Select k="groupId" items={options.groups.map((g) => ({ value: g.id, label: g.name }))} placeholder="— Aucun —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Statut du dossier</span><Select k="status" items={PROJECT_STATUSES.items} /></label>
+              <Field label="Référence" required error={errs.reference}><Input {...bind("reference")} placeholder="PI-2026-XXX" /></Field>
+              <Field label="Nom du projet" required error={errs.name}><Input {...bind("name")} /></Field>
+              <Field label="Promoteur" required error={errs.promoterId}
+                hint={<>Promoteur absent ? <Link href="/promoters/new" className="text-primary hover:underline">Créer sa signalétique</Link></>}>
+                <Select {...bind("promoterId")} options={options.promoters.map((p) => ({ value: p.id, label: p.name }))} placeholder="— Sélectionner —" />
+              </Field>
+              <Field label="Chargé d'affaires" error={errs.rmId}>
+                <Select {...bind("rmId")} options={options.managers.map((m) => ({ value: m.id, label: m.name }))} placeholder="— Aucun —" />
+              </Field>
+              <Field label="Groupe d'intérêt (effet groupe BKAM)" error={errs.groupId}>
+                <Select {...bind("groupId")} options={options.groups.map((g) => ({ value: g.id, label: g.name }))} placeholder="— Aucun —" />
+              </Field>
+              <Field label="Statut du dossier" error={errs.status}><Select {...bind("status")} options={opts(PROJECT_STATUSES.items)} /></Field>
             </div>
-          </Section>
+          </FieldGroup>
 
-          <Section title="Localisation">
+          <FieldGroup title="Localisation">
             <div className="grid sm:grid-cols-3 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Ville</span>
-                <Select k="city" items={withLegacyValue(CITIES.items, form.city)} placeholder="— Sélectionner —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Région</span>
-                <Select k="region" items={withLegacyValue(MOROCCO_REGIONS.items, form.region)} placeholder="— Sélectionner —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Zone (modèle)</span><Select k="zone" items={ZONES.items} placeholder="— Non renseignée —" /></label>
+              <Field label="Ville" error={errs.city}><Select {...bind("city")} options={opts(withLegacyValue(CITIES.items, form.city))} placeholder="— Sélectionner —" /></Field>
+              <Field label="Région" error={errs.region} hint="Région administrative : sert à la tension du marché régional (v5).">
+                <Select {...bind("region")} options={opts(withLegacyValue(MOROCCO_REGIONS.items, form.region))} placeholder="— Sélectionner —" />
+              </Field>
+              <Field label="Zone (modèle)" error={errs.zone}><Select {...bind("zone")} options={opts(ZONES.items)} placeholder="— Non renseignée —" /></Field>
             </div>
-            <label className="space-y-1 text-sm block"><span className="font-medium">Adresse / lieu-dit</span>
-              <input value={form.address} onChange={set("address")} className={inp} /></label>
-          </Section>
+            <Field label="Adresse / lieu-dit" error={errs.address}><Input {...bind("address")} /></Field>
+          </FieldGroup>
 
-          <Section title="Caractéristiques du programme">
+          <FieldGroup title="Caractéristiques du programme">
             <div className="grid sm:grid-cols-3 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Nature de l&apos;actif</span><Select k="assetType" items={ASSET_TYPES.items} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Type de projet</span><Select k="projectType" items={PROJECT_TYPES.items} placeholder="— Non renseigné —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Segment (modèle)</span><Select k="segment" items={SEGMENTS.items} placeholder="— Non renseigné —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Nombre de lots</span><input type="number" min={0} value={form.totalUnits} onChange={set("totalUnits")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Surface terrain (m²)</span><input type="number" min={0} value={form.landAreaSqm} onChange={set("landAreaSqm")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Surface construite (m²)</span><input type="number" min={0} value={form.builtAreaSqm} onChange={set("builtAreaSqm")} className={inp} /></label>
+              <Field label="Nature de l'actif" error={errs.assetType}><Select {...bind("assetType")} options={opts(ASSET_TYPES.items)} /></Field>
+              <Field label="Type de projet" error={errs.projectType}><Select {...bind("projectType")} options={opts(PROJECT_TYPES.items)} placeholder="— Non renseigné —" /></Field>
+              <Field label="Segment (modèle)" error={errs.segment}><Select {...bind("segment")} options={opts(SEGMENTS.items)} placeholder="— Non renseigné —" /></Field>
+              <Field label="Nombre de lots" error={errs.totalUnits}><Input type="number" min={0} inputMode="numeric" {...bind("totalUnits")} /></Field>
+              <Field label="Surface terrain (m²)" error={errs.landAreaSqm}><Input type="number" min={0} inputMode="decimal" {...bind("landAreaSqm")} /></Field>
+              <Field label="Surface construite (m²)" error={errs.builtAreaSqm}><Input type="number" min={0} inputMode="decimal" {...bind("builtAreaSqm")} /></Field>
             </div>
-          </Section>
+          </FieldGroup>
 
-          <Section title="Foncier & autorisations">
+          <FieldGroup title="Foncier & autorisations">
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Titre(s) foncier(s)</span>
-                <input value={form.landTitleRef} onChange={set("landTitleRef")} className={inp} placeholder="Ex. TF 12345/C" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Statut foncier</span>
-                <Select k="landStatus" items={LAND_STATUSES.items} placeholder="— Non renseigné —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Autorisation de construire (n°)</span>
-                <input value={form.buildPermitRef} onChange={set("buildPermitRef")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Date de l&apos;autorisation</span>
-                <input type="date" value={form.buildPermitDate} onChange={set("buildPermitDate")} className={inp} /></label>
+              <Field label="Titre(s) foncier(s)" error={errs.landTitleRef}><Input {...bind("landTitleRef")} placeholder="Ex. TF 12345/C" /></Field>
+              <Field label="Statut foncier" error={errs.landStatus}><Select {...bind("landStatus")} options={opts(LAND_STATUSES.items)} placeholder="— Non renseigné —" /></Field>
+              <Field label="Autorisation de construire (n°)" error={errs.buildPermitRef}><Input {...bind("buildPermitRef")} /></Field>
+              <Field label="Date de l'autorisation" error={errs.buildPermitDate}><Input type="date" {...bind("buildPermitDate")} /></Field>
             </div>
-          </Section>
+          </FieldGroup>
 
-          <Section title="Calendrier prévisionnel">
+          <FieldGroup title="Calendrier prévisionnel">
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Démarrage des travaux</span>
-                <input type="date" value={form.startDate} onChange={set("startDate")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Livraison prévue</span>
-                <input type="date" value={form.expectedDeliveryDate} onChange={set("expectedDeliveryDate")} className={inp} /></label>
+              <Field label="Démarrage des travaux" error={errs.startDate}><Input type="date" {...bind("startDate")} /></Field>
+              <Field label="Livraison prévue" error={errs.expectedDeliveryDate}><Input type="date" {...bind("expectedDeliveryDate")} /></Field>
             </div>
-          </Section>
+          </FieldGroup>
 
-          <Section title="Plan de financement">
+          <FieldGroup title="Plan de financement">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Coût total (MAD)</span><input type="number" min={0} value={form.totalCost} onChange={set("totalCost")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Crédit sollicité (MAD)</span><input type="number" min={0} value={form.loanAmount} onChange={set("loanAmount")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Fonds propres (MAD)</span><input type="number" min={0} value={form.ownEquity} onChange={set("ownEquity")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Mode de vente</span><Select k="saleMode" items={SALE_MODES.items} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Référence SI (T24/Evolan)</span>
-                <input value={form.coreBankingRef} onChange={set("coreBankingRef")} className={inp} placeholder="N° dossier dans le SI" />
-                <span className="block text-xs text-muted-foreground">Clé de synchronisation des déblocages, encours et impayés.</span></label>
+              <Field label="Coût total (MAD)" error={errs.totalCost}><Input type="number" min={0} inputMode="decimal" {...bind("totalCost")} /></Field>
+              <Field label="Crédit sollicité (MAD)" error={errs.loanAmount}><Input type="number" min={0} inputMode="decimal" {...bind("loanAmount")} /></Field>
+              <Field label="Fonds propres (MAD)" error={errs.ownEquity}><Input type="number" min={0} inputMode="decimal" {...bind("ownEquity")} /></Field>
+              <Field label="Mode de vente" error={errs.saleMode}><Select {...bind("saleMode")} options={opts(SALE_MODES.items)} /></Field>
+              <Field label="Référence SI (T24/Evolan)" error={errs.coreBankingRef} hint="Clé de synchronisation des déblocages, encours et impayés.">
+                <Input {...bind("coreBankingRef")} placeholder="N° dossier dans le SI" />
+              </Field>
             </div>
-          </Section>
+          </FieldGroup>
 
-          <Section title="Description">
-            <label className="space-y-1 text-sm block"><span className="font-medium">Consistance du programme, points d&apos;attention</span>
-              <textarea value={form.description} onChange={set("description")} className={inp} rows={4} /></label>
-          </Section>
+          <FieldGroup title="Description">
+            <Field label="Consistance du programme, points d'attention" error={errs.description}><Textarea {...bind("description")} rows={4} /></Field>
+          </FieldGroup>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <FormMessage error={error} />
           <Button type="submit" disabled={pending}>{pending ? "Enregistrement…" : isEdit ? "Enregistrer les modifications" : "Créer le projet"}</Button>
         </form>
       </CardContent>

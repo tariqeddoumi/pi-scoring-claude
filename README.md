@@ -68,8 +68,8 @@ npm install
 cp .env.example .env              # renseigner DATABASE_URL et DIRECT_URL (Supabase/Postgres)
 
 npm run prisma:generate           # générer le client Prisma
-npm run prisma:push               # créer le schéma en base
-npm run seed                      # référentiels BKAM + modèle V1.0 + 2 projets démo
+npx prisma migrate deploy         # créer le schéma en base (toutes les migrations)
+npm run seed                      # référentiels BKAM + modèle publié + 2 projets démo
 
 npm run dev                       # http://localhost:3000
 ```
@@ -82,9 +82,9 @@ de configuration. Les **moteurs et leurs tests** ne nécessitent aucune base.
 | Script | Rôle |
 |---|---|
 | `npm run dev` / `build` / `start` | Next.js |
-| `npm run test` | 44 tests unitaires (Vitest) sur les moteurs |
+| `npm run test` | Tests unitaires (Vitest) : moteurs, modèle, alignement, écrans |
 | `npm run typecheck` | TypeScript strict, `--noEmit` |
-| `npm run prisma:push` / `prisma:migrate` | Schéma |
+| `npx prisma migrate deploy` / `npm run prisma:migrate` | Schéma (migrations ; `prisma:push` réservé aux bases jetables) |
 | `npm run seed` | Données de référence + démo |
 
 ---

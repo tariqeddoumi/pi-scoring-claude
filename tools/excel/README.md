@@ -1,117 +1,119 @@
-# Outil Excel / VBA — Modèle PI_PROMOTION v5.0.0 (outil 5.0)
+# Outil Excel / VBA — Modèle PI_PROMOTION v5.0.0 (outil 5.1)
 
-Classeur qui implémente le modèle de scoring de promotion immobilière publié
-(mêmes critères, barèmes, alertes, seuils et invariants de décision que
-l'application).
+Classeur qui calcule le score, la décision et la classe interne d'un dossier de
+promotion immobilière avec le modèle publié : mêmes critères, barèmes, alertes,
+seuils et règles de décision que l'application (26 cas de référence identiques).
 
-## Contenu
+## Fichiers
 
 | Fichier | Rôle |
 |---|---|
-| `PI_Promotion_Modele_v5.xlsx` | Classeur : Saisie (avec un dossier d'exemple), Resultat, Calculateurs, Portefeuille, Stress, Tests, Historique, paramètres `P_*` |
-| `vba/*.bas` | 5 modules VBA (outils, scoring, stress, gouvernance du modèle, installation des boutons) — ASCII, sans bibliothèque externe |
-| `build_workbook.py` | Régénère le classeur |
-| `_build/gen_vectors.ts` | 26 cas de référence calculés par le moteur de production → `vectors.json` |
-| `_build/gen_stress.ts` | Stress attendu sur le dossier d'exemple, moteur de l'application → `stress_expected.json` |
-| `_build/gen_refs.ts` | Référentiels métier exportés du code de l'application → `referentiels.json` |
-| `_build/libreoffice/` | Banc de vérification : recalcul des formules et exécution réelle des macros sous LibreOffice |
-| `_build/verify.py` | Vérification alternative des formules (bibliothèque Python `formulas`) |
+| `PI_Promotion_Modele_v5.xlsm` | **Outil prêt à l'emploi** : macros intégrées et onglet de ruban « Scoring PI ». Rien à installer. |
+| `PI_Promotion_Modele_v5.xlsx` | Même classeur sans macros : le calcul (saisie, fiche, résultat) fonctionne. |
+| `vba/*.bas` | Sources des 7 modules VBA (ASCII), intégrés au `.xlsm` ; à importer à la main seulement dans le `.xlsx`. |
+| `fabriquer_outil.py` | Fabrique les deux classeurs (voir « Fabrication »). |
+| `build_workbook.py` | Génère le classeur (feuilles, formules, mises en forme). |
+| `_build/` | Cas de référence, référentiels, ruban (`ruban/customUI14.xml`), banc de vérification LibreOffice. |
 
-**Sources uniques** : le modèle est lu dans `prisma/models/PI_PROMOTION_v5.0.0.json`
-(instantané exact de la base de production) ; les référentiels et les cas de
-référence sont produits par le code de l'application. Aucune donnée n'est
-recopiée à la main.
+## Prise en main (2 minutes)
+
+1. Ouvrir `PI_Promotion_Modele_v5.xlsm`. S'il a été reçu par e-mail ou téléchargé et qu'Excel
+   bloque les macros : fermer le fichier, clic droit › Propriétés › cocher **Débloquer** › OK,
+   rouvrir, puis **Activer le contenu**.
+2. Onglet de ruban **Scoring PI** › **Nouveau dossier** (le classeur s'ouvre sur un dossier d'exemple).
+3. Onglet **Saisie** : cellules jaunes, listes déroulantes en clair. Le résultat se met à jour en
+   direct en haut à droite ; la colonne **État** signale les données manquantes.
+4. Onglet **Fiche** : la synthèse à imprimer (une page) ou ruban › **Fiche en PDF**.
+5. Ruban › **Enregistrer le dossier** : il est rangé dans le Portefeuille ; **Ouvrir un dossier** le recharge.
+
+## Ce qui change dans l'outil 5.1
+
+**Plus simple à utiliser**
+
+- `.xlsm` livré avec les macros et un **onglet de ruban « Scoring PI »** (Dossier · Aller à · Analyse · Outil) :
+  plus d'import de modules ni d'installation de boutons.
+- **Accueil** : dossier en cours (score, décision en couleur, complétude) et mode d'emploi avec liens.
+- **Saisie en clair** : modalités, segment et zone choisis par leur libellé (« Titre purgé + autorisations
+  définitives », « Casablanca — centre »…) ; le code technique est déduit. Colonnes techniques masquées,
+  unité affichée pour chaque donnée, colonne **État** (✔ renseigné · ⚠ manquant — décisionnel · ○ non renseigné ·
+  ⚠ valeur à vérifier), **résultat en direct** en haut de la feuille.
+- **Fiche de résultat** en français, colorée et imprimable sur une page A4 : décision, notes économique et de
+  sûretés, données manquantes, conditions à lever, alertes (libellés), comité, scores par domaine (barres),
+  **les 5 notes les plus basses** à travailler.
+- **Dossiers enregistrés dans le Portefeuille** (valeurs utilisées et résultat) et rouverts en un clic.
+- Feuilles de travail **protégées** (sans mot de passe) : seules les cellules jaunes sont modifiables.
+- Paramètres du modèle et cas de référence **masqués** (ruban › Paramètres pour les afficher).
+- Décisions affichées en clair partout (« Favorable sous conditions » plutôt que `GO_WITH_CONDITIONS`), messages des macros en français.
+
+**Corrections**
+
+- **Fuite des calculateurs** : le scoring du portefeuille et les autotests utilisaient, pour toute donnée
+  dérivée absente d'une ligne, la valeur calculée par les calculateurs du dossier ouvert (ex. une ligne sans
+  « dépassement du coût » passait de 96,88 à 99,04 parce que le dossier ouvert affichait 0 % de dépassement).
+  Les calculateurs sont désormais neutralisés pendant ces traitements (nom `Calc_Actif`).
+- **Aperçu à zéro** : le classeur ne contenait aucun résultat pré-calculé ; ouvert en mode protégé, en aperçu de
+  messagerie ou sur téléphone, il affichait « 0,00 — DOSSIER_INCOMPLET ». Les résultats sont maintenant enregistrés
+  dans le fichier (Excel recalcule de toute façon à l'ouverture).
+- **Pourcentages** : « 62 % » saisi au clavier devient 0,62 pour Excel et dégradait la note sans avertissement ;
+  la colonne État le signale.
+- **PD indicative** affichée (90 %) pour un dossier vide : elle n'est plus affichée quand le dossier est incomplet.
+- **Impression** : l'impression du classeur produisait 115 pages ; la fiche s'imprime sur une page.
+- Macros : recherche de la dernière ligne sans `End(xlUp)` (dépendait de l'affichage), plus aucune feuille créée
+  par macro (rapport de validation fourni), listes déroulantes reconstruites en libellés, protection gérée.
 
 ## Architecture
 
-Le moteur est **dans les formules Excel**. Le VBA ne fait qu'orchestrer :
-charger un dossier, recalculer, lire le résultat, boucler, journaliser. Il n'y a
-donc qu'un seul moteur ; barèmes, poids, seuils et alertes se modifient dans les
-onglets `P_*` sans toucher au code.
+Le moteur est **dans les formules** (onglet Resultat, inchangé) ; les macros orchestrent (dossier, portefeuille,
+stress, autotests, journal, PDF). Barèmes, poids, seuils, alertes et libellés se modifient dans les onglets `P_*`
+sans toucher au code. Les dossiers rouverts et le portefeuille utilisent les codes ; la saisie accepte codes et libellés.
 
-## Installation (2 minutes)
-
-1. Ouvrir `PI_Promotion_Modele_v5.xlsx` dans Excel (Windows recommandé).
-2. `Alt + F11` → *Fichier → Importer un fichier…* → importer les 5 fichiers de `vba/`.
-3. *Débogage → Compiler VBAProject* : aucune erreur attendue.
-4. `Alt + F8` → exécuter `InstallerBoutons`.
-5. *Enregistrer sous…* → **Classeur Excel prenant en charge les macros (.xlsm)**.
-6. Exécuter `ExecuterAutotests` : attendu « 26 / 26 cas conformes ».
-7. Exécuter `ValiderModele` : attendu 0 erreur.
-
-## Utilisation
-
-- **Nouveau dossier** : le classeur s'ouvre sur un dossier d'exemple. Le bouton
-  « Nouveau dossier » (`NouveauDossier`) vide la saisie et les calculateurs ; les
-  paramètres de l'établissement (fonds propres, limites) sont conservés.
-- **Saisie** : cellules jaunes. Un champ **vide = donnée absente** (jamais 0, jamais
-  « Non »). Booléens : « Oui » / « Non ». Une valeur saisie prime sur une valeur calculée.
-- **Calculateurs** : A. chaîne d'autorisations · B. ventes sécurisées par le financement
-  de l'acquéreur · C. mainlevée / quotité de désengagement · D. division des risques ·
-  E. arrêt de chantier · F. déblocages vs avancement certifié et plan de tirage vs
-  calendrier · G. équipements exigés (mosquée, école, voirie…) · H. programme mixte,
-  désistements et coût à terminaison. Ils alimentent 16 données dérivées (colonne F de
-  la Saisie). Si la banque ne finance qu'une tranche, saisir les chiffres de cette seule tranche.
-- **Resultat** : score, décision, classe interne, notes économique et de sûretés,
-  **données décisionnelles manquantes en clair**, **conditions à lever avec leur jalon**,
-  alertes, retour en comité, détail par critère et par domaine.
-- **Portefeuille** : une ligne par dossier → `ScorerPortefeuille` (15 colonnes de résultat,
-  dont données manquantes et conditions).
-- **Stress** : 7 scénarios → `LancerStress` (mêmes chocs que l'application).
-- **P_\*** : paramètres du modèle. Après modification : `ValiderModele`, puis `SnapshotModele`.
-
-## Vérifications (outil 5.0)
-
-| Contrôle | Résultat |
-|---|---|
-| Formules recalculées par **LibreOffice Calc** sur les 26 cas de référence du moteur de production | 26 / 26 |
-| Calculateurs v5 (sections F à H) comparés aux fonctions de l'application ; calculateur vide = aucune valeur injectée | 10 / 10 |
-| Macros **exécutées** sous LibreOffice (mode de compatibilité VBA) : autotests, dossier, portefeuille, stress, validation, listes, instantané, nouveau dossier, boutons | toutes exécutées sans erreur |
-| Autotests lancés par la macro | 26 / 26 |
-| Stress VBA comparé au moteur de stress de l'application (7 scénarios) | identique |
-| `ValiderModele` | 0 erreur |
-
-Outil 5.0 : modèle v5.0.0 (37 critères, 18 alertes), calculateurs F à H, 26 cas de référence ;
-la macro « Nouveau dossier » vide aussi les nouveaux calculateurs.
-
-Corrections apportées au VBA de l'outil 4.0 grâce à cette exécution réelle :
-
-- `modStress` ne compilait pas sous LibreOffice (instructions `If … Then … Else …`
-  sur une seule ligne avec appels de procédure) → réécrites en blocs `If … End If` ;
-- la recherche des clés reposait sur `Application.Match`, dont le comportement
-  « non trouvé » varie selon le tableur → remplacée par une recherche explicite ;
-- la lecture de l'indicateur « dossier incomplet » comparait une cellule à `True`
-  (-1) → lecture robuste des valeurs logiques (`EstVrai`) ;
-- `SnapshotModele` dépendait de la constante `xlOpenXMLWorkbook` → valeur explicite ;
-- l'installation des boutons s'arrêtait au premier échec → chaque bouton est
-  tenté et les échecs éventuels sont listés.
-
-**Limite restante** : LibreOffice n'est pas Excel. Les macros ont été exécutées
-sous LibreOffice ; la première exécution sous Excel (étapes 3 et 6 de
-l'installation) reste la recette de référence.
-
-## Limites d'usage
-
-- Le livrable est un `.xlsx` + des `.bas` : un `.xlsm` ne peut pas être fabriqué de façon fiable hors d'Excel.
-- La **classe réglementaire BAM est saisie** ; seule une suggestion fondée sur le retard de paiement est affichée.
-- Absents du classeur : trésorerie mensuelle, LGD, IFRS 9, workflow d'approbation, historique multi-utilisateurs.
-- La **PD est indicative** (non calibrée).
-- Classeur individuel : le journal est un aide-mémoire, pas une piste d'audit opposable. La décision officielle se prend dans l'application.
-- À chaque nouvelle version publiée du modèle, régénérer le classeur.
-
-## Régénération
+## Fabrication
 
 ```bash
-# depuis la racine du dépôt
+# depuis la racine du dépôt (sources : prisma/models/PI_PROMOTION_v5.0.0.json et code de l'application)
 npx tsx tools/excel/_build/gen_refs.ts      # référentiels métier
 npx tsx tools/excel/_build/gen_vectors.ts   # 26 cas de référence
 npx tsx tools/excel/_build/gen_stress.ts    # stress attendu (dossier d'exemple)
-python3 tools/excel/build_workbook.py       # écrit tools/excel/PI_Promotion_Modele_v5.xlsx
-
-# vérification sous LibreOffice (paquets libreoffice-calc et python3-uno)
-cd tools/excel
-python3 _build/libreoffice/verifier_formules.py PI_Promotion_Modele_v5.xlsx _build/vectors.json
-python3 _build/libreoffice/verifier_calculateurs_v5.py PI_Promotion_Modele_v5.xlsx
-cp PI_Promotion_Modele_v5.xlsx /tmp/essai.xlsx   # les macros modifient le fichier chargé
-LO_VISIBLE=1 python3 _build/libreoffice/verifier_macros.py /tmp/essai.xlsx vba _build/stress_expected.json
+cd tools/excel && python3 fabriquer_outil.py   # → .xlsm et .xlsx (LibreOffice et python3-uno requis)
 ```
+
+`fabriquer_outil.py` : classeur de base (`build_workbook.py`) → LibreOffice recalcule (valeurs mises en cache) et
+exporte le projet VBA des `.bas` → classeur final par xlsxwriter avec `vbaProject.bin` → ajout du ruban.
+
+## Vérifications (outil 5.1)
+
+```bash
+cd tools/excel
+python3 _build/libreoffice/verifier_formules.py PI_Promotion_Modele_v5.xlsm _build/vectors.json            # codes
+python3 _build/libreoffice/verifier_formules.py PI_Promotion_Modele_v5.xlsm _build/vectors.json libelles   # saisie en clair
+python3 _build/libreoffice/verifier_calculateurs_v5.py PI_Promotion_Modele_v5.xlsm
+cp PI_Promotion_Modele_v5.xlsm /tmp/essai.xlsm     # les macros modifient le fichier chargé
+python3 _build/libreoffice/verifier_macros.py /tmp/essai.xlsm integre _build/stress_expected.json _build/vectors.json
+```
+
+| Contrôle (LibreOffice Calc, `.xlsm` et `.xlsx`) | Résultat |
+|---|---|
+| Formules sur les 26 cas de référence du moteur de production — saisie par codes | 26 / 26 |
+| Idem, saisie par libellés en clair (modalités, segment, zone) | 26 / 26 |
+| Calculateurs v5 comparés aux fonctions de l'application ; calculateur vide = aucune valeur injectée | 10 / 10 |
+| Projet VBA intégré au `.xlsm` relu (7 modules) et macros exécutées | conforme |
+| Stress (7 scénarios) comparé au moteur de l'application | identique |
+| Autotests et portefeuille **avec un calculateur rempli** sur le dossier courant | 26 / 26 ; 3 / 3 |
+| Enregistrer puis rouvrir un dossier : même score, même décision, libellés en clair | conforme |
+| Paramètres (afficher / masquer), listes, ruban, instantané, nouveau dossier, boutons, validation du modèle | conforme, 0 erreur |
+| Dossier vide : aucune erreur de formule ; données décisionnelles signalées ; « Dossier incomplet » | conforme |
+| Fiche : impression | 1 page A4 |
+
+**Limite** : ces contrôles s'exécutent sous LibreOffice (pas d'Excel dans l'environnement de fabrication). Le projet
+VBA du `.xlsm` est relu par `olevba` comme par Excel, mais la première ouverture sous Excel (ruban, macros, export PDF —
+`ExportAsFixedFormat` n'existe pas sous LibreOffice) reste la recette de référence. En cas de difficulté avec le `.xlsm`,
+utiliser le `.xlsx` et importer les modules (`Alt+F11` › Fichier › Importer, puis `InstallerBoutons`).
+
+## Limites d'usage
+
+- La **classe réglementaire BAM est saisie** ; seule une suggestion fondée sur le retard de paiement est affichée.
+- Absents du classeur : trésorerie mensuelle, LGD, IFRS 9, workflow d'approbation, historique multi-utilisateurs.
+- La **PD est indicative** (non calibrée).
+- Le Portefeuille garde les valeurs utilisées, pas le détail des calculateurs ni la phase (challenger).
+- Classeur individuel : le journal est un aide-mémoire, pas une piste d'audit opposable. La décision officielle se prend dans l'application.
+- À chaque nouvelle version publiée du modèle, refabriquer l'outil.

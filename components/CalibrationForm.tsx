@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -65,7 +66,7 @@ export function CalibrationForm({ initial, canEdit }: { initial: Values; canEdit
     }
   }
 
-  const input = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm disabled:opacity-60";
+  const input = `w-full ${CONTROL}`;
   const pctField = (label: string, k: keyof typeof form, hint?: string) => (
     <label className="space-y-1 text-sm">
       <span className="font-medium">{label}</span>

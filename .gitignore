@@ -5,6 +5,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
 
 # next.js
 /.next/
@@ -36,3 +40,5 @@ prisma/*.db-journal
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+__pycache__/
+*.pyc

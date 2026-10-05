@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CONTROL } from "@/lib/formStyles";
 import { getStressTest, getStressBattery } from "@/server/queries";
 import { Card, CardContent, CardHeader, CardTitle, Table, Th, Td, Badge, Stat, Button } from "@/components/ui";
 import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
@@ -89,14 +90,14 @@ export default async function StressPage({
             <label className="space-y-1 text-sm">
               <span className="font-medium">Baisse des préventes</span>
               <div className="flex items-center gap-1">
-                <input type="number" name="preSaleDrop" defaultValue={preSaleDrop} min={0} max={100} className="w-28 rounded-md border border-border bg-background px-3 py-2 text-sm" />
+                <input type="number" name="preSaleDrop" defaultValue={preSaleDrop} min={0} max={100} className={`w-28 ${CONTROL}`} />
                 <span className="text-muted-foreground">pts</span>
               </div>
             </label>
             <label className="space-y-1 text-sm">
               <span className="font-medium">Hausse des impayés</span>
               <div className="flex items-center gap-1">
-                <input type="number" name="dpdAdd" defaultValue={dpdAdd} min={0} max={720} className="w-28 rounded-md border border-border bg-background px-3 py-2 text-sm" />
+                <input type="number" name="dpdAdd" defaultValue={dpdAdd} min={0} max={720} className={`w-28 ${CONTROL}`} />
                 <span className="text-muted-foreground">jours</span>
               </div>
             </label>

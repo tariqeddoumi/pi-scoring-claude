@@ -32,3 +32,27 @@ export function TabsTrigger({ className, ...props }: React.ComponentProps<typeof
 export function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
   return <TabsPrimitive.Content className={cn("mt-4 focus:outline-none", className)} {...props} />;
 }
+
+/**
+ * Onglets dont le choix est reporté dans l'URL (?param=slug, sans navigation) :
+ * le lien copié ouvre le même onglet, et un rechargement le conserve.
+ */
+export function UrlTabs({ param, slugs, onValueChange, ...props }: React.ComponentProps<typeof TabsPrimitive.Root> & {
+  param: string;
+  /** Valeur d'onglet → slug d'URL. */
+  slugs: Record<string, string>;
+}) {
+  return (
+    <TabsPrimitive.Root
+      {...props}
+      onValueChange={(value) => {
+        onValueChange?.(value);
+        const slug = slugs[value];
+        if (!slug) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set(param, slug);
+        window.history.replaceState(null, "", url);
+      }}
+    />
+  );
+}

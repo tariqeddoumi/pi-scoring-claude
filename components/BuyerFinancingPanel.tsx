@@ -1,9 +1,12 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td, Stat } from "@/components/ui";
 import { updateUnitsBuyerFinancing } from "@/server/actions/morocco";
+import { formatDecimal } from "@/lib/utils";
+import { TONE } from "@/lib/tones";
 
 export interface FinancingUnitRow {
   id: string;
@@ -45,7 +48,7 @@ export function BuyerFinancingPanel(p: Props) {
   const rate = gross > 0 ? (secured / gross) * 100 : 0;
   const missing = committed.filter((r) => !r.financingStatus).length;
 
-  const input = "w-full rounded-md border border-border bg-background px-2 py-1 text-sm";
+  const input = `w-full ${CONTROL_COMPACT}`;
 
   function setRow(id: string, patch: Partial<FinancingUnitRow>) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
@@ -84,7 +87,7 @@ export function BuyerFinancingPanel(p: Props) {
           <Stat label="Lots engagés" value={String(committed.length)} hint={`sur ${rows.length} lots`} />
           <Stat label="CA engagé" value={fmt(gross)} />
           <Stat label="CA sécurisé" value={fmt(secured)} hint="pondéré par le financement acquéreur" />
-          <Stat label="Taux de sécurisation" value={`${rate.toFixed(1)} %`}
+          <Stat label="Taux de sécurisation" value={`${formatDecimal(rate, 1)} %`}
                 hint={missing > 0 ? `${missing} lot(s) sans statut renseigné` : "tous les lots renseignés"} />
         </div>
 
@@ -107,7 +110,7 @@ export function BuyerFinancingPanel(p: Props) {
                     <Td>{r.trancheCode}</Td>
                     <Td>{fmt(r.price)}</Td>
                     <Td>
-                      <select className={input} value={r.financingStatus ?? ""}
+                      <select aria-label={`Financement acquéreur du lot ${r.reference}`} className={input} value={r.financingStatus ?? ""}
                               onChange={(e) => setRow(r.id, { financingStatus: e.target.value || null })}>
                         <option value="">— non renseigné —</option>
                         {p.financingOptions.map((o) => (
@@ -118,7 +121,7 @@ export function BuyerFinancingPanel(p: Props) {
                       </select>
                     </Td>
                     <Td>
-                      <select className={input} value={r.aidScheme ?? ""}
+                      <select aria-label={`Dispositif d'aide du lot ${r.reference}`} className={input} value={r.aidScheme ?? ""}
                               onChange={(e) => setRow(r.id, { aidScheme: e.target.value || null })}>
                         <option value="">—</option>
                         {p.aidOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
@@ -150,9 +153,9 @@ export function BuyerFinancingPanel(p: Props) {
                     <Td>{fmt(r.price)}</Td>
                     <Td>
                       {r.financingStatus
-                        ? <Badge className={f >= 0.8 ? "bg-emerald-100 text-emerald-800 border-emerald-300"
-                            : f >= 0.4 ? "bg-amber-100 text-amber-800 border-amber-300"
-                            : "bg-red-100 text-red-800 border-red-300"}>
+                        ? <Badge className={f >= 0.8 ? TONE.success
+                            : f >= 0.4 ? TONE.warning
+                            : TONE.danger}>
                             {labelOf(r.financingStatus)} · {Math.round(f * 100)} %
                           </Badge>
                         : <span className="text-muted-foreground">non renseigné</span>}

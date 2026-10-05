@@ -1,5 +1,6 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
@@ -69,7 +70,7 @@ export function BusinessPlanRevisionForm({ projectId, units }: { projectId: stri
     }
   }
 
-  const inp = "w-full rounded-md border border-border bg-background px-2 py-1.5 text-sm";
+  const inp = `w-full ${CONTROL_COMPACT}`;
   if (!open) return <Button variant="outline" onClick={() => setOpen(true)}>Réviser le business plan</Button>;
 
   return (

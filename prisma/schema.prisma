@@ -5,7 +5,7 @@
 // =====================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // Cibles binaires : poste local + runtime Linux CI/serverless (Vercel/Debian).
   // Évite l'échec « engine not found » quand la génération et l'exécution
   // tournent sur des OS différents.
@@ -34,7 +34,7 @@ enum RoleName {
 
 enum CriterionType {
   QUAL // critère qualitatif (options)
-  NUM  // critère numérique (ranges)
+  NUM // critère numérique (ranges)
 }
 
 enum Severity {
@@ -70,10 +70,10 @@ enum RegulatoryClassCode {
 }
 
 enum TriggerKind {
-  DPD             // days past due (retard de paiement)
-  RESTRUCTURING   // restructuration / rééchelonnement
-  QUALITATIVE     // dégradation qualitative
-  LEGAL           // contentieux judiciaire
+  DPD // days past due (retard de paiement)
+  RESTRUCTURING // restructuration / rééchelonnement
+  QUALITATIVE // dégradation qualitative
+  LEGAL // contentieux judiciaire
   CROSS_DEFAULT
 }
 
@@ -229,17 +229,17 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  promotersManaged RealEstateProject[] @relation("ProjectRM")
-  scoringRuns      ScoringRun[]
-  comments         Comment[]
-  auditLogs        AuditLog[]
-  workflowSteps    WorkflowStep[]
-  importBatches    ImportBatch[]
-  committeeDecisionsChaired CommitteeDecision[] @relation("CommitteeChair")
-  visitReports     VisitReport[] @relation("VisitReportAuthor")
-  overridesRequested RegulatoryOverride[] @relation("OverrideRequester")
-  overridesDecided   RegulatoryOverride[] @relation("OverrideDecider")
-  projectEvents    ProjectEvent[] @relation("ProjectEventAuthor")
+  promotersManaged          RealEstateProject[]  @relation("ProjectRM")
+  scoringRuns               ScoringRun[]
+  comments                  Comment[]
+  auditLogs                 AuditLog[]
+  workflowSteps             WorkflowStep[]
+  importBatches             ImportBatch[]
+  committeeDecisionsChaired CommitteeDecision[]  @relation("CommitteeChair")
+  visitReports              VisitReport[]        @relation("VisitReportAuthor")
+  overridesRequested        RegulatoryOverride[] @relation("OverrideRequester")
+  overridesDecided          RegulatoryOverride[] @relation("OverrideDecider")
+  projectEvents             ProjectEvent[]       @relation("ProjectEventAuthor")
 }
 
 // =====================================================================
@@ -247,42 +247,42 @@ model User {
 // =====================================================================
 
 model Promoter {
-  id              String   @id @default(cuid())
-  name            String
-  legalForm       String?
-  rcNumber        String? // registre de commerce
-  iceNumber       String? // identifiant commun de l'entreprise
-  groupName       String? // legacy (texte libre) — préférer groupId
-  yearsExperience Int?
+  id                String  @id @default(cuid())
+  name              String
+  legalForm         String?
+  rcNumber          String? // registre de commerce
+  iceNumber         String? // identifiant commun de l'entreprise
+  groupName         String? // legacy (texte libre) — préférer groupId
+  yearsExperience   Int?
   completedProjects Int?
-  internalRating  String?
-  contactEmail    String?
-  contactPhone    String?
+  internalRating    String?
+  contactEmail      String?
+  contactPhone      String?
 
   // --- Signalétique (identification complète) ---
-  ifNumber        String? // identifiant fiscal
-  cnssNumber      String? // affiliation CNSS
-  patenteNumber   String? // taxe professionnelle (patente)
-  capital         Float?  // capital social (MAD)
-  foundedYear     Int?
-  managerName     String? // dirigeant principal / gérant
-  shareholders    String? // actionnariat (texte structuré)
-  address         String?
-  city            String?
-  website         String?
-  bankRelations   String? // autres relations bancaires déclarées
-  notes           String?
+  ifNumber      String? // identifiant fiscal
+  cnssNumber    String? // affiliation CNSS
+  patenteNumber String? // taxe professionnelle (patente)
+  capital       Float? // capital social (MAD)
+  foundedYear   Int?
+  managerName   String? // dirigeant principal / gérant
+  shareholders  String? // actionnariat (texte structuré)
+  address       String?
+  city          String?
+  website       String?
+  bankRelations String? // autres relations bancaires déclarées
+  notes         String?
 
   // Rattachement au groupe d'intérêt (effet groupe BKAM)
-  groupId         String?
-  group           Group?  @relation(fields: [groupId], references: [id])
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id])
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  projects RealEstateProject[]
-  linksFrom PromoterLink[] @relation("PromoterLinkFrom")
-  linksTo   PromoterLink[] @relation("PromoterLinkTo")
+  projects  RealEstateProject[]
+  linksFrom PromoterLink[]      @relation("PromoterLinkFrom")
+  linksTo   PromoterLink[]      @relation("PromoterLinkTo")
 }
 
 // Lien entre promoteurs (parties liées) : maison mère/filiale, actionnaire
@@ -294,7 +294,7 @@ model PromoterLink {
   from      Promoter @relation("PromoterLinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
   toId      String
   to        Promoter @relation("PromoterLinkTo", fields: [toId], references: [id], onDelete: Cascade)
-  type      String   // cf. referentiels PROMOTER_LINK_TYPES (filiale, actionnaire_commun, …)
+  type      String // cf. referentiels PROMOTER_LINK_TYPES (filiale, actionnaire_commun, …)
   note      String?
   createdAt DateTime @default(now())
 
@@ -304,89 +304,89 @@ model PromoterLink {
 }
 
 model RealEstateProject {
-  id            String   @id @default(cuid())
-  reference     String   @unique
-  name          String
-  promoterId    String
-  promoter      Promoter @relation(fields: [promoterId], references: [id])
-  rmId          String?
-  rm            User?    @relation("ProjectRM", fields: [rmId], references: [id])
+  id         String   @id @default(cuid())
+  reference  String   @unique
+  name       String
+  promoterId String
+  promoter   Promoter @relation(fields: [promoterId], references: [id])
+  rmId       String?
+  rm         User?    @relation("ProjectRM", fields: [rmId], references: [id])
 
   // Localisation & nature
-  city          String?
-  region        String?
-  address       String? // adresse / lieu-dit du projet
-  projectType   String? // résidentiel, mixte, bureaux, social...
+  city         String?
+  region       String?
+  address      String? // adresse / lieu-dit du projet
+  projectType  String? // résidentiel, mixte, bureaux, social...
   // Segmentation métier (module α_Seg / β_Zone du modèle V1.0)
-  segment       String? // social | intermediaire | moyen_haut | touristique | bureaux | commerces | villas
-  zone          String? // casa_centre | casa_peripherie | rabat_centre | ...
+  segment      String? // social | intermediaire | moyen_haut | touristique | bureaux | commerces | villas
+  zone         String? // casa_centre | casa_peripherie | rabat_centre | ...
   // Nature de l'actif (promotion vendable vs actif d'exploitation type hôtel)
-  assetType     AssetType @default(PROMOTION)
-  totalUnits    Int?
-  landAreaSqm   Float?
-  builtAreaSqm  Float?
+  assetType    AssetType @default(PROMOTION)
+  totalUnits   Int?
+  landAreaSqm  Float?
+  builtAreaSqm Float?
   // Appartenance à un groupe d'intérêt (effet groupe BKAM art 33/50)
-  groupId       String?
-  group         Group?  @relation(fields: [groupId], references: [id])
+  groupId      String?
+  group        Group?    @relation(fields: [groupId], references: [id])
 
   // Montants (en MAD)
-  totalCost     Float?  // coût total du projet
-  loanAmount    Float?  // montant du crédit demandé/octroyé
-  ownEquity     Float?  // fonds propres promoteur
+  totalCost  Float? // coût total du projet
+  loanAmount Float? // montant du crédit demandé/octroyé
+  ownEquity  Float? // fonds propres promoteur
 
   // Commercialisation & Garantie Financière d'Achèvement (GFA/VEFA)
-  saleMode      SaleMode @default(CLASSIC) // mode de vente (VEFA = sur plan)
-  hasGFA        Boolean  @default(false)   // GFA en place (couvre l'achèvement)
-  gfaAmount     Float?   // montant garanti par la GFA (MAD)
-  gfaProvider   String?  // établissement garant (banque / assurance)
+  saleMode    SaleMode @default(CLASSIC) // mode de vente (VEFA = sur plan)
+  hasGFA      Boolean  @default(false) // GFA en place (couvre l'achèvement)
+  gfaAmount   Float? // montant garanti par la GFA (MAD)
+  gfaProvider String? // établissement garant (banque / assurance)
 
   // --- Foncier & autorisations ---
   // Nature du programme (chaîne d'autorisations applicable) :
   // LOTISSEMENT | CONSTRUCTION | MIXTE (cf. lib/domain/morocco.ts).
-  programKind     String? @default("CONSTRUCTION")
+  programKind       String?   @default("CONSTRUCTION")
   // Quotité de désengagement convenue pour les mainlevées partielles (0..1).
-  releaseQuotity  Float?
+  releaseQuotity    Float?
   // Modèle v5 : déclaration des équipements exigés (commune, cahier des charges).
   // true = liste déclarée (fait foi) ; false = aucun équipement exigé ; null = non déclaré.
   equipmentDeclared Boolean?
-  landTitleRef    String? // n° du/des titre(s) foncier(s)
-  landStatus      String? // statut foncier (cf. referentiels LAND_STATUSES)
-  buildPermitRef  String? // n° autorisation de construire
-  buildPermitDate DateTime?
+  landTitleRef      String? // n° du/des titre(s) foncier(s)
+  landStatus        String? // statut foncier (cf. referentiels LAND_STATUSES)
+  buildPermitRef    String? // n° autorisation de construire
+  buildPermitDate   DateTime?
 
   // --- Calendrier prévisionnel ---
   startDate            DateTime? // démarrage travaux prévu/réel
   expectedDeliveryDate DateTime? // livraison prévue
 
   // Description libre (consistance du programme, points d'attention…)
-  description   String?
+  description String?
 
   // Référence du dossier dans le SI bancaire (T24 / Evolan) — clé de
   // synchronisation des déblocages, encours, impayés et restructurations.
   coreBankingRef String?
 
-  status        String  @default("PROSPECT")
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  status    String   @default("PROSPECT")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  inputs            ProjectInput[]
-  facilities        Facility[]
-  scoringRuns       ScoringRun[]
-  classificationRuns ClassificationRun[]
-  provisionRuns     ProvisionRun[]
-  regulatoryOverrides RegulatoryOverride[]
-  guarantees        Guarantee[]
-  workflowSteps     WorkflowStep[]
-  comments          Comment[]
-  attachments       Attachment[]
-  committeeDecisions CommitteeDecision[]
-  tranches          Tranche[]
-  authorizations    ProjectAuthorization[]
-  equipments        ProjectEquipment[]
+  inputs                 ProjectInput[]
+  facilities             Facility[]
+  scoringRuns            ScoringRun[]
+  classificationRuns     ClassificationRun[]
+  provisionRuns          ProvisionRun[]
+  regulatoryOverrides    RegulatoryOverride[]
+  guarantees             Guarantee[]
+  workflowSteps          WorkflowStep[]
+  comments               Comment[]
+  attachments            Attachment[]
+  committeeDecisions     CommitteeDecision[]
+  tranches               Tranche[]
+  authorizations         ProjectAuthorization[]
+  equipments             ProjectEquipment[]
   disbursementMilestones DisbursementMilestone[]
-  visitReports      VisitReport[]
-  bpRevisions       BusinessPlanRevision[]
-  events            ProjectEvent[]
+  visitReports           VisitReport[]
+  bpRevisions            BusinessPlanRevision[]
+  events                 ProjectEvent[]
 }
 
 // Journal d'événements du cycle de vie du projet (tous types d'actifs) :
@@ -395,32 +395,32 @@ model RealEstateProject {
 // suivi événementiel ; les événements matériels (affectsScoring) alimentent la
 // classification 1/W/2025 via eventSignals et déclenchent un re-scoring.
 model ProjectEvent {
-  id             String   @id @default(cuid())
-  projectId      String
-  project        RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  type           String   // cf. referentiels EVENT_TYPES
-  severity       String   @default("INFO") // INFO | WARNING | CRITICAL
-  title          String?  // libellé court complémentaire
-  eventDate      DateTime @default(now()) // survenance
-  endDate        DateTime? // clôture/régularisation (levée d'arrêt, mainlevée…)
-  amount         Float?   // montant associé (déblocage, impayé, avenant…)
-  note           String?
-  affectsScoring Boolean  @default(false) // matériel pour scoring/classification
-  resolved       Boolean  @default(false)
+  id                String                 @id @default(cuid())
+  projectId         String
+  project           RealEstateProject      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  type              String // cf. referentiels EVENT_TYPES
+  severity          String                 @default("INFO") // INFO | WARNING | CRITICAL
+  title             String? // libellé court complémentaire
+  eventDate         DateTime               @default(now()) // survenance
+  endDate           DateTime? // clôture/régularisation (levée d'arrêt, mainlevée…)
+  amount            Float? // montant associé (déblocage, impayé, avenant…)
+  note              String?
+  affectsScoring    Boolean                @default(false) // matériel pour scoring/classification
+  resolved          Boolean                @default(false)
   // Diagnostic (volet 3) : l'événement impose un retour en comité + re-scoring
   // (reprofilage, restructuration, modification de lot…).
-  requiresCommittee Boolean @default(false)
+  requiresCommittee Boolean                @default(false)
   // Rattachement MANUEL d'un déblocage au planning du business plan initial.
-  milestoneId    String?
-  milestone      DisbursementMilestone? @relation(fields: [milestoneId], references: [id])
+  milestoneId       String?
+  milestone         DisbursementMilestone? @relation(fields: [milestoneId], references: [id])
   // Rattachement au lot/tranche concerné (vision lotissement — volet 2).
-  trancheId      String?
-  tranche        Tranche? @relation(fields: [trancheId], references: [id])
+  trancheId         String?
+  tranche           Tranche?               @relation(fields: [trancheId], references: [id])
   // Origine de l'événement : MANUAL (saisie) ou SI (T24/Evolan).
-  source         String   @default("MANUAL")
-  createdById    String
-  createdBy      User     @relation("ProjectEventAuthor", fields: [createdById], references: [id])
-  createdAt      DateTime @default(now())
+  source            String                 @default("MANUAL")
+  createdById       String
+  createdBy         User                   @relation("ProjectEventAuthor", fields: [createdById], references: [id])
+  createdAt         DateTime               @default(now())
 
   @@index([projectId, eventDate])
 }
@@ -430,24 +430,24 @@ model ProjectEvent {
 // saisis ou synchronisés du SI) sont rattachés MANUELLEMENT pour mesurer le
 // respect du plan de tirage.
 model DisbursementMilestone {
-  id            String   @id @default(cuid())
-  projectId     String
-  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  seq           Int      // ordre dans le plan
-  label         String   // ex. "Déblocage 1 — acquisition foncier"
-  plannedDate   DateTime?
-  plannedAmount Float
+  id                  String            @id @default(cuid())
+  projectId           String
+  project             RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  seq                 Int // ordre dans le plan
+  label               String // ex. "Déblocage 1 — acquisition foncier"
+  plannedDate         DateTime?
+  plannedAmount       Float
   // Situation de travaux visée par l'architecte / le BET justifiant le tirage.
-  worksCertificateRef  String?
-  worksCertifiedPct    Float?
+  worksCertificateRef String?
+  worksCertifiedPct   Float?
   // Rattachement au lot/tranche (vision lotissement — volet 2) : suivi des
   // déblocages lot par lot. Null = déblocage au niveau programme.
-  trancheId     String?
-  tranche       Tranche? @relation(fields: [trancheId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  trancheId           String?
+  tranche             Tranche?          @relation(fields: [trancheId], references: [id])
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @default(now()) @updatedAt
 
-  events        ProjectEvent[]
+  events ProjectEvent[]
 
   @@index([projectId])
   @@index([trancheId])
@@ -455,30 +455,30 @@ model DisbursementMilestone {
 
 // Tranche (phase de construction / commercialisation) d'un programme.
 model Tranche {
-  id              String   @id @default(cuid())
+  id              String            @id @default(cuid())
   projectId       String
   project         RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  code            String   // ex. "T1"
+  code            String // ex. "T1"
   name            String?
-  orderIndex      Int      @default(0)
-  status          TrancheStatus @default(PLANIFIEE)
+  orderIndex      Int               @default(0)
+  status          TrancheStatus     @default(PLANIFIEE)
   plannedStart    DateTime?
   plannedDelivery DateTime?
   actualDelivery  DateTime?
-  progressPct     Float    @default(0) // avancement physique 0..100
+  progressPct     Float             @default(0) // avancement physique 0..100
   budget          Float?
   // Modèle v5 : la banque finance cette tranche (périmètre financé). Si aucune
   // tranche n'est marquée ni portée par une facilité, le programme entier est financé.
-  financed        Boolean  @default(false)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  financed        Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
-  units           Unit[]
+  units         Unit[]
   // Vision lotissement (volet 2) : déblocages et événements rattachés au lot.
-  disbursements   DisbursementMilestone[]
-  facilities      Facility[]
-  equipments      ProjectEquipment[]
-  events          ProjectEvent[]
+  disbursements DisbursementMilestone[]
+  facilities    Facility[]
+  equipments    ProjectEquipment[]
+  events        ProjectEvent[]
 
   @@index([projectId])
 }
@@ -487,18 +487,18 @@ model Tranche {
 // business plan (planned*) vs réel, support du suivi des ventes, du décalage
 // au business plan, du déclassement de standing et de la mainlevée.
 model Unit {
-  id               String   @id @default(cuid())
-  trancheId        String
-  tranche          Tranche  @relation(fields: [trancheId], references: [id], onDelete: Cascade)
-  reference        String   // ex. "A-12", "Villa 3"
-  type             UnitType
-  surfaceSqm       Float?
-  rooms            Int?
+  id         String   @id @default(cuid())
+  trancheId  String
+  tranche    Tranche  @relation(fields: [trancheId], references: [id], onDelete: Cascade)
+  reference  String // ex. "A-12", "Villa 3"
+  type       UnitType
+  surfaceSqm Float?
+  rooms      Int?
 
   // Business plan COURANT (baseline approuvée, révisable)
-  plannedStanding  Standing
-  plannedPrice     Float?
-  plannedSaleDate  DateTime?
+  plannedStanding Standing
+  plannedPrice    Float?
+  plannedSaleDate DateTime?
 
   // Business plan D'ORIGINE (v0 figé pour audit ; renseigné à la 1re révision)
   originalStanding Standing?
@@ -506,25 +506,25 @@ model Unit {
   originalSaleDate DateTime?
 
   // Réel
-  standing         Standing
-  listPrice        Float?
-  status           UnitStatus @default(DISPONIBLE)
-  reservedAt       DateTime?
-  soldAt           DateTime?
-  soldPrice        Float?
-  buyerName        String?
-  deliveredAt      DateTime?
+  standing    Standing
+  listPrice   Float?
+  status      UnitStatus @default(DISPONIBLE)
+  reservedAt  DateTime?
+  soldAt      DateTime?
+  soldPrice   Float?
+  buyerName   String?
+  deliveredAt DateTime?
 
   // Financement de l'acquéreur (liquidité de la vente) et dispositif d'aide.
   buyerFinancingStatus String?
   buyerAidScheme       String?
   // Mainlevée hypothécaire partielle
-  mortgageReleased   Boolean  @default(false)
-  mortgageReleasedAt DateTime?
-  releasedAmount     Float?
+  mortgageReleased     Boolean   @default(false)
+  mortgageReleasedAt   DateTime?
+  releasedAmount       Float?
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([trancheId])
 }
@@ -540,17 +540,17 @@ enum BpRevisionStatus {
 // révision (motif, qui, quand) et le détail des changements appliqués aux lots,
 // le business plan d'origine restant figé sur chaque lot (champs original*).
 model BusinessPlanRevision {
-  id               String   @id @default(cuid())
+  id               String            @id @default(cuid())
   projectId        String
   project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  version          Int      // incrément par projet (1, 2, …)
+  version          Int // incrément par projet (1, 2, …)
   reason           String
-  status           BpRevisionStatus @default(APPROVED)
+  status           BpRevisionStatus  @default(APPROVED)
   requestedByEmail String?
   requestedByName  String?
   // Détail des changements par lot : [{ reference, field, before, after }]
   changes          Json
-  createdAt        DateTime @default(now())
+  createdAt        DateTime          @default(now())
 
   @@index([projectId])
 }
@@ -567,50 +567,50 @@ enum VisitReportStatus {
 // valider). Sert de base à l'analyse de tendance d'avancement et au repérage
 // des anomalies/risques.
 model VisitReport {
-  id            String   @id @default(cuid())
+  id            String            @id @default(cuid())
   projectId     String
   project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   authorId      String?
-  author        User?    @relation("VisitReportAuthor", fields: [authorId], references: [id])
+  author        User?             @relation("VisitReportAuthor", fields: [authorId], references: [id])
   visitDate     DateTime
-  inspectorName String?  // rédacteur / contrôleur (interne ou externe)
-  trancheCode   String?  // tranche concernée (optionnel)
+  inspectorName String? // rédacteur / contrôleur (interne ou externe)
+  trancheCode   String? // tranche concernée (optionnel)
   status        VisitReportStatus @default(DRAFT)
 
   // Observations structurées (analyse en amont)
-  observedProgressPct Float?   // avancement physique constaté sur site (0..100)
-  workforceCount      Int?     // effectif présent
-  weatherImpact       Boolean  @default(false) // intempéries impactant le planning
-  qualityIssue        Boolean  @default(false) // non-conformité / malfaçon
-  safetyIssue         Boolean  @default(false) // sécurité / HSE
-  delayRisk           Boolean  @default(false) // risque de retard signalé
+  observedProgressPct Float? // avancement physique constaté sur site (0..100)
+  workforceCount      Int? // effectif présent
+  weatherImpact       Boolean @default(false) // intempéries impactant le planning
+  qualityIssue        Boolean @default(false) // non-conformité / malfaçon
+  safetyIssue         Boolean @default(false) // sécurité / HSE
+  delayRisk           Boolean @default(false) // risque de retard signalé
 
-  summary         String?  // synthèse
-  observations    String?  // corps du rapport
+  summary         String? // synthèse
+  observations    String? // corps du rapport
   recommendations String?
 
   // Brique d'extraction : texte source + champs extraits (candidats)
-  rawText       String?  // texte source (scan OCR / collé) avant extraction
-  extracted     Json?    // champs extraits automatiquement, à valider
+  rawText   String? // texte source (scan OCR / collé) avant extraction
+  extracted Json? // champs extraits automatiquement, à valider
 
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([projectId])
 }
 
 // Valeurs d'entrée saisies pour un projet, clé/valeur typée et historisable.
 model ProjectInput {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   projectId String
   project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  key       String   // ex: pre_sale_rate, dpd_days, land_secured
+  key       String // ex: pre_sale_rate, dpd_days, land_secured
   valueNum  Float?
   valueStr  String?
   valueBool Boolean?
-  section   String?  // identification, foncier, autorisations, commercialisation...
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  section   String? // identification, foncier, autorisations, commercialisation...
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
 
   @@unique([projectId, key])
   @@index([projectId])
@@ -632,73 +632,73 @@ model ScoringModel {
 }
 
 model ScoringModelVersion {
-  id          String   @id @default(cuid())
-  modelId     String
-  model       ScoringModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  version     String   // ex: v1.0.0
-  status      String   @default("DRAFT") // DRAFT | PUBLISHED | RETIRED
+  id                 String       @id @default(cuid())
+  modelId            String
+  model              ScoringModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  version            String // ex: v1.0.0
+  status             String       @default("DRAFT") // DRAFT | PUBLISHED | RETIRED
   // Coefficient BKAM (CoeffBAM) appliqué au score technique en fonction
   // de la classe réglementaire — stocké en JSON {classCode: coeff}.
-  bamCoefficients Json?
+  bamCoefficients    Json?
   // Bornes de décision sur le score final 0..100, JSON.
   decisionThresholds Json?
   // Ajustements α_Seg (par segment) et β_Zone (par zone) du modèle V1.0.
   segmentAdjustments Json?
   zoneAdjustments    Json?
   // Échelle de notation des critères (par défaut 5 → KPI noté 0..5).
-  scoreScale         Float @default(5)
-  publishedAt DateTime?
-  createdAt   DateTime @default(now())
+  scoreScale         Float        @default(5)
+  publishedAt        DateTime?
+  createdAt          DateTime     @default(now())
 
-  domains   ScoringDomain[]
-  redFlags  RedFlagRule[]
-  runs      ScoringRun[]
+  domains  ScoringDomain[]
+  redFlags RedFlagRule[]
+  runs     ScoringRun[]
 
   @@unique([modelId, version])
 }
 
 model ScoringDomain {
-  id        String   @id @default(cuid())
-  versionId String
-  version   ScoringModelVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  code      String   // D1..D5
-  name      String
-  weight    Float    // poids du domaine dans le score technique (somme = 1)
-  orderIndex Int     @default(0)
+  id         String              @id @default(cuid())
+  versionId  String
+  version    ScoringModelVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  code       String // D1..D5
+  name       String
+  weight     Float // poids du domaine dans le score technique (somme = 1)
+  orderIndex Int                 @default(0)
 
-  criteria  ScoringCriterion[]
+  criteria      ScoringCriterion[]
   domainResults DomainResult[]
 
   @@unique([versionId, code])
 }
 
 model ScoringCriterion {
-  id          String   @id @default(cuid())
-  domainId    String
-  domain      ScoringDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
-  code        String
-  name        String
-  description String?
-  type        CriterionType
-  weight      Float    // poids du critère dans le domaine
-  inputKey    String   // clé ProjectInput alimentant le critère
+  id            String        @id @default(cuid())
+  domainId      String
+  domain        ScoringDomain @relation(fields: [domainId], references: [id], onDelete: Cascade)
+  code          String
+  name          String
+  description   String?
+  type          CriterionType
+  weight        Float // poids du critère dans le domaine
+  inputKey      String // clé ProjectInput alimentant le critère
   // Gate bloquant: si le score critère <= gateThreshold => NO_GO.
-  isGate      Boolean  @default(false)
+  isGate        Boolean       @default(false)
   gateThreshold Float?
-  orderIndex  Int      @default(0)
+  orderIndex    Int           @default(0)
   // --- Métadonnées v3 (diagnostic) ---
   // Donnée critique : son absence rend le dossier incomplet (F01/F02).
-  critical    Boolean  @default(false)
+  critical      Boolean       @default(false)
   // Famille : ECONOMIC (capacité de remboursement) | GUARANTEE (sûretés/LGD) — F09.
-  family      String?
+  family        String?
   // Jalon du verrou (ETUDE|OCTROI|SIGNATURE|TIRAGE) lorsque isGate — F15.
-  gateStage   String?
+  gateStage     String?
   // Dictionnaire de calcul (F07/§8.4) : unité et définition cible.
-  unit        String?
-  definition  String?
+  unit          String?
+  definition    String?
 
-  options ScoringOption[]
-  ranges  ScoringRange[]
+  options          ScoringOption[]
+  ranges           ScoringRange[]
   criterionResults CriterionResult[]
 
   @@unique([domainId, code])
@@ -706,52 +706,52 @@ model ScoringCriterion {
 
 // Modalités pour critères QUAL
 model ScoringOption {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   criterionId String
   criterion   ScoringCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
-  value       String   // valeur attendue dans ProjectInput.valueStr
+  value       String // valeur attendue dans ProjectInput.valueStr
   label       String
-  score       Float    // ScoreCrit 0..10
-  orderIndex  Int      @default(0)
+  score       Float // ScoreCrit 0..10
+  orderIndex  Int              @default(0)
 
   @@unique([criterionId, value])
 }
 
 // Barèmes pour critères NUM: [minIncl, maxExcl) -> score
 model ScoringRange {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   criterionId String
   criterion   ScoringCriterion @relation(fields: [criterionId], references: [id], onDelete: Cascade)
-  minIncl     Float?   // null = -infini
-  maxExcl     Float?   // null = +infini
-  score       Float    // ScoreCrit 0..10
+  minIncl     Float? // null = -infini
+  maxExcl     Float? // null = +infini
+  score       Float // ScoreCrit 0..10
   label       String?
-  orderIndex  Int      @default(0)
+  orderIndex  Int              @default(0)
 }
 
 model RedFlagRule {
-  id          String   @id @default(cuid())
-  versionId   String
-  version     ScoringModelVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
-  code        String
-  name        String
-  description String?
+  id                String              @id @default(cuid())
+  versionId         String
+  version           ScoringModelVersion @relation(fields: [versionId], references: [id], onDelete: Cascade)
+  code              String
+  name              String
+  description       String?
   // Expression de règle évaluée sur les ProjectInput (DSL JSON).
   // ex: { "key": "dpd_days", "op": "gte", "value": 90 }
-  rule        Json
-  severity    Severity
+  rule              Json
+  severity          Severity
   // Domaines impactés et malus appliqué (anti-double comptage via code).
-  impactDomains String[]   // ex: ["D5"]
-  malus       Float    @default(0) // points retranchés au score technique
-  mitigable   Boolean  @default(false)
-  mitigantHint String?
+  impactDomains     String[] // ex: ["D5"]
+  malus             Float               @default(0) // points retranchés au score technique
+  mitigable         Boolean             @default(false)
+  mitigantHint      String?
   // --- Refonte D5 v3 (diagnostic §6.1) ---
   // Effet cible : HYPOTHESIS | SURVEILLANCE | REGULATORY.
-  effect      String?
+  effect            String?
   // L'alerte impose un retour en comité (reprofilage, restructuration…).
-  requiresCommittee Boolean @default(false)
+  requiresCommittee Boolean             @default(false)
   // Article de rattachement (19/G/2002 ou 1/W/2025).
-  regRef      String?
+  regRef            String?
 
   @@unique([versionId, code])
 }
@@ -761,15 +761,15 @@ model RedFlagRule {
 // =====================================================================
 
 model ScoringRun {
-  id        String   @id @default(cuid())
+  id        String              @id @default(cuid())
   projectId String
-  project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   RealEstateProject   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   versionId String
   version   ScoringModelVersion @relation(fields: [versionId], references: [id])
   runById   String
-  runBy     User     @relation(fields: [runById], references: [id])
+  runBy     User                @relation(fields: [runById], references: [id])
 
-  status    ScoringRunStatus @default(DRAFT)
+  status ScoringRunStatus @default(DRAFT)
 
   // Snapshot des entrées utilisées (immuabilité de l'audit)
   inputSnapshot Json
@@ -778,10 +778,10 @@ model ScoringRun {
   scoreTechnique      Float?
   scoreAfterPenalties Float?
   coeffBAM            Float?
-  scoreFinal          Float?   // 0..100
+  scoreFinal          Float? // 0..100
   decision            Decision?
-  triggeredRedFlags   Json?    // liste codes + détails
-  gateBlocked         Boolean  @default(false)
+  triggeredRedFlags   Json? // liste codes + détails
+  gateBlocked         Boolean   @default(false)
   notes               String?
   // Lecture complète du résultat (modèle v3/v4) : classe interne, notes
   // économique / sûretés, données décisionnelles manquantes, conditions,
@@ -791,36 +791,36 @@ model ScoringRun {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  criterionResults CriterionResult[]
-  domainResults    DomainResult[]
+  criterionResults  CriterionResult[]
+  domainResults     DomainResult[]
   classificationRun ClassificationRun?
 
   @@index([projectId])
 }
 
 model CriterionResult {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   runId       String
-  run         ScoringRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  run         ScoringRun       @relation(fields: [runId], references: [id], onDelete: Cascade)
   criterionId String
   criterion   ScoringCriterion @relation(fields: [criterionId], references: [id])
-  rawValue    String?  // valeur brute évaluée
-  score       Float    // ScoreCrit 0..10
-  weighted    Float    // contribution pondérée au domaine
-  matchedRef  String?  // option.value ou range.label retenu
-  gateBlocked Boolean  @default(false)
+  rawValue    String? // valeur brute évaluée
+  score       Float // ScoreCrit 0..10
+  weighted    Float // contribution pondérée au domaine
+  matchedRef  String? // option.value ou range.label retenu
+  gateBlocked Boolean          @default(false)
 
   @@index([runId])
 }
 
 model DomainResult {
-  id        String   @id @default(cuid())
-  runId     String
-  run       ScoringRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  domainId  String
-  domain    ScoringDomain @relation(fields: [domainId], references: [id])
-  score     Float    // ScoreDomaine 0..10
-  weighted  Float    // contribution au score technique
+  id       String        @id @default(cuid())
+  runId    String
+  run      ScoringRun    @relation(fields: [runId], references: [id], onDelete: Cascade)
+  domainId String
+  domain   ScoringDomain @relation(fields: [domainId], references: [id])
+  score    Float // ScoreDomaine 0..10
+  weighted Float // contribution au score technique
 
   @@index([runId])
 }
@@ -830,70 +830,70 @@ model DomainResult {
 // =====================================================================
 
 model RegulatoryRegime {
-  id            String   @id @default(cuid())
-  code          String   @unique // ex: BKAM_19G_2002, BKAM_1W_2025
-  name          String
-  description   String?
-  effectiveFrom DateTime
-  effectiveTo   DateTime?
-  active        Boolean  @default(true)
+  id                     String    @id @default(cuid())
+  code                   String    @unique // ex: BKAM_19G_2002, BKAM_1W_2025
+  name                   String
+  description            String?
+  effectiveFrom          DateTime
+  effectiveTo            DateTime?
+  active                 Boolean   @default(true)
   // Seuil au-delà duquel une hypothèque exige une évaluation récente
   // (1 MMAD sous 19/G art.19, 5 MMAD sous 1/W art.39).
-  hypEvaluationThreshold Float @default(1000000)
+  hypEvaluationThreshold Float     @default(1000000)
   // Politique de restructuration (BKAM_1W | BKAM_19G | NONE) — art.17-31.
-  restructuringPolicy String @default("NONE")
-  createdAt     DateTime @default(now())
+  restructuringPolicy    String    @default("NONE")
+  createdAt              DateTime  @default(now())
 
-  classes       RegulatoryClass[]
-  triggers      RegulatoryTrigger[]
-  provisionRates ProvisionRate[]
-  guaranteeTypes GuaranteeType[]
+  classes            RegulatoryClass[]
+  triggers           RegulatoryTrigger[]
+  provisionRates     ProvisionRate[]
+  guaranteeTypes     GuaranteeType[]
   classificationRuns ClassificationRun[]
 }
 
 model RegulatoryClass {
-  id          String   @id @default(cuid())
+  id          String              @id @default(cuid())
   regimeId    String
-  regime      RegulatoryRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
+  regime      RegulatoryRegime    @relation(fields: [regimeId], references: [id], onDelete: Cascade)
   code        RegulatoryClassCode
   label       String
   description String?
-  orderIndex  Int      @default(0)
-  isWatchList Boolean  @default(false) // WL interne
-  isDefault   Boolean  @default(false) // statut de défaut bâlois
-  blocksGo    Boolean  @default(false) // ex: CTX => NO_GO forcé
+  orderIndex  Int                 @default(0)
+  isWatchList Boolean             @default(false) // WL interne
+  isDefault   Boolean             @default(false) // statut de défaut bâlois
+  blocksGo    Boolean             @default(false) // ex: CTX => NO_GO forcé
 
-  triggers      RegulatoryTrigger[]
+  triggers       RegulatoryTrigger[]
   provisionRates ProvisionRate[]
 
   @@unique([regimeId, code])
 }
 
 model RegulatoryTrigger {
-  id          String   @id @default(cuid())
+  id          String           @id @default(cuid())
   regimeId    String
   regime      RegulatoryRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
   classId     String
-  targetClass RegulatoryClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  targetClass RegulatoryClass  @relation(fields: [classId], references: [id], onDelete: Cascade)
   kind        TriggerKind
   // Seuils: pour DPD -> dpdMin/dpdMax jours; pour restructuration -> flag.
   dpdMin      Int?
   dpdMax      Int?
   // Expression complémentaire (DSL JSON sur ProjectInput).
   condition   Json?
-  priority    Int      @default(0) // ordre d'évaluation (classe la plus sévère gagne)
+  priority    Int              @default(0) // ordre d'évaluation (classe la plus sévère gagne)
   description String?
 }
 
 model ProvisionRate {
-  id          String   @id @default(cuid())
-  regimeId    String
-  regime      RegulatoryRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
-  classId     String
-  class       RegulatoryClass @relation(fields: [classId], references: [id], onDelete: Cascade)
-  rate        Float    // taux de provision sur base provisionnable (0..1)
+  id            String           @id @default(cuid())
+  regimeId      String
+  regime        RegulatoryRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
+  classId       String
+  class         RegulatoryClass  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  rate          Float // taux de provision sur base provisionnable (0..1)
   effectiveFrom DateTime
-  effectiveTo DateTime?
+  effectiveTo   DateTime?
 
   @@unique([classId, effectiveFrom])
 }
@@ -903,19 +903,19 @@ model ProvisionRate {
 // =====================================================================
 
 model GuaranteeType {
-  id          String   @id @default(cuid())
-  regimeId    String
-  regime      RegulatoryRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
-  code        String   // ex: HYP_RANG1, NANTISSEMENT, CAUTION_BANCAIRE
-  label       String
-  eligible    Boolean  @default(true)
-  quotity     Float    // quotité réglementaire de prise en compte (1.0 | 0.8 | 0.5)
-  haircut     Float    @default(0) // décote interne additionnelle éventuelle (0..1)
+  id               String           @id @default(cuid())
+  regimeId         String
+  regime           RegulatoryRegime @relation(fields: [regimeId], references: [id], onDelete: Cascade)
+  code             String // ex: HYP_RANG1, NANTISSEMENT, CAUTION_BANCAIRE
+  label            String
+  eligible         Boolean          @default(true)
+  quotity          Float // quotité réglementaire de prise en compte (1.0 | 0.8 | 0.5)
+  haircut          Float            @default(0) // décote interne additionnelle éventuelle (0..1)
   // Profil d'abattement annuel (art.41/21) appliqué selon l'ancienneté
   // en souffrance : HYPOTHECAIRE | TITRES | VEHICULES | NONE.
-  abatementProfile String @default("NONE")
-  requiresRank1 Boolean @default(false) // hypothèque de 1er rang exigée
-  description String?
+  abatementProfile String           @default("NONE")
+  requiresRank1    Boolean          @default(false) // hypothèque de 1er rang exigée
+  description      String?
 
   guarantees Guarantee[]
 
@@ -929,7 +929,7 @@ model GuaranteeType {
 // l'application retombe sur les valeurs par défaut du code (lib/domain/morocco.ts).
 model ReferentialItem {
   id         String   @id @default(cuid())
-  kind       String   // AUTHORIZATION | BUYER_FINANCING | FACILITY_NATURE | BUYER_AID
+  kind       String // AUTHORIZATION | BUYER_FINANCING | FACILITY_NATURE | BUYER_AID
   code       String
   label      String
   orderIndex Int      @default(0)
@@ -937,7 +937,7 @@ model ReferentialItem {
   config     Json?
   note       String?
   createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  updatedAt  DateTime @default(now()) @updatedAt
 
   @@unique([kind, code])
   @@index([kind, active])
@@ -948,24 +948,24 @@ model ReferentialItem {
 // Son coût non budgété ampute la marge ; son retard peut bloquer la réception,
 // le permis d'habiter, les actes et donc les mainlevées.
 model ProjectEquipment {
-  id                 String   @id @default(cuid())
+  id                 String            @id @default(cuid())
   projectId          String
   project            RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   trancheId          String?
-  tranche            Tranche? @relation(fields: [trancheId], references: [id])
-  kind               String   // cf. EQUIPMENT_KINDS (lib/domain/programmeV5.ts)
+  tranche            Tranche?          @relation(fields: [trancheId], references: [id])
+  kind               String // cf. EQUIPMENT_KINDS (lib/domain/programmeV5.ts)
   label              String
-  origin             String?  // cahier_des_charges | convention_commune | permis | convention_etat | autre
-  estimatedCost      Float?   // MAD
-  budgeted           Boolean  @default(false) // inclus dans le budget du programme
-  fundedBy           String?  // promoteur | banque | commune | autre
-  progressPct        Float    @default(0)
+  origin             String? // cahier_des_charges | convention_commune | permis | convention_etat | autre
+  estimatedCost      Float? // MAD
+  budgeted           Boolean           @default(false) // inclus dans le budget du programme
+  fundedBy           String? // promoteur | banque | commune | autre
+  progressPct        Float             @default(0)
   dueDate            DateTime?
-  conditionsDelivery Boolean  @default(false) // conditionne réception / permis d'habiter
-  handedOver         Boolean  @default(false) // remis à la commune
+  conditionsDelivery Boolean           @default(false) // conditionne réception / permis d'habiter
+  handedOver         Boolean           @default(false) // remis à la commune
   note               String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
 
   @@index([projectId])
 }
@@ -973,34 +973,34 @@ model ProjectEquipment {
 // Chaîne d'autorisations d'un programme (pratique marocaine) : chaque pièce
 // conditionne un jalon (étude / octroi / signature / tirage).
 model ProjectAuthorization {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  code        String   // cf. AUTHORIZATION_CHAIN (morocco.ts)
-  obtained    Boolean  @default(false)
-  obtainedAt  DateTime?
-  reference   String?  // n° de l'acte / de l'autorisation
-  note        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id         String            @id @default(cuid())
+  projectId  String
+  project    RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  code       String // cf. AUTHORIZATION_CHAIN (morocco.ts)
+  obtained   Boolean           @default(false)
+  obtainedAt DateTime?
+  reference  String? // n° de l'acte / de l'autorisation
+  note       String?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @default(now()) @updatedAt
 
   @@unique([projectId, code])
   @@index([projectId])
 }
 
 model Guarantee {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  typeId      String
-  type        GuaranteeType @relation(fields: [typeId], references: [id])
-  description String?
-  marketValue Float    // valeur de marché / réalisable (MAD)
-  rank        Int      @default(1) // rang hypothécaire
+  id                String            @id @default(cuid())
+  projectId         String
+  project           RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  typeId            String
+  type              GuaranteeType     @relation(fields: [typeId], references: [id])
+  description       String?
+  marketValue       Float // valeur de marché / réalisable (MAD)
+  rank              Int               @default(1) // rang hypothécaire
   // Ancienneté en souffrance (années) pour l'abattement progressif art.41/21
-  yearsInSouffrance Int @default(0)
-  recentlyEvaluated Boolean @default(true) // évaluation récente (art.19/39)
-  createdAt   DateTime @default(now())
+  yearsInSouffrance Int               @default(0)
+  recentlyEvaluated Boolean           @default(true) // évaluation récente (art.19/39)
+  createdAt         DateTime          @default(now())
 
   @@index([projectId])
 }
@@ -1010,30 +1010,30 @@ model Guarantee {
 // =====================================================================
 
 model ClassificationRun {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  regimeId    String
-  regime      RegulatoryRegime @relation(fields: [regimeId], references: [id])
-  scoringRunId String? @unique
-  scoringRun  ScoringRun? @relation(fields: [scoringRunId], references: [id])
+  id           String            @id @default(cuid())
+  projectId    String
+  project      RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  regimeId     String
+  regime       RegulatoryRegime  @relation(fields: [regimeId], references: [id])
+  scoringRunId String?           @unique
+  scoringRun   ScoringRun?       @relation(fields: [scoringRunId], references: [id])
 
-  resultClass RegulatoryClassCode
-  isWatchList Boolean  @default(false)
+  resultClass         RegulatoryClassCode
+  isWatchList         Boolean              @default(false)
   // Classe issue de l'effet groupe (contagion art.33/50) si plus sévère.
   groupContagionClass RegulatoryClassCode?
   // Détail restructuration ayant impacté la classe (art.17-31).
-  restructuringNote String?
+  restructuringNote   String?
   // Qualité des données (1/W §6.2) : COMPLETE | INCOMPLETE | INCOMPLETE_BLOCKING
-  dataQualityStatus String?
-  missingCriticalData Json?  // clés critiques/importantes manquantes
+  dataQualityStatus   String?
+  missingCriticalData Json? // clés critiques/importantes manquantes
   // Dérogation comité appliquée : classe calculée par le moteur (avant override)
   // et note de dérogation. resultClass porte alors la classe forcée.
-  engineClass RegulatoryClassCode?
-  overrideNote String?
-  triggeredBy Json     // triggers déclenchés + détails
-  inputSnapshot Json
-  createdAt   DateTime @default(now())
+  engineClass         RegulatoryClassCode?
+  overrideNote        String?
+  triggeredBy         Json // triggers déclenchés + détails
+  inputSnapshot       Json
+  createdAt           DateTime             @default(now())
 
   provisionRuns ProvisionRun[]
 
@@ -1045,46 +1045,46 @@ model ClassificationRun {
 // justification, demandeur, décideur et piste d'audit. Une seule peut être
 // active (APPROVED) à la fois par projet ; elle s'applique aux runs suivants.
 model RegulatoryOverride {
-  id            String   @id @default(cuid())
+  id            String               @id @default(cuid())
   projectId     String
-  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project       RealEstateProject    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   // Classe forcée par le comité et classe calculée par le moteur (snapshot).
   forcedClass   RegulatoryClassCode
   engineClass   RegulatoryClassCode?
   justification String
-  status        OverrideStatus @default(PENDING)
-  active        Boolean  @default(false) // true si APPROVED et en vigueur
+  status        OverrideStatus       @default(PENDING)
+  active        Boolean              @default(false) // true si APPROVED et en vigueur
   requestedById String
-  requestedBy   User     @relation("OverrideRequester", fields: [requestedById], references: [id])
+  requestedBy   User                 @relation("OverrideRequester", fields: [requestedById], references: [id])
   decidedById   String?
-  decidedBy     User?    @relation("OverrideDecider", fields: [decidedById], references: [id])
+  decidedBy     User?                @relation("OverrideDecider", fields: [decidedById], references: [id])
   decidedAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @default(now()) @updatedAt
 
   @@index([projectId])
 }
 
 model ProvisionRun {
-  id          String   @id @default(cuid())
-  projectId   String
-  project     RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  id                  String            @id @default(cuid())
+  projectId           String
+  project             RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   classificationRunId String
-  classificationRun ClassificationRun @relation(fields: [classificationRunId], references: [id], onDelete: Cascade)
+  classificationRun   ClassificationRun @relation(fields: [classificationRunId], references: [id], onDelete: Cascade)
 
   // Composantes du calcul (toutes en MAD sauf taux)
-  ead             Float   // exposure at default
-  reservedAgios   Float   @default(0) // agios réservés
-  eligibleGuarantees Float @default(0) // garanties éligibles après quotité/haircut
+  ead                Float // exposure at default
+  reservedAgios      Float               @default(0) // agios réservés
+  eligibleGuarantees Float               @default(0) // garanties éligibles après quotité/haircut
   guaranteeBreakdown Json? // détail par garantie
-  provisionBase   Float   // base provisionnable = EAD - agios - garanties éligibles
-  rate            Float   // taux de provision appliqué
-  provisionAmount Float   // provision = base * taux
-  classCode       RegulatoryClassCode
+  provisionBase      Float // base provisionnable = EAD - agios - garanties éligibles
+  rate               Float // taux de provision appliqué
+  provisionAmount    Float // provision = base * taux
+  classCode          RegulatoryClassCode
   // Créance irrégulière : critères de souffrance mais intégralement couverte
   // par des garanties de quotité 100% (19/G art.4bis) → provision nulle.
-  isIrregular     Boolean @default(false)
-  createdAt       DateTime @default(now())
+  isIrregular        Boolean             @default(false)
+  createdAt          DateTime            @default(now())
 
   @@index([projectId])
 }
@@ -1094,15 +1094,15 @@ model ProvisionRun {
 // =====================================================================
 
 model WorkflowStep {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   projectId String
   project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   fromState WorkflowState?
   toState   WorkflowState
   actorId   String
-  actor     User     @relation(fields: [actorId], references: [id])
+  actor     User              @relation(fields: [actorId], references: [id])
   comment   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
 
   @@index([projectId])
 }
@@ -1112,27 +1112,27 @@ model WorkflowStep {
 // se déduit l'EAD réel (encours + non-tiré pondéré par CCF) servant d'assiette
 // au provisionnement — au lieu du seul montant de prêt autorisé.
 model Facility {
-  id               String   @id @default(cuid())
+  id               String            @id @default(cuid())
   projectId        String
   project          RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  label            String   // ex. "Tranche 1 — gros œuvre"
-  externalRef      String?  // référence de la facilité dans le SI (T24/Evolan)
-  authorizedAmount Float    // montant autorisé (MAD)
-  drawnAmount      Float    @default(0) // encours tiré (MAD)
-  ccf              Float    @default(1) // credit conversion factor sur le non-tiré (0..1)
+  label            String // ex. "Tranche 1 — gros œuvre"
+  externalRef      String? // référence de la facilité dans le SI (T24/Evolan)
+  authorizedAmount Float // montant autorisé (MAD)
+  drawnAmount      Float             @default(0) // encours tiré (MAD)
+  ccf              Float             @default(1) // credit conversion factor sur le non-tiré (0..1)
   // Nature du concours (avance_foncier | credit_accompagnement | ...) —
   // conditionne l'exigence d'une situation de travaux visée au déblocage.
   nature           String?
-  reservedAgios    Float    @default(0)
+  reservedAgios    Float             @default(0)
   // Modèle v5 : tranche financée par ce concours (null = programme entier).
   trancheId        String?
-  tranche          Tranche? @relation(fields: [trancheId], references: [id])
-  status           FacilityStatus @default(ACTIVE)
+  tranche          Tranche?          @relation(fields: [trancheId], references: [id])
+  status           FacilityStatus    @default(ACTIVE)
   startedAt        DateTime? // date de démarrage des travaux financés
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
 
-  installments     Installment[]
+  installments Installment[]
 
   @@index([projectId])
 }
@@ -1140,14 +1140,14 @@ model Facility {
 // Échéance d'une facilité : montant dû, montant payé et date d'exigibilité.
 // Les échéances échues et non soldées déterminent le retard (DPD) et l'impayé.
 model Installment {
-  id          String   @id @default(cuid())
-  facilityId  String
-  facility    Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
-  seq         Int      // rang dans l'échéancier
-  dueDate     DateTime
-  amountDue   Float
-  amountPaid  Float    @default(0)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  facilityId String
+  facility   Facility @relation(fields: [facilityId], references: [id], onDelete: Cascade)
+  seq        Int // rang dans l'échéancier
+  dueDate    DateTime
+  amountDue  Float
+  amountPaid Float    @default(0)
+  createdAt  DateTime @default(now())
 
   @@index([facilityId])
 }
@@ -1156,19 +1156,19 @@ model Installment {
 // maturité) éditables par le risk manager — alimentent les métriques
 // Bâle/IFRS 9 sans recompilation. Une seule ligne active à la fois.
 model RiskCalibration {
-  id              String   @id @default(cuid())
-  label           String   @default("Calibrage par défaut")
-  pdStrong        Float    @default(0.005)
-  pdGood          Float    @default(0.015)
-  pdSatisfactory  Float    @default(0.04)
-  pdWeak          Float    @default(0.12)
-  lgdUnsecured    Float    @default(0.45)
-  lgdFloor        Float    @default(0.05)
-  maturityYears   Float    @default(3)
-  active          Boolean  @default(true)
-  updatedByEmail  String?  // auteur de cette version (audit)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id             String   @id @default(cuid())
+  label          String   @default("Calibrage par défaut")
+  pdStrong       Float    @default(0.005)
+  pdGood         Float    @default(0.015)
+  pdSatisfactory Float    @default(0.04)
+  pdWeak         Float    @default(0.12)
+  lgdUnsecured   Float    @default(0.45)
+  lgdFloor       Float    @default(0.05)
+  maturityYears  Float    @default(3)
+  active         Boolean  @default(true)
+  updatedByEmail String? // auteur de cette version (audit)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 // Groupe d'intérêt (contrepartie consolidée) — support de l'effet groupe
@@ -1176,7 +1176,7 @@ model RiskCalibration {
 model Group {
   id        String   @id @default(cuid())
   name      String   @unique
-  sector    String?  // secteur d'activité dominant
+  sector    String? // secteur d'activité dominant
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1187,46 +1187,46 @@ model Group {
 
 // Décision formelle du comité de crédit (quorum, votes, conditions, validité).
 model CommitteeDecision {
-  id            String   @id @default(cuid())
-  projectId     String
-  project       RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  outcome       CommitteeOutcome
-  chairId       String
-  chair         User     @relation("CommitteeChair", fields: [chairId], references: [id])
+  id        String            @id @default(cuid())
+  projectId String
+  project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  outcome   CommitteeOutcome
+  chairId   String
+  chair     User              @relation("CommitteeChair", fields: [chairId], references: [id])
 
   // Quorum & votes (agrégés)
-  quorum        Int      @default(0) // nombre de membres requis
-  presentCount  Int      @default(0) // membres présents
-  votesFor      Int      @default(0)
-  votesAgainst  Int      @default(0)
-  votesAbstain  Int      @default(0)
+  quorum       Int @default(0) // nombre de membres requis
+  presentCount Int @default(0) // membres présents
+  votesFor     Int @default(0)
+  votesAgainst Int @default(0)
+  votesAbstain Int @default(0)
 
   // Termes de la décision
-  approvedAmount Float?  // montant approuvé (MAD), si différent du demandé
+  approvedAmount Float? // montant approuvé (MAD), si différent du demandé
   conditions     String? // conditions / covenants
   validUntil     DateTime? // date de validité de l'accord
   minutesRef     String? // référence du PV de comité
 
-  createdAt     DateTime @default(now())
-
-  @@index([projectId])
-}
-
-model Comment {
-  id        String   @id @default(cuid())
-  projectId String
-  project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  authorId  String
-  author    User     @relation(fields: [authorId], references: [id])
-  body      String
-  section   String?
   createdAt DateTime @default(now())
 
   @@index([projectId])
 }
 
+model Comment {
+  id        String            @id @default(cuid())
+  projectId String
+  project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User              @relation(fields: [authorId], references: [id])
+  body      String
+  section   String?
+  createdAt DateTime          @default(now())
+
+  @@index([projectId])
+}
+
 model Attachment {
-  id        String   @id @default(cuid())
+  id        String            @id @default(cuid())
   projectId String
   project   RealEstateProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
   fileName  String
@@ -1234,24 +1234,24 @@ model Attachment {
   mimeType  String?
   sizeBytes Int?
   section   String?
-  createdAt DateTime @default(now())
+  createdAt DateTime          @default(now())
 
   @@index([projectId])
 }
 
 model AuditLog {
-  id         String   @id @default(cuid())
-  actorId    String?
-  actor      User?    @relation(fields: [actorId], references: [id])
-  action     AuditAction
-  entity     String   // nom de l'entité, ex: ScoringRun
-  entityId   String?
+  id        String      @id @default(cuid())
+  actorId   String?
+  actor     User?       @relation(fields: [actorId], references: [id])
+  action    AuditAction
+  entity    String // nom de l'entité, ex: ScoringRun
+  entityId  String?
   // Snapshots avant/après pour la traçabilité réglementaire.
-  before     Json?
-  after      Json?
-  metadata   Json?
-  ip         String?
-  createdAt  DateTime @default(now())
+  before    Json?
+  after     Json?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime    @default(now())
 
   @@index([entity, entityId])
   @@index([actorId])
@@ -1259,16 +1259,16 @@ model AuditLog {
 }
 
 model ImportBatch {
-  id          String   @id @default(cuid())
-  fileName    String
-  entity      String   // type d'entité importée
-  status      ImportStatus @default(PENDING)
-  mapping     Json?    // mapping colonnes -> champs
-  totalRows   Int      @default(0)
-  successRows Int      @default(0)
-  errorRows   Int      @default(0)
-  errors      Json?    // rapport d'erreurs détaillé
+  id           String       @id @default(cuid())
+  fileName     String
+  entity       String // type d'entité importée
+  status       ImportStatus @default(PENDING)
+  mapping      Json? // mapping colonnes -> champs
+  totalRows    Int          @default(0)
+  successRows  Int          @default(0)
+  errorRows    Int          @default(0)
+  errors       Json? // rapport d'erreurs détaillé
   importedById String
-  importedBy  User     @relation(fields: [importedById], references: [id])
-  createdAt   DateTime @default(now())
+  importedBy   User         @relation(fields: [importedById], references: [id])
+  createdAt    DateTime     @default(now())
 }

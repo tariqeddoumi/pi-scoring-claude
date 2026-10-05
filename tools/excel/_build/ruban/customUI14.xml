@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<!-- Onglet de ruban « Scoring PI » du classeur .xlsm (Office 2010 et suivants).
+     Chaque bouton appelle la macro Ruban_Action (module modRuban) avec son identifiant. -->
+<customUI xmlns="http://schemas.microsoft.com/office/2009/07/customui">
+  <ribbon>
+    <tabs>
+      <tab id="tabScoringPI" label="Scoring PI" insertAfterMso="TabHome">
+        <group id="grpDossier" label="Dossier">
+          <button id="btnNouveau" label="Nouveau dossier" size="large" imageMso="FileNew" onAction="Ruban_Action"
+                  screentip="Nouveau dossier" supertip="Vide la saisie et les calculateurs. Le portefeuille, le journal et les paramètres sont conservés."/>
+          <button id="btnEnregistrer" label="Enregistrer le dossier" size="large" imageMso="FileSave" onAction="Ruban_Action"
+                  screentip="Enregistrer le dossier" supertip="Range le dossier en cours (valeurs utilisées et résultat) dans l'onglet Portefeuille. Même référence = mise à jour."/>
+          <button id="btnOuvrir" label="Ouvrir un dossier" size="large" imageMso="FileOpen" onAction="Ruban_Action"
+                  screentip="Ouvrir un dossier" supertip="Recharge un dossier du Portefeuille : ligne sélectionnée, ou référence demandée."/>
+          <button id="btnPdf" label="Fiche en PDF" size="large" imageMso="FileSaveAsPdfOrXps" onAction="Ruban_Action"
+                  screentip="Exporter la fiche en PDF" supertip="Enregistre la fiche de résultat (une page) à côté du classeur."/>
+        </group>
+        <group id="grpAller" label="Aller à">
+          <button id="btnAccueil" label="Accueil" onAction="Ruban_Action"/>
+          <button id="btnSaisie" label="Saisie" onAction="Ruban_Action"/>
+          <button id="btnFiche" label="Fiche" onAction="Ruban_Action"/>
+        </group>
+        <group id="grpAnalyse" label="Analyse">
+          <button id="btnStress" label="Stress test" size="large" imageMso="CalculateNow" onAction="Ruban_Action"
+                  screentip="Stress test" supertip="7 scénarios de choc sur le dossier en cours (prix, coûts, retard, ventes, taux). Le dossier est restauré ensuite."/>
+          <button id="btnPortefeuille" label="Scorer le portefeuille" size="large" imageMso="AutoSum" onAction="Ruban_Action"
+                  screentip="Scorer le portefeuille" supertip="Calcule le résultat de chaque ligne de l'onglet Portefeuille."/>
+          <button id="btnJournal" label="Noter au journal" onAction="Ruban_Action"
+                  screentip="Noter au journal" supertip="Inscrit le résultat du dossier en cours dans l'onglet Historique."/>
+        </group>
+        <group id="grpOutil" label="Outil">
+          <button id="btnTests" label="Autotests" onAction="Ruban_Action"
+                  screentip="Autotests" supertip="Rejoue les cas de référence du moteur de production : attendu « 26 / 26 cas conformes »."/>
+          <button id="btnValider" label="Valider le modèle" imageMso="DataValidation" onAction="Ruban_Action"/>
+          <button id="btnParam" label="Paramètres" onAction="Ruban_Action"
+                  screentip="Paramètres du modèle" supertip="Affiche ou masque les onglets P_* (critères, barèmes, alertes, seuils) et les cas de référence."/>
+          <button id="btnListes" label="Rafraîchir les listes" onAction="Ruban_Action"/>
+          <button id="btnSnap" label="Instantané du modèle" onAction="Ruban_Action"/>
+          <button id="btnAide" label="Aide" onAction="Ruban_Action"/>
+        </group>
+      </tab>
+    </tabs>
+  </ribbon>
+</customUI>

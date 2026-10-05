@@ -8,7 +8,7 @@ import { WIZARD_STEPS, EXPLOITATION_WIZARD_STEPS } from "@/lib/wizardFields";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
 import { ScoreTimeline } from "@/components/ScoreTimeline";
 import { Card, CardContent, CardHeader, CardTitle, Badge, Stat, Table, Th, Td, Button } from "@/components/ui";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
+import { UrlTabs, TabsList, TabsTrigger, TabsContent } from "@/components/Tabs";
 import { ScoreGauge } from "@/components/ScoreGauge";
 import { RunScoringButton } from "@/components/RunScoringButton";
 import { OverridePanel, type OverrideRow } from "@/components/OverridePanel";
@@ -26,31 +26,36 @@ import { getCurrentAppUser } from "@/lib/supabase/server";
 import type { WorkflowStateName, CommitteeOutcomeName } from "@/lib/workflow";
 import { WORKFLOW_LABELS, COMMITTEE_OUTCOME_LABELS } from "@/lib/workflow";
 import { hasPermission, PERMISSIONS, type RoleName } from "@/lib/rbac";
-import { formatMAD, formatDate, formatPercent } from "@/lib/utils";
-import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS } from "@/lib/labels";
+import { formatMAD, formatDate, formatPercent, formatMADCompact, formatDecimal } from "@/lib/utils";
+import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS, SEVERITY_LABELS, SEVERITY_COLORS, WORKFLOW_STATE_COLORS } from "@/lib/labels";
 import { INPUT_SECTIONS, INPUT_LABELS, fmtInput } from "@/lib/inputLabels";
 import { SEGMENTS, ZONES, PROJECT_STATUSES, LAND_STATUSES, CITIES, MOROCCO_REGIONS } from "@/lib/domain/referentiels";
+import { TONE } from "@/lib/tones";
 
 export const dynamic = "force-dynamic";
 
+// Slug d'URL (?onglet=…) → onglet : lien direct vers une partie du dossier.
+const TAB_SLUGS: Record<string, string> = {
+  identification: "Identification", circuit: "Circuit & comité", promoteur: "Promoteur", foncier: "Foncier",
+  autorisations: "Autorisations", commercialisation: "Commercialisation", financement: "Financement",
+  programme: "Programme", "cash-flow": "Cash-flow", garanties: "Garanties", classification: "Classification BKAM",
+  risque: "Risque & provision", scoring: "Scoring",
+};
+const SLUG_OF_TAB = Object.fromEntries(Object.entries(TAB_SLUGS).map(([slug, tab]) => [tab, slug]));
+
 const TABS = [
-  "Identification", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
-  "Financement", "Programme", "Cash-flow", "Garanties", "Classification BKAM", "Provisionnement", "Scoring", "Audit",
+  "Identification", "Circuit & comité", "Promoteur", "Foncier", "Autorisations", "Commercialisation",
+  "Financement", "Programme", "Cash-flow", "Garanties", "Classification BKAM", "Risque & provision", "Scoring",
 ];
 
-const WF_STATE_COLORS: Record<WorkflowStateName, string> = {
-  DRAFT: "bg-slate-100 text-slate-700 border-slate-300",
-  SUBMITTED: "bg-blue-100 text-blue-800 border-blue-300",
-  BRANCH_REVIEW: "bg-cyan-100 text-cyan-800 border-cyan-300",
-  ANALYST_REVIEW: "bg-indigo-100 text-indigo-800 border-indigo-300",
-  MANAGER_VALIDATION: "bg-violet-100 text-violet-800 border-violet-300",
-  COMMITTEE: "bg-amber-100 text-amber-800 border-amber-300",
-  APPROVED: "bg-emerald-100 text-emerald-800 border-emerald-300",
-  REJECTED: "bg-red-100 text-red-800 border-red-300",
-};
 
-export default async function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ProjectDetailPage({ params, searchParams }: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const { id } = await params;
+  const ongletParam = (await searchParams).onglet;
+  const initialTab = TAB_SLUGS[String(Array.isArray(ongletParam) ? ongletParam[0] : ongletParam ?? "")] ?? "Identification";
   const res = await safe(() => getProjectDetail(id));
   if (!res.ok) return <DbSetupNotice error={res.error} />;
   const p = res.data;
@@ -121,21 +126,18 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           <h1 className="text-2xl font-bold">{p.name}</h1>
           <p className="text-muted-foreground text-sm">{p.reference} · {p.promoter.name} · {CITIES.labelOf(p.city)}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {cls && <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>}
           {run?.decision && <Badge className={DECISION_COLORS[run.decision]}>{DECISION_LABELS[run.decision]}</Badge>}
           {actor && hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE) && (
-            <Link href={`/projects/${p.id}/edit`}><Button variant="outline">Éditer</Button></Link>
+            <Link href={`/projects/${p.id}/edit`}><Button variant="outline">Modifier la fiche</Button></Link>
           )}
-          <Link href={`/projects/${p.id}/suivi`}>
-            <Button variant="outline">{p.assetType === "PROMOTION" ? "Suivi (commercialisation & événements)" : "Suivi (événements & visites)"}</Button>
-          </Link>
-          <Link href={`/projects/${p.id}/scoring`}><Button variant="outline">Wizard de scoring</Button></Link>
+          {/* Le suivi et la saisie sont accessibles par les onglets ci-dessous. */}
           <a href={`/api/export/project/${p.id}`} target="_blank" rel="noreferrer">
-            <Button variant="outline">Dossier comité (PDF)</Button>
+            <Button variant="outline">Dossier comité · PDF</Button>
           </a>
           <a href={`/api/export/project/${p.id}/xlsx`}>
-            <Button variant="outline">Dossier comité (Excel)</Button>
+            <Button variant="outline">Dossier comité · Excel</Button>
           </a>
         </div>
       </div>
@@ -158,14 +160,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         return (
           <Card>
             <CardContent className="space-y-3 pt-4">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <Stat label="Score final" value={run?.scoreFinal != null ? `${run.scoreFinal}/100` : "—"} hint={run?.decision ? DECISION_LABELS[run.decision] : "aucun scoring"} />
+              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                <Stat label="Score final" value={run?.scoreFinal != null ? `${formatDecimal(run.scoreFinal, 1)} / 100` : "—"} hint={run?.decision ? DECISION_LABELS[run.decision] : "aucun scoring"} />
                 <Stat label="Classe BKAM" value={cls ? CLASS_LABELS[cls.resultClass] : "—"} hint={cls?.isWatchList ? "watch list" : undefined} />
-                <Stat label="Provision" value={prov ? formatMAD(prov.provisionAmount) : "—"} />
-                <Stat label="Étape du circuit" value={WORKFLOW_LABELS[currentState]} />
+                <Stat label="Provision" value={prov ? formatMADCompact(prov.provisionAmount) : "—"} title={prov ? formatMAD(prov.provisionAmount) : undefined} />
+                <Stat label="Étape du circuit" value={<span className="text-base font-semibold leading-snug">{WORKFLOW_LABELS[currentState]}</span>} />
                 <Stat
                   label="Fraîcheur du score"
-                  value={FRESHNESS_LABELS[freshness.status]}
+                  value={<span className="text-base font-semibold leading-snug">{FRESHNESS_LABELS[freshness.status]}</span>}
                   hint={freshness.nextReviewAt ? `échéance ${formatDate(freshness.nextReviewAt)}` : undefined}
                 />
               </div>
@@ -180,7 +182,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                 </div>
                 <span className="text-sm tabular-nums font-medium">{completeness.pct} %</span>
                 {completeness.missingCritical.length > 0 && (
-                  <Badge className="bg-red-100 text-red-800 border-red-300">
+                  <Badge className={TONE.danger}>
                     {completeness.missingCritical.length} champ(s) critique(s) manquant(s)
                   </Badge>
                 )}
@@ -188,6 +190,15 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {completeness.pct < 100 && (
                 <p className="text-xs text-muted-foreground">
                   Étapes incomplètes : {completeness.steps.filter((s) => s.missingKeys.length > 0).map((s) => `${s.title} (${s.filled}/${s.total})`).join(" · ")}
+                </p>
+              )}
+
+              {p.committeeDecisions[0] && (
+                <p className="text-sm">
+                  <span className="text-muted-foreground">Dernière décision de comité : </span>
+                  <span className="font-medium">{COMMITTEE_OUTCOME_LABELS[p.committeeDecisions[0].outcome as CommitteeOutcomeName]}</span>
+                  <span className="text-muted-foreground"> · {formatDate(p.committeeDecisions[0].createdAt)} · </span>
+                  <Link href={`/projects/${p.id}?onglet=circuit#onglets`} className="text-primary hover:underline">voir le détail</Link>
                 </p>
               )}
 
@@ -214,123 +225,22 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         );
       })()}
 
-      <RunScoringButton projectId={p.id} />
-
-      {actor && (
-        <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
-      )}
+      {/* Actions : calcul du score et circuit de décision, côte à côte. */}
+      <div className="grid gap-4 lg:grid-cols-2 items-start">
+        <Card>
+          <CardHeader><CardTitle>Calcul du score</CardTitle></CardHeader>
+          <CardContent><RunScoringButton projectId={p.id} /></CardContent>
+        </Card>
+        {actor && (
+          <WorkflowPanel projectId={p.id} currentState={currentState} role={actor.role.name as RoleName} />
+        )}
+      </div>
 
       {actor && currentState === "COMMITTEE" && hasPermission(actor.role.name as RoleName, PERMISSIONS.SCORING_VALIDATE) && (
         <CommitteeDecisionForm projectId={p.id} />
       )}
 
-      {p.committeeDecisions[0] && (
-        <Card>
-          <CardHeader><CardTitle>Dernière décision de comité</CardTitle></CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {(() => {
-              const cd = p.committeeDecisions[0]!;
-              return (
-                <>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Badge className={cd.outcome.startsWith("FAVORABLE") ? "bg-emerald-100 text-emerald-800 border-emerald-300" : cd.outcome === "DEFAVORABLE" ? "bg-red-100 text-red-800 border-red-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
-                      {COMMITTEE_OUTCOME_LABELS[cd.outcome as CommitteeOutcomeName]}
-                    </Badge>
-                    <span className="text-muted-foreground">
-                      Président : {cd.chair.name} · {formatDate(cd.createdAt)}
-                    </span>
-                  </div>
-                  <div className="grid sm:grid-cols-4 gap-2">
-                    <span>Quorum : {cd.presentCount}/{cd.quorum}</span>
-                    <span>Pour : {cd.votesFor}</span>
-                    <span>Contre : {cd.votesAgainst}</span>
-                    <span>Abst. : {cd.votesAbstain}</span>
-                  </div>
-                  {cd.approvedAmount != null && <p>Montant approuvé : <span className="font-medium">{formatMAD(cd.approvedAmount)}</span></p>}
-                  {cd.conditions && <p>Conditions : {cd.conditions}</p>}
-                  {cd.validUntil && <p>Validité jusqu'au {formatDate(cd.validUntil)}</p>}
-                  {cd.minutesRef && <p className="text-muted-foreground">PV : {cd.minutesRef}</p>}
-                </>
-              );
-            })()}
-          </CardContent>
-        </Card>
-      )}
-
-      {actor && (
-        <GfaVefaCard
-          projectId={p.id}
-          assetType={p.assetType}
-          saleMode={p.saleMode}
-          hasGFA={p.hasGFA}
-          gfaAmount={p.gfaAmount}
-          gfaProvider={p.gfaProvider}
-          exposure={p.loanAmount ?? 0}
-          canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
-        />
-      )}
-
-      <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
-
-      {p.attachments.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Pièces jointes</CardTitle></CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <thead><tr><Th>Document</Th><Th>Section</Th><Th>Taille</Th><Th>Ajouté le</Th></tr></thead>
-              <tbody>
-                {p.attachments.map((a) => (
-                  <tr key={a.id}>
-                    <Td><a href={a.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{a.fileName}</a></Td>
-                    <Td>{a.section ?? "—"}</Td>
-                    <Td>{a.sizeBytes != null ? `${Math.round(a.sizeBytes / 1024)} Ko` : "—"}</Td>
-                    <Td className="whitespace-nowrap">{formatDate(a.createdAt)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
-
-      <RiskMetricsCard
-        score={run?.scoreFinal ?? null}
-        cls={cls?.resultClass ?? null}
-        ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
-        eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
-        bkamProvision={prov?.provisionAmount ?? null}
-        assetType={p.assetType as "PROMOTION" | "EXPLOITATION"}
-        calib={calib}
-        dpdDays={typeof inputs.dpd_days === "number" ? inputs.dpd_days : null}
-        initialScore={scoreHistory[0]?.scoreFinal ?? null}
-        restructured={inputs.restructured === "yes"}
-      />
-
-      {p.workflowSteps.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle>Historique du circuit</CardTitle></CardHeader>
-          <CardContent>
-            <ol className="space-y-3">
-              {p.workflowSteps.map((s) => (
-                <li key={s.id} className="flex items-start gap-3 text-sm">
-                  <span className="text-muted-foreground whitespace-nowrap w-32 shrink-0">{formatDate(s.createdAt)}</span>
-                  <span className="flex items-center gap-2 flex-wrap">
-                    <Badge className={WF_STATE_COLORS[s.fromState as WorkflowStateName]}>{WORKFLOW_LABELS[s.fromState as WorkflowStateName]}</Badge>
-                    <span className="text-muted-foreground">→</span>
-                    <Badge className={WF_STATE_COLORS[s.toState as WorkflowStateName]}>{WORKFLOW_LABELS[s.toState as WorkflowStateName]}</Badge>
-                  </span>
-                  <span className="text-muted-foreground">
-                    par {s.actor?.name ?? "—"}
-                    {s.comment ? ` · « ${s.comment} »` : ""}
-                  </span>
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
-      )}
-
-      <Tabs defaultValue="Identification">
+      <UrlTabs key={initialTab} defaultValue={initialTab} param="onglet" slugs={SLUG_OF_TAB} id="onglets" className="scroll-mt-20">
         <TabsList>
           {TABS.map((t) => <TabsTrigger key={t} value={t}>{t}</TabsTrigger>)}
         </TabsList>
@@ -352,9 +262,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               </tbody></Table>
             </CardContent></Card>
             <div className="grid grid-cols-2 gap-4 content-start">
-              <Stat label="Coût total" value={formatMAD(p.totalCost)} />
-              <Stat label="Crédit" value={formatMAD(p.loanAmount)} />
-              <Stat label="Fonds propres" value={formatMAD(p.ownEquity)} />
+              <Stat label="Coût total" value={formatMADCompact(p.totalCost)} title={formatMAD(p.totalCost)} />
+              <Stat label="Crédit" value={formatMADCompact(p.loanAmount)} title={formatMAD(p.loanAmount)} />
+              <Stat label="Fonds propres" value={formatMADCompact(p.ownEquity)} title={formatMAD(p.ownEquity)} />
               <Stat label="Chargé d'affaires" value={p.rm?.name ?? "—"} />
             </div>
           </div>
@@ -372,6 +282,26 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               {p.description && <p className="whitespace-pre-wrap border-t border-border pt-2">{p.description}</p>}
             </CardContent></Card>
           </div>
+          {p.attachments.length > 0 && (
+            <Card>
+              <CardHeader><CardTitle>Pièces jointes</CardTitle></CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <thead><tr><Th>Document</Th><Th>Section</Th><Th>Taille</Th><Th>Ajouté le</Th></tr></thead>
+                  <tbody>
+                    {p.attachments.map((a) => (
+                      <tr key={a.id}>
+                        <Td><a href={a.url} target="_blank" rel="noreferrer" className="text-primary hover:underline">{a.fileName}</a></Td>
+                        <Td>{a.section ?? "—"}</Td>
+                        <Td>{a.sizeBytes != null ? `${Math.round(a.sizeBytes / 1024)} Ko` : "—"}</Td>
+                        <Td className="whitespace-nowrap">{formatDate(a.createdAt)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
           </div>
         </TabsContent>
 
@@ -379,7 +309,25 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
         <TabsContent value="Foncier">{sectionTable("foncier")}</TabsContent>
         <TabsContent value="Autorisations"><div className="space-y-4">{sectionTable("autorisations")}{sectionTable("maroc")}</div></TabsContent>
         <TabsContent value="Commercialisation">{sectionTable("commercialisation")}</TabsContent>
-        <TabsContent value="Financement">{sectionTable("financement")}</TabsContent>
+        <TabsContent value="Financement">
+          <div className="space-y-4">
+            {actor && (
+              <GfaVefaCard
+                projectId={p.id}
+                assetType={p.assetType}
+                saleMode={p.saleMode}
+                hasGFA={p.hasGFA}
+                gfaAmount={p.gfaAmount}
+                gfaProvider={p.gfaProvider}
+                exposure={p.loanAmount ?? 0}
+                canEdit={hasPermission(actor.role.name as RoleName, PERMISSIONS.PROJECT_WRITE)}
+              />
+            )}
+
+            <FacilitiesCard facilities={p.facilities} loanAmount={p.loanAmount ?? 0} />
+            {sectionTable("financement")}
+          </div>
+        </TabsContent>
         <TabsContent value="Programme">{sectionTable("programme")}</TabsContent>
         <TabsContent value="Cash-flow">{sectionTable("cashflow")}</TabsContent>
 
@@ -423,9 +371,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <Stat label="LGD (base)" value={formatPercent(lgd.base.lgd * 100, 1)} hint={`taux de recouvrement ${formatPercent(lgd.base.recoveryRate * 100, 0)}`} />
-                  <Stat label="Recouvrement net" value={formatMAD(lgd.base.economicNetRecovery)} hint={`EAD ${formatMAD(lgd.ead)}`} />
-                  <Stat label="Valeur admissible prudentielle" value={formatMAD(lgd.base.prudentialAdmissibleValue)} hint="éligible après abattement" />
-                  <Stat label="Sûreté opposable (1er rang)" value={formatMAD(lgd.base.enforceableValue)} />
+                  <Stat label="Recouvrement net" value={formatMADCompact(lgd.base.economicNetRecovery)} title={formatMAD(lgd.base.economicNetRecovery)} hint={`EAD ${formatMAD(lgd.ead)}`} />
+                  <Stat label="Valeur admissible prudentielle" value={formatMADCompact(lgd.base.prudentialAdmissibleValue)} title={formatMAD(lgd.base.prudentialAdmissibleValue)} hint="éligible après abattement" />
+                  <Stat label="Sûreté opposable (1er rang)" value={formatMADCompact(lgd.base.enforceableValue)} title={formatMAD(lgd.base.enforceableValue)} />
                 </div>
 
                 <div>
@@ -464,9 +412,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
               <div className="flex items-center gap-3">
                 <Badge className={CLASS_COLORS[cls.resultClass]}>{CLASS_LABELS[cls.resultClass]}</Badge>
                 {cls.isWatchList && <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">Watch List</Badge>}
-                {cls.groupContagionClass && <Badge className="bg-purple-100 text-purple-800 border-purple-300">Contagion groupe : {CLASS_LABELS[cls.groupContagionClass]}</Badge>}
+                {cls.groupContagionClass && <Badge className={TONE.accent}>Contagion groupe : {CLASS_LABELS[cls.groupContagionClass]}</Badge>}
                 {cls.dataQualityStatus && cls.dataQualityStatus !== "COMPLETE" && (
-                  <Badge className={cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? "bg-red-100 text-red-800 border-red-300" : "bg-amber-100 text-amber-800 border-amber-300"}>
+                  <Badge className={cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? TONE.danger : TONE.warning}>
                     {cls.dataQualityStatus === "INCOMPLETE_BLOCKING" ? "Données critiques manquantes" : "Données incomplètes"}
                   </Badge>
                 )}
@@ -518,33 +466,47 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
          </div>
         </TabsContent>
 
-        <TabsContent value="Provisionnement">
-          {prov ? (
-            <Card><CardHeader><CardTitle>Provisionnement BKAM</CardTitle></CardHeader><CardContent>
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
-                <Stat label="EAD" value={formatMAD(prov.ead)} />
-                <Stat label="Agios réservés" value={formatMAD(prov.reservedAgios)} />
-                <Stat label="Garanties éligibles" value={formatMAD(prov.eligibleGuarantees)} />
-                <Stat label="Base provisionnable" value={formatMAD(prov.provisionBase)} />
-                <Stat label="Taux" value={formatPercent(prov.rate * 100, 0)} />
-                <Stat label="Provision" value={formatMAD(prov.provisionAmount)} hint={prov.isIrregular ? "Créance irrégulière (couverte 100%)" : undefined} />
-              </div>
-              <p className="text-sm font-medium mb-1">Détail garanties éligibles</p>
-              <Table>
-                <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Quotité base</Th><Th>Quotité effective</Th><Th>Admise</Th></tr></thead>
-                <tbody>
-                  {(prov.guaranteeBreakdown as any[] ?? []).map((l, i) => (
-                    <tr key={i}>
-                      <Td>{l.typeCode}</Td><Td>{formatMAD(l.marketValue)}</Td>
-                      <Td>{formatPercent(l.baseQuotity * 100, 0)}</Td>
-                      <Td>{formatPercent(l.effectiveQuotity * 100, 0)}{l.abatementApplied ? " ↓" : ""}</Td>
-                      <Td className="font-medium">{formatMAD(l.eligibleValue)}</Td>
-                    </tr>
-                  ))}
-                </tbody>
-              </Table>
-            </CardContent></Card>
-          ) : <p className="text-muted-foreground text-sm">Aucun provisionnement calculé.</p>}
+        <TabsContent value="Risque & provision">
+          <div className="space-y-4">
+            <RiskMetricsCard
+              score={run?.scoreFinal ?? null}
+              cls={cls?.resultClass ?? null}
+              ead={prov?.ead ?? projectEad(p.facilities, p.loanAmount ?? 0).ead}
+              eligibleGuarantees={prov?.eligibleGuarantees ?? 0}
+              bkamProvision={prov?.provisionAmount ?? null}
+              assetType={p.assetType as "PROMOTION" | "EXPLOITATION"}
+              calib={calib}
+              dpdDays={typeof inputs.dpd_days === "number" ? inputs.dpd_days : null}
+              initialScore={scoreHistory[0]?.scoreFinal ?? null}
+              restructured={inputs.restructured === "yes"}
+            />
+            {prov ? (
+              <Card><CardHeader><CardTitle>Provisionnement BKAM</CardTitle></CardHeader><CardContent>
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                  <Stat label="EAD" value={formatMADCompact(prov.ead)} title={formatMAD(prov.ead)} />
+                  <Stat label="Agios réservés" value={formatMADCompact(prov.reservedAgios)} title={formatMAD(prov.reservedAgios)} />
+                  <Stat label="Garanties éligibles" value={formatMADCompact(prov.eligibleGuarantees)} title={formatMAD(prov.eligibleGuarantees)} />
+                  <Stat label="Base provisionnable" value={formatMADCompact(prov.provisionBase)} title={formatMAD(prov.provisionBase)} />
+                  <Stat label="Taux" value={formatPercent(prov.rate * 100, 0)} />
+                  <Stat label="Provision" value={formatMADCompact(prov.provisionAmount)} title={formatMAD(prov.provisionAmount)} hint={prov.isIrregular ? "Créance irrégulière (couverte 100%)" : undefined} />
+                </div>
+                <p className="text-sm font-medium mb-1">Détail garanties éligibles</p>
+                <Table>
+                  <thead><tr><Th>Type</Th><Th>Valeur</Th><Th>Quotité base</Th><Th>Quotité effective</Th><Th>Admise</Th></tr></thead>
+                  <tbody>
+                    {(prov.guaranteeBreakdown as any[] ?? []).map((l, i) => (
+                      <tr key={i}>
+                        <Td>{l.typeCode}</Td><Td>{formatMAD(l.marketValue)}</Td>
+                        <Td>{formatPercent(l.baseQuotity * 100, 0)}</Td>
+                        <Td>{formatPercent(l.effectiveQuotity * 100, 0)}{l.abatementApplied ? " ↓" : ""}</Td>
+                        <Td className="font-medium">{formatMAD(l.eligibleValue)}</Td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </CardContent></Card>
+            ) : <p className="text-muted-foreground text-sm">Aucun provisionnement calculé.</p>}
+          </div>
         </TabsContent>
 
         <TabsContent value="Scoring">
@@ -574,7 +536,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                         <Td>{d.domain.code} — {d.domain.name}</Td>
                         <Td className="font-medium">{d.score.toFixed(0)}</Td>
                         <Td>{formatPercent(d.domain.weight * 100, 0)}</Td>
-                        <Td>{d.weighted.toFixed(1)}</Td>
+                        <Td>{formatDecimal(d.weighted, 1)}</Td>
                       </tr>
                     ))}
                   </tbody>
@@ -593,7 +555,7 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                           <Td className="font-mono text-xs">{c.rawValue ?? "—"}</Td>
                           <Td className="font-medium">{c.score}</Td>
                           <Td>{formatPercent(c.criterion.weight * 100, 0)}</Td>
-                          <Td>{c.weighted.toFixed(2)}</Td>
+                          <Td>{formatDecimal(c.weighted, 2)}</Td>
                           <Td className="text-xs text-muted-foreground">{c.matchedRef ?? "—"}</Td>
                         </tr>
                       ))}
@@ -616,14 +578,14 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                   <CardHeader>
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <CardTitle>Challenger de pondération par phase</CardTitle>
-                      <Badge className="bg-slate-100 text-slate-700 border-slate-300">Phase : {phaseChallenger.phaseLabel}</Badge>
+                      <Badge className={TONE.neutral}>Phase : {phaseChallenger.phaseLabel}</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-3 gap-4">
-                      <Stat label="Score éco. officiel" value={phaseChallenger.officialScore.toFixed(1)} hint="poids du modèle publié" />
-                      <Stat label="Score éco. par phase" value={phaseChallenger.phasedScore.toFixed(1)} hint="grille §8.2 (challenger)" />
-                      <Stat label="Écart" value={`${phaseChallenger.delta >= 0 ? "+" : ""}${phaseChallenger.delta.toFixed(1)} pts`} />
+                      <Stat label="Score éco. officiel" value={formatDecimal(phaseChallenger.officialScore, 1)} hint="poids du modèle publié" />
+                      <Stat label="Score éco. par phase" value={formatDecimal(phaseChallenger.phasedScore, 1)} hint="grille §8.2 (challenger)" />
+                      <Stat label="Écart" value={`${phaseChallenger.delta >= 0 ? "+" : ""}${formatDecimal(phaseChallenger.delta, 1)} pts`} />
                     </div>
                     <Table>
                       <thead><tr><Th>Domaine</Th><Th>Score /100</Th><Th>Poids officiel</Th><Th>Poids phase</Th></tr></thead>
@@ -655,9 +617,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
                         </div>
                       )}
                       <div className="grid grid-cols-3 gap-4">
-                        <Stat label="Score ajusté officiel" value={phaseChallenger.officialAdjusted.toFixed(1)} hint={`α seg ${(phaseChallenger.alphaSeg * 100).toFixed(0)}% · β zone ${(phaseChallenger.betaZone * 100).toFixed(0)}%`} />
-                        <Stat label="Sans coefficients (challenger)" value={phaseChallenger.neutralizedAdjusted.toFixed(1)} hint="coefficients neutralisés" />
-                        <Stat label="Effet des coefficients" value={`${phaseChallenger.officialAdjusted - phaseChallenger.neutralizedAdjusted >= 0 ? "+" : ""}${(phaseChallenger.officialAdjusted - phaseChallenger.neutralizedAdjusted).toFixed(1)} pts`} />
+                        <Stat label="Score ajusté officiel" value={formatDecimal(phaseChallenger.officialAdjusted, 1)} hint={`α seg ${(phaseChallenger.alphaSeg * 100).toFixed(0)}% · β zone ${(phaseChallenger.betaZone * 100).toFixed(0)}%`} />
+                        <Stat label="Sans coefficients (challenger)" value={formatDecimal(phaseChallenger.neutralizedAdjusted, 1)} hint="coefficients neutralisés" />
+                        <Stat label="Effet des coefficients" value={`${phaseChallenger.officialAdjusted - phaseChallenger.neutralizedAdjusted >= 0 ? "+" : ""}${formatDecimal(phaseChallenger.officialAdjusted - phaseChallenger.neutralizedAdjusted, 1)} pts`} />
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Tant que les coefficients segment/zone ne sont pas étayés par une analyse de micro-marché, le
@@ -672,25 +634,65 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           ) : <p className="text-muted-foreground text-sm">Aucun run de scoring. Cliquez sur « Lancer le scoring ».</p>}
         </TabsContent>
 
-        <TabsContent value="Audit">
-          <Card><CardHeader><CardTitle>Historique workflow</CardTitle></CardHeader><CardContent className="p-0">
-            <Table>
-              <thead><tr><Th>Date</Th><Th>Transition</Th><Th>Acteur</Th><Th>Commentaire</Th></tr></thead>
-              <tbody>
-                {p.workflowSteps.map((w) => (
-                  <tr key={w.id}>
-                    <Td className="whitespace-nowrap">{formatDate(w.createdAt)}</Td>
-                    <Td>{w.fromState ? `${WORKFLOW_LABELS[w.fromState as WorkflowStateName]} → ` : ""}{WORKFLOW_LABELS[w.toState as WorkflowStateName]}</Td>
-                    <Td>{w.actor.name}</Td>
-                    <Td className="text-muted-foreground">{w.comment ?? "—"}</Td>
-                  </tr>
-                ))}
-                {p.workflowSteps.length === 0 && <tr><Td className="text-muted-foreground">Aucune étape enregistrée.</Td></tr>}
-              </tbody>
-            </Table>
-          </CardContent></Card>
+        <TabsContent value="Circuit & comité">
+          <div className="space-y-4">
+            {p.committeeDecisions[0] && (
+              <Card>
+                <CardHeader><CardTitle>Dernière décision de comité</CardTitle></CardHeader>
+                <CardContent className="space-y-2 text-sm">
+                  {(() => {
+                    const cd = p.committeeDecisions[0]!;
+                    return (
+                      <>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <Badge className={cd.outcome.startsWith("FAVORABLE") ? TONE.success : cd.outcome === "DEFAVORABLE" ? TONE.danger : TONE.warning}>
+                            {COMMITTEE_OUTCOME_LABELS[cd.outcome as CommitteeOutcomeName]}
+                          </Badge>
+                          <span className="text-muted-foreground">
+                            Président : {cd.chair.name} · {formatDate(cd.createdAt)}
+                          </span>
+                        </div>
+                        <div className="grid sm:grid-cols-4 gap-2">
+                          <span>Quorum : {cd.presentCount}/{cd.quorum}</span>
+                          <span>Pour : {cd.votesFor}</span>
+                          <span>Contre : {cd.votesAgainst}</span>
+                          <span>Abst. : {cd.votesAbstain}</span>
+                        </div>
+                        {cd.approvedAmount != null && <p>Montant approuvé : <span className="font-medium">{formatMAD(cd.approvedAmount)}</span></p>}
+                        {cd.conditions && <p>Conditions : {cd.conditions}</p>}
+                        {cd.validUntil && <p>Validité jusqu'au {formatDate(cd.validUntil)}</p>}
+                        {cd.minutesRef && <p className="text-muted-foreground">PV : {cd.minutesRef}</p>}
+                      </>
+                    );
+                  })()}
+                </CardContent>
+              </Card>
+            )}
+            <Card><CardHeader><CardTitle>Historique du circuit</CardTitle></CardHeader><CardContent className="p-0">
+              <Table>
+                <thead><tr><Th>Date</Th><Th>Transition</Th><Th>Acteur</Th><Th>Commentaire</Th></tr></thead>
+                <tbody>
+                  {p.workflowSteps.map((w) => (
+                    <tr key={w.id}>
+                      <Td className="whitespace-nowrap">{formatDate(w.createdAt)}</Td>
+                      <Td>
+                        <span className="flex flex-wrap items-center gap-1.5">
+                          {w.fromState && <Badge className={WORKFLOW_STATE_COLORS[w.fromState as WorkflowStateName]}>{WORKFLOW_LABELS[w.fromState as WorkflowStateName]}</Badge>}
+                          {w.fromState && <span className="text-muted-foreground" aria-label="vers">→</span>}
+                          <Badge className={WORKFLOW_STATE_COLORS[w.toState as WorkflowStateName]}>{WORKFLOW_LABELS[w.toState as WorkflowStateName]}</Badge>
+                        </span>
+                      </Td>
+                      <Td>{w.actor.name}</Td>
+                      <Td className="text-muted-foreground">{w.comment ?? "—"}</Td>
+                    </tr>
+                  ))}
+                  {p.workflowSteps.length === 0 && <tr><Td className="text-muted-foreground">Aucune étape enregistrée.</Td></tr>}
+                </tbody>
+              </Table>
+            </CardContent></Card>
+          </div>
         </TabsContent>
-      </Tabs>
+      </UrlTabs>
     </div>
   );
 }

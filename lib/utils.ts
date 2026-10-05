@@ -15,9 +15,29 @@ export function formatMAD(value: number | null | undefined): string {
   }).format(value);
 }
 
+/** Nombre décimal au format français (virgule), nombre de décimales fixe. */
+export function formatDecimal(value: number | null | undefined, digits = 1): string {
+  if (value == null || !Number.isFinite(value)) return "—";
+  return new Intl.NumberFormat("fr-FR", { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(value);
+}
+
 export function formatPercent(value: number | null | undefined, digits = 1): string {
   if (value == null) return "—";
-  return `${value.toFixed(digits)} %`;
+  return `${formatDecimal(value, digits)} %`;
+}
+
+/**
+ * Montant MAD abrégé pour les indicateurs : « 866 M MAD », « 1,2 Md MAD ».
+ * En dessous d'un million, le montant complet est conservé.
+ */
+export function formatMADCompact(value: number | null | undefined): string {
+  if (value == null) return "—";
+  const a = Math.abs(value);
+  if (a < 1_000_000) return formatMAD(value);
+  const [div, unit] = a >= 1_000_000_000 ? [1_000_000_000, "Md"] : [1_000_000, "M"];
+  const n = value / div;
+  const digits = Math.abs(n) >= 100 ? 0 : 1;
+  return `${formatDecimal(n, digits).replace(/,0$/, "")} ${unit} MAD`;
 }
 
 export function formatNumber(value: number | null | undefined): string {

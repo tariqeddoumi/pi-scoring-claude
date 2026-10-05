@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, Table, Th, Td, Badge, Stat } 
 import { DbSetupNotice, AccessDenied, safe } from "@/lib/dbGuard";
 import { currentUserCan } from "@/lib/authz";
 import { PERMISSIONS } from "@/lib/rbac";
-import { formatMAD, formatNumber } from "@/lib/utils";
+import { formatMAD, formatNumber, formatMADCompact } from "@/lib/utils";
 import { CLASS_LABELS, CLASS_COLORS, DECISION_LABELS, DECISION_COLORS } from "@/lib/labels";
 import { LEGAL_FORMS, CITIES } from "@/lib/domain/referentiels";
 import { PromoterLinksPanel, type PromoterLinkView } from "@/components/PromoterLinksPanel";
@@ -64,7 +64,7 @@ export default async function PromoterPage({ params }: { params: Promise<{ id: s
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Stat label="Projets" value={p.projects.length} />
-        <Stat label="Exposition totale" value={formatMAD(exposure)} />
+        <Stat label="Exposition totale" value={formatMADCompact(exposure)} title={formatMAD(exposure)} />
         <Stat label="Expérience" value={p.yearsExperience != null ? `${p.yearsExperience} ans` : "—"} />
         <Stat label="Notation interne" value={p.internalRating ?? "—"} />
       </div>

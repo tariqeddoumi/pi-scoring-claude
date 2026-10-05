@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, Button } from "@/components/ui";
+import { Field, FieldGroup, FormMessage, Input, Select, Textarea, readActionErrors, type FieldErrors } from "@/components/form";
 import { upsertPromoter } from "@/server/actions/promoters";
 import { LEGAL_FORMS, CITIES, INTERNAL_RATINGS, withLegacyValue, type RefItem } from "@/lib/domain/referentiels";
 
@@ -63,6 +64,7 @@ export function PromoterForm({ groups, initial }: {
     groupId: str(initial?.groupId),
   });
   const [error, setError] = useState<string | null>(null);
+  const [errs, setErrs] = useState<FieldErrors>({});
   const [pending, setPending] = useState(false);
 
   const set = (k: keyof typeof form) =>
@@ -72,11 +74,14 @@ export function PromoterForm({ groups, initial }: {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setErrs({});
     setPending(true);
     try {
       const res = await upsertPromoter({ ...form, id: initial?.id });
       if (res && !res.ok) {
-        setError("error" in res && typeof res.error === "string" ? res.error : "Champs invalides — vérifiez le formulaire.");
+        const r = readActionErrors(res);
+        setErrs(r.fieldErrors);
+        setError(r.message);
       }
     } catch (err) {
       if (err && typeof err === "object" && "digest" in err && String((err as { digest?: string }).digest).startsWith("NEXT_REDIRECT")) throw err;
@@ -86,90 +91,54 @@ export function PromoterForm({ groups, initial }: {
     }
   }
 
-  const inp = "w-full rounded-md border border-border bg-background px-3 py-2 text-sm";
-  const Select = ({ k, items, placeholder }: { k: keyof typeof form; items: readonly RefItem[]; placeholder?: string }) => (
-    <select value={form[k]} onChange={set(k)} className={inp}>
-      {placeholder && <option value="">{placeholder}</option>}
-      {items.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
-
-  const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{title}</h3>
-      {children}
-    </div>
-  );
+  const bind = (k: keyof typeof form) => ({ value: form[k], onChange: set(k) });
+  const opts = (items: readonly RefItem[]) => items.map((o) => ({ value: o.value, label: o.label }));
 
   return (
     <Card>
       <CardHeader><CardTitle>{isEdit ? "Éditer la signalétique" : "Nouveau promoteur"}</CardTitle></CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
-          <Section title="Identification">
+          <FieldGroup title="Identification">
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Raison sociale *</span>
-                <input value={form.name} onChange={set("name")} className={inp} required /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Forme juridique</span>
-                <Select k="legalForm" items={LEGAL_FORMS.items} placeholder="— Non renseignée —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Registre de commerce (RC)</span>
-                <input value={form.rcNumber} onChange={set("rcNumber")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">ICE</span>
-                <input value={form.iceNumber} onChange={set("iceNumber")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Identifiant fiscal (IF)</span>
-                <input value={form.ifNumber} onChange={set("ifNumber")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">CNSS</span>
-                <input value={form.cnssNumber} onChange={set("cnssNumber")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Patente</span>
-                <input value={form.patenteNumber} onChange={set("patenteNumber")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Capital social (MAD)</span>
-                <input type="number" min={0} value={form.capital} onChange={set("capital")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Année de création</span>
-                <input type="number" min={1900} max={2100} value={form.foundedYear} onChange={set("foundedYear")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Dirigeant principal</span>
-                <input value={form.managerName} onChange={set("managerName")} className={inp} /></label>
+              <Field label="Raison sociale" required error={errs.name}><Input {...bind("name")} /></Field>
+              <Field label="Forme juridique" error={errs.legalForm}><Select {...bind("legalForm")} options={opts(LEGAL_FORMS.items)} placeholder="— Non renseignée —" /></Field>
+              <Field label="Registre de commerce (RC)" error={errs.rcNumber}><Input {...bind("rcNumber")} /></Field>
+              <Field label="ICE" error={errs.iceNumber} hint="Identifiant commun de l'entreprise (15 chiffres)."><Input {...bind("iceNumber")} inputMode="numeric" /></Field>
+              <Field label="Identifiant fiscal (IF)" error={errs.ifNumber}><Input {...bind("ifNumber")} /></Field>
+              <Field label="CNSS" error={errs.cnssNumber}><Input {...bind("cnssNumber")} /></Field>
+              <Field label="Patente" error={errs.patenteNumber}><Input {...bind("patenteNumber")} /></Field>
+              <Field label="Capital social (MAD)" error={errs.capital}><Input type="number" min={0} inputMode="decimal" {...bind("capital")} /></Field>
+              <Field label="Année de création" error={errs.foundedYear}><Input type="number" min={1900} max={2100} inputMode="numeric" {...bind("foundedYear")} /></Field>
+              <Field label="Dirigeant principal" error={errs.managerName}><Input {...bind("managerName")} /></Field>
             </div>
-            <label className="space-y-1 text-sm block"><span className="font-medium">Actionnariat</span>
-              <textarea value={form.shareholders} onChange={set("shareholders")} className={inp} rows={2}
-                placeholder="Ex. M. X 60 %, Société Y 40 %" /></label>
-          </Section>
+            <Field label="Actionnariat" error={errs.shareholders}><Textarea {...bind("shareholders")} rows={2} placeholder="Ex. M. X 60 %, Société Y 40 %" /></Field>
+          </FieldGroup>
 
-          <Section title="Coordonnées">
+          <FieldGroup title="Coordonnées">
             <div className="grid sm:grid-cols-2 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Adresse (siège)</span>
-                <input value={form.address} onChange={set("address")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Ville</span>
-                <Select k="city" items={withLegacyValue(CITIES.items, form.city)} placeholder="— Sélectionner —" /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Email</span>
-                <input type="email" value={form.contactEmail} onChange={set("contactEmail")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Téléphone</span>
-                <input value={form.contactPhone} onChange={set("contactPhone")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Site web</span>
-                <input value={form.website} onChange={set("website")} className={inp} /></label>
+              <Field label="Adresse (siège)" error={errs.address}><Input {...bind("address")} /></Field>
+              <Field label="Ville" error={errs.city}><Select {...bind("city")} options={opts(withLegacyValue(CITIES.items, form.city))} placeholder="— Sélectionner —" /></Field>
+              <Field label="Email" error={errs.contactEmail}><Input type="email" autoComplete="email" {...bind("contactEmail")} /></Field>
+              <Field label="Téléphone" error={errs.contactPhone}><Input type="tel" autoComplete="tel" {...bind("contactPhone")} /></Field>
+              <Field label="Site web" error={errs.website}><Input inputMode="url" {...bind("website")} placeholder="www.exemple.ma" /></Field>
             </div>
-          </Section>
+          </FieldGroup>
 
-          <Section title="Expérience & relation">
+          <FieldGroup title="Expérience & relation">
             <div className="grid sm:grid-cols-3 gap-3">
-              <label className="space-y-1 text-sm"><span className="font-medium">Années d'expérience</span>
-                <input type="number" min={0} value={form.yearsExperience} onChange={set("yearsExperience")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Projets réalisés</span>
-                <input type="number" min={0} value={form.completedProjects} onChange={set("completedProjects")} className={inp} /></label>
-              <label className="space-y-1 text-sm"><span className="font-medium">Notation interne</span>
-                <Select k="internalRating" items={withLegacyValue(INTERNAL_RATINGS.items, form.internalRating)} placeholder="— Non notée —" /></label>
-              <label className="space-y-1 text-sm sm:col-span-3"><span className="font-medium">Groupe d'intérêt</span>
-                <select value={form.groupId} onChange={set("groupId")} className={inp}>
-                  <option value="">— Aucun —</option>
-                  {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select></label>
+              <Field label="Années d'expérience" error={errs.yearsExperience}><Input type="number" min={0} inputMode="numeric" {...bind("yearsExperience")} /></Field>
+              <Field label="Projets réalisés" error={errs.completedProjects}><Input type="number" min={0} inputMode="numeric" {...bind("completedProjects")} /></Field>
+              <Field label="Notation interne" error={errs.internalRating}><Select {...bind("internalRating")} options={opts(withLegacyValue(INTERNAL_RATINGS.items, form.internalRating))} placeholder="— Non notée —" /></Field>
+              <Field label="Groupe d'intérêt" error={errs.groupId} className="sm:col-span-3">
+                <Select {...bind("groupId")} options={groups.map((g) => ({ value: g.id, label: g.name }))} placeholder="— Aucun —" />
+              </Field>
             </div>
-            <label className="space-y-1 text-sm block"><span className="font-medium">Autres relations bancaires</span>
-              <textarea value={form.bankRelations} onChange={set("bankRelations")} className={inp} rows={2} /></label>
-            <label className="space-y-1 text-sm block"><span className="font-medium">Notes</span>
-              <textarea value={form.notes} onChange={set("notes")} className={inp} rows={3} /></label>
-          </Section>
+            <Field label="Autres relations bancaires" error={errs.bankRelations}><Textarea {...bind("bankRelations")} rows={2} /></Field>
+            <Field label="Notes" error={errs.notes}><Textarea {...bind("notes")} rows={3} /></Field>
+          </FieldGroup>
 
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          <FormMessage error={error} />
           <Button type="submit" disabled={pending}>
             {pending ? "Enregistrement…" : isEdit ? "Enregistrer les modifications" : "Créer le promoteur"}
           </Button>

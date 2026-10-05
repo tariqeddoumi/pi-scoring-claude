@@ -7,6 +7,7 @@
 | `gen_guide_docx.js` | Génère `docs/Guide_Charge_Affaires_Promotion_Immobiliere.docx` |
 | `gen_grilles_docx.js` | Génère `docs/Grilles_Scoring_PI_PROMOTION_v5.docx` directement depuis `prisma/models/PI_PROMOTION_v5.0.0.json` (nouveautés v5 repérées) (grilles détaillées, alertes, coefficients, seuils, exemple chiffré vérifié contre les cas de référence) |
 | `gen_diagnostic_v5_docx.js` | Génère `docs/Diagnostic_Modele_v5_Regionalite_Tranches_Equipements_Deblocages.docx` (diagnostic v5) depuis les instantanés v4/v5 et `impact_v5.json` |
+| `gen_diagnostic_design_docx.js` | Génère `docs/Diagnostic_Design_Fonctionnalites.docx` (captures dans `img_design/`) |
 | `impact_v5.ts` | Recalcule v4 / v5 les projets de la base (données extraites) → `impact_v5.json` |
 | `gen_guide_pptx.js` | Génère `docs/Guide_Charge_Affaires_Formation.pptx` |
 

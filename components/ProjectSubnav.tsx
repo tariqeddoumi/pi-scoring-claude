@@ -14,12 +14,13 @@ export type ProjectTabKey = (typeof TABS)[number]["key"];
 
 export function ProjectSubnav({ projectId, active }: { projectId: string; active: ProjectTabKey }) {
   return (
-    <div className="flex gap-1 border-b border-border">
+    <nav aria-label="Vues du dossier" className="flex gap-1 border-b border-border overflow-x-auto">
       {TABS.map((t) => (
         <Link
           key={t.key}
           href={`/projects/${projectId}${t.path}`}
-          className={`px-4 py-2 text-sm font-medium rounded-t-md border border-b-0 ${
+          aria-current={active === t.key ? "page" : undefined}
+          className={`whitespace-nowrap px-4 py-2 text-sm font-medium rounded-t-md border border-b-0 ${
             active === t.key
               ? "bg-background border-border text-foreground -mb-px"
               : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted"
@@ -28,6 +29,6 @@ export function ProjectSubnav({ projectId, active }: { projectId: string; active
           {t.label}
         </Link>
       ))}
-    </div>
+    </nav>
   );
 }

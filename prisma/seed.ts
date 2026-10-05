@@ -282,6 +282,13 @@ async function seedDemoProjects(users: Record<string, string>) {
     },
   });
 
+  // Groupe d'intérêt du projet 1 (doit exister avant le rattachement).
+  await prisma.group.upsert({
+    where: { id: "GRP_ATLAS" },
+    update: {},
+    create: { id: "GRP_ATLAS", name: "Groupe Atlas", sector: "Promotion immobilière" },
+  });
+
   // Projet 1 — solide
   const p1 = await prisma.realEstateProject.create({
     data: {
@@ -290,7 +297,7 @@ async function seedDemoProjects(users: Record<string, string>) {
       promoterId: promoter1.id,
       rmId,
       city: "Casablanca",
-      region: "Casablanca-Settat",
+      region: "casablanca_settat",
       projectType: "Résidentiel haut standing",
       segment: "moyen_haut",
       zone: "casa_centre",
@@ -324,7 +331,7 @@ async function seedDemoProjects(users: Record<string, string>) {
       promoterId: promoter2.id,
       rmId,
       city: "Marrakech",
-      region: "Marrakech-Safi",
+      region: "marrakech_safi",
       projectType: "Résidentiel social",
       segment: "intermediaire",
       zone: "marrakech",

@@ -6,11 +6,13 @@
 // champs déjà saisis ne sont remplacés que si on les coche explicitement.
 // Tout reste ensuite modifiable dans le wizard.
 
+import { Textarea } from "@/components/form";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge } from "@/components/ui";
 import { analyzeDossierDocuments, applyDossierExtraction } from "@/server/actions/dossierAi";
 import { INPUT_LABELS } from "@/lib/inputLabels";
+import { TONE } from "@/lib/tones";
 
 interface DocPayload { base64: string; mediaType: string; name: string }
 
@@ -115,18 +117,19 @@ export function DossierAiPanel({ projectId }: { projectId: string }) {
           <input
             type="file"
             multiple
+            aria-label="Documents du dossier à analyser (PDF ou images)"
             accept="application/pdf,image/png,image/jpeg,image/webp,image/gif"
             onChange={onFiles}
-            className="text-sm"
+            className="text-sm file:mr-3 file:rounded-md file:border file:border-border file:bg-background file:px-3 file:py-1.5 file:text-sm"
           />
           {docs.length > 0 && <Badge className="bg-muted">{docs.length} document(s)</Badge>}
         </div>
-        <textarea
+        <Textarea
           value={rawText}
           onChange={(e) => setRawText(e.target.value)}
+          aria-label="Extrait de texte à analyser"
           placeholder="Ou collez ici un extrait de texte (note, tableau, email)…"
           rows={3}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
         />
         <Button onClick={analyze} disabled={pending || (docs.length === 0 && !rawText.trim())}>
           {pending && !candidates ? "Analyse en cours…" : "Analyser avec l'IA"}
@@ -162,7 +165,7 @@ export function DossierAiPanel({ projectId }: { projectId: string }) {
                       <span className="font-medium">{INPUT_LABELS[c.key] ?? c.key}</span>
                       <span>→ {fmt(c.value)}</span>
                       {c.alreadyFilled && (
-                        <Badge className="bg-amber-100 text-amber-800 border-amber-300">
+                        <Badge className={TONE.warning}>
                           déjà saisi — cocher pour remplacer
                         </Badge>
                       )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { DECISION_LABELS } from "@/lib/labels";
 import { rescorePortfolioAction } from "@/server/actions/scoring";
 import type { Decision } from "@/lib/domain/types";
@@ -51,16 +51,19 @@ export function RescorePortfolioButton({ staleCount, totalCount }: { staleCount:
       </p>
       <div className="flex flex-wrap items-center gap-4 text-sm">
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={syncFirst} onChange={(e) => setSyncFirst(e.target.checked)} />
+          <input type="checkbox" className="h-4 w-4" checked={syncFirst} onChange={(e) => setSyncFirst(e.target.checked)} />
           Synchroniser d'abord les données de suivi (autorisations, financement acquéreur, désengagement, division des risques, impayés)
         </label>
         <label className="flex items-center gap-2">
-          <input type="checkbox" checked={onlyStale} onChange={(e) => setOnlyStale(e.target.checked)} />
+          <input type="checkbox" className="h-4 w-4" checked={onlyStale} onChange={(e) => setOnlyStale(e.target.checked)} />
           Uniquement les scores périmés
         </label>
-        <Button type="button" onClick={run} disabled={pending}>
+        <ConfirmButton variant="primary" tone="primary" onConfirm={run} disabled={pending}
+          title={onlyStale ? `Recalculer ${staleCount} dossier(s) ?` : `Recalculer les ${totalCount} dossiers du portefeuille ?`}
+          description="Chaque dossier reçoit un nouveau score avec le modèle publié. Une donnée non renseignée est notée au plancher : renseignez les données du modèle avant de recalculer, sinon des décisions peuvent se dégrader mécaniquement."
+          confirmLabel="Recalculer">
           {pending ? "Recalcul en cours…" : "Recalculer le portefeuille"}
-        </Button>
+        </ConfirmButton>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
       {result && (

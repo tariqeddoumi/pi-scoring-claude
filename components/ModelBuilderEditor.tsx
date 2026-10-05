@@ -1,7 +1,9 @@
 "use client";
 
+import { CONTROL_COMPACT } from "@/lib/formStyles";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { ConfirmButton } from "@/components/ConfirmButton";
 import { Card, CardContent, CardHeader, CardTitle, Button, Badge, Table, Th, Td } from "@/components/ui";
 import {
   discardModelDraft, publishModelDraft,
@@ -10,6 +12,7 @@ import {
   addOption, deleteOption, addRange, deleteRange,
   addRedFlag, deleteRedFlag,
 } from "@/server/actions/modelBuilder";
+import { TONE } from "@/lib/tones";
 
 // --- Types (sous-ensemble du modèle Prisma) ---------------------------------
 interface Opt { id: string; value: string; label: string; score: number }
@@ -21,7 +24,7 @@ export interface DraftModel { id: string; version: string; domains: Dom[]; redFl
 
 type ActionResult = { ok: true } | { ok: false; error: string; issues?: string[] };
 
-const inp = "rounded-md border border-border bg-background px-2 py-1 text-sm";
+const inp = CONTROL_COMPACT;
 const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
 
 export function ModelBuilderEditor({ draft }: { draft: DraftModel }) {
@@ -47,8 +50,11 @@ export function ModelBuilderEditor({ draft }: { draft: DraftModel }) {
           <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle>Brouillon éditable — {draft.version}</CardTitle>
             <div className="flex gap-2">
-              <Button disabled={pending} onClick={() => run(() => publishModelDraft(draft.id))}>Publier</Button>
-              <Button variant="outline" disabled={pending} onClick={() => { if (confirm("Supprimer définitivement ce brouillon ?")) run(() => discardModelDraft(draft.id)); }}>Supprimer le brouillon</Button>
+              <ConfirmButton variant="primary" tone="primary" disabled={pending} title={`Publier la version ${draft.version} ?`}
+                description="La version publiée devient le modèle de référence pour tous les nouveaux calculs ; la version actuelle est retirée. Les scores existants gardent leur version."
+                confirmLabel="Publier" onConfirm={() => run(() => publishModelDraft(draft.id))}>Publier</ConfirmButton>
+              <ConfirmButton disabled={pending} title="Supprimer définitivement ce brouillon ?" description="Toutes les modifications du brouillon seront perdues."
+                confirmLabel="Supprimer le brouillon" onConfirm={() => run(() => discardModelDraft(draft.id))}>Supprimer le brouillon</ConfirmButton>
             </div>
           </div>
         </CardHeader>
@@ -82,7 +88,7 @@ function DomainCard({ domain, run, pending }: { domain: Dom; run: RunFn; pending
           <label className="text-xs">Nom<input className={`${inp} ml-1 w-64`} value={name} onChange={(e) => setName(e.target.value)} /></label>
           <label className="text-xs">Poids<input type="number" step="0.01" className={`${inp} ml-1 w-20`} value={weight} onChange={(e) => setWeight(e.target.value)} /></label>
           <Button variant="outline" disabled={pending} onClick={() => run(() => updateDomain({ id: domain.id, name, weight }))}>Enregistrer</Button>
-          <Button variant="outline" disabled={pending} onClick={() => { if (confirm(`Supprimer le domaine ${domain.code} et ses critères ?`)) run(() => deleteDomain(domain.id)); }}>Supprimer</Button>
+          <ConfirmButton disabled={pending} title={`Supprimer le domaine ${domain.code} et ses critères ?`} confirmLabel="Supprimer" onConfirm={() => run(() => deleteDomain(domain.id))}>Supprimer</ConfirmButton>
           <span className={`text-xs self-center ${Math.abs(critSum - 1) > 0.011 ? "text-red-600" : "text-emerald-600"}`}>Σ critères {pct(critSum)}</span>
         </div>
       </CardHeader>
@@ -117,7 +123,7 @@ function CriterionRow({ crit, run, pending }: { crit: Crit; run: RunFn; pending:
         <label className="flex items-center gap-1"><input type="checkbox" checked={isGate} onChange={(e) => setIsGate(e.target.checked)} />Gate</label>
         {isGate && <label>seuil ≤<input type="number" className={`${inp} ml-1 w-16`} value={gate} onChange={(e) => setGate(e.target.value)} /></label>}
         <Button variant="outline" disabled={pending} onClick={() => run(() => updateCriterion({ id: crit.id, name, type, weight, inputKey, isGate, gateThreshold: gate }))}>OK</Button>
-        <Button variant="outline" disabled={pending} onClick={() => { if (confirm(`Supprimer le critère ${crit.code} ?`)) run(() => deleteCriterion(crit.id)); }}>Suppr.</Button>
+        <ConfirmButton disabled={pending} title={`Supprimer le critère ${crit.code} ?`} description="Ses modalités et barèmes sont supprimés avec lui." confirmLabel="Supprimer" onConfirm={() => run(() => deleteCriterion(crit.id))}>Suppr.</ConfirmButton>
         <Button variant="outline" disabled={pending} onClick={() => setOpen((o) => !o)}>{type === "QUAL" ? `Modalités (${crit.options.length})` : `Barèmes (${crit.ranges.length})`}</Button>
       </div>
       {open && (type === "QUAL"
@@ -134,7 +140,8 @@ function OptionsEditor({ crit, run, pending }: { crit: Crit; run: RunFn; pending
       {crit.options.map((o) => (
         <div key={o.id} className="flex items-center gap-2 text-xs">
           <span className="font-mono">{o.value}</span><span>· {o.label} =</span><span className="font-medium">{o.score}</span>
-          <button className="text-red-600" disabled={pending} onClick={() => run(() => deleteOption(o.id))}>✕</button>
+          <ConfirmButton variant="ghost" className="px-1.5 py-0.5 text-red-600" aria-label={`Supprimer la modalité ${o.value}`} disabled={pending}
+            title={`Supprimer la modalité « ${o.label} » ?`} confirmLabel="Supprimer" onConfirm={() => run(() => deleteOption(o.id))}>✕</ConfirmButton>
         </div>
       ))}
       <div className="flex items-end gap-1 text-xs">
@@ -155,7 +162,8 @@ function RangesEditor({ crit, run, pending }: { crit: Crit; run: RunFn; pending:
         <div key={r.id} className="flex items-center gap-2 text-xs">
           <span>[{r.minIncl ?? "−∞"}, {r.maxExcl ?? "+∞"}) =</span><span className="font-medium">{r.score}</span>
           {r.label && <span className="text-muted-foreground">· {r.label}</span>}
-          <button className="text-red-600" disabled={pending} onClick={() => run(() => deleteRange(r.id))}>✕</button>
+          <ConfirmButton variant="ghost" className="px-1.5 py-0.5 text-red-600" aria-label="Supprimer la tranche" disabled={pending}
+            title={`Supprimer la tranche [${r.minIncl ?? "−∞"}, ${r.maxExcl ?? "+∞"}) ?`} confirmLabel="Supprimer" onConfirm={() => run(() => deleteRange(r.id))}>✕</ConfirmButton>
         </div>
       ))}
       <div className="flex items-end gap-1 text-xs flex-wrap">
@@ -213,9 +221,10 @@ function RedFlagsCard({ versionId, redFlags, run, pending }: { versionId: string
             {redFlags.map((r) => (
               <tr key={r.id}>
                 <Td className="font-mono">{r.code}</Td><Td>{r.name}</Td>
-                <Td><Badge className="bg-slate-100 text-slate-700 border-slate-300">{r.severity}</Badge></Td>
+                <Td><Badge className={TONE.neutral}>{r.severity}</Badge></Td>
                 <Td>{r.malus > 0 ? `−${r.malus}` : "auto"}</Td><Td>{r.impactDomains.join(", ")}</Td>
-                <Td><button className="text-red-600" disabled={pending} onClick={() => run(() => deleteRedFlag(r.id))}>✕</button></Td>
+                <Td><ConfirmButton variant="ghost" className="px-1.5 py-0.5 text-red-600" aria-label={`Supprimer l'alerte ${r.code}`} disabled={pending}
+                  title={`Supprimer l'alerte ${r.code} ?`} confirmLabel="Supprimer" onConfirm={() => run(() => deleteRedFlag(r.id))}>✕</ConfirmButton></Td>
               </tr>
             ))}
             {redFlags.length === 0 && <tr><Td className="text-muted-foreground">Aucun red flag.</Td></tr>}
