@@ -132,9 +132,10 @@ Public Sub ValiderModele()
         End If
     Next r
 
+    wsV.Visible = xlSheetVisible
     wsV.Activate
-    MsgBox mNbErr & " erreur(s), " & mNbAvert & " avertissement(s). Detail dans l'onglet Validation.", _
-           IIf(mNbErr = 0, vbInformation, vbExclamation), "Validation du modele"
+    MsgBox mNbErr & " erreur(s), " & mNbAvert & FR(" avertissement(s). D~etail dans l'onglet Validation."), _
+           IIf(mNbErr = 0, vbInformation, vbExclamation), FR("Validation du mod~ele")
 End Sub
 
 ' Verifie la continuite des plages d'un critere numerique : un seul debut, une seule fin,
@@ -190,38 +191,45 @@ Private Sub ControlerPlages(ByVal wsV As Worksheet, ByVal wsB As Worksheet, ByVa
     If ok Then Ecrire wsV, "OK", "Plages continues : " & code, nb & " plage(s)"
 End Sub
 
-' Reconstruit les listes deroulantes des criteres qualitatifs depuis P_Baremes.
+' Reconstruit les listes deroulantes des criteres qualitatifs depuis P_Baremes : libelles en clair
+' (plage des modalites du critere). La saisie d'un code reste acceptee (simple avertissement).
 Public Sub RafraichirListes()
     Dim wsS As Worksheet, wsK As Worksheet, wsB As Worksheet
-    Dim r As Long, k As Long, b As Long, nb As Long
-    Dim cle As String, liste As String
+    Dim r As Long, k As Long, b As Long, nb As Long, premier As Long, dernier As Long, compte As Long
+    Dim cle As String, crit As String
     Set wsS = ThisWorkbook.Worksheets("Saisie")
     Set wsK = ThisWorkbook.Worksheets("P_Criteres")
     Set wsB = ThisWorkbook.Worksheets("P_Baremes")
+    Deproteger wsS
     For r = 13 To 92
         If CStr(wsS.Cells(r, 4).Value) = "QUAL" Then
             cle = CStr(wsS.Cells(r, 2).Value)
-            liste = ""
+            crit = ""
             For k = 5 To 64
-                If CStr(wsK.Cells(k, 6).Value) = cle Then
-                    For b = 5 To 400
-                        If CStr(wsB.Cells(b, 1).Value) = CStr(wsK.Cells(k, 1).Value) And CStr(wsB.Cells(b, 2).Value) = "MODALITE" Then
-                            If Len(liste) > 0 Then liste = liste & ","
-                            liste = liste & CStr(wsB.Cells(b, 3).Value)
-                        End If
-                    Next b
-                End If
+                If CStr(wsK.Cells(k, 6).Value) = cle Then crit = CStr(wsK.Cells(k, 1).Value)
             Next k
-            If Len(liste) > 0 And Len(liste) < 250 Then
-                With wsS.Cells(r, 5).Validation
-                    .Delete
-                    .Add Type:=xlValidateList, AlertStyle:=xlValidAlertWarning, Formula1:=liste
-                End With
-                nb = nb + 1
+            If Len(crit) > 0 Then
+                premier = 0: dernier = 0: compte = 0
+                For b = 5 To 400
+                    If CStr(wsB.Cells(b, 1).Value) = crit And CStr(wsB.Cells(b, 2).Value) = "MODALITE" Then
+                        If premier = 0 Then premier = b
+                        dernier = b
+                        compte = compte + 1
+                    End If
+                Next b
+                If compte > 0 And compte = dernier - premier + 1 Then
+                    With wsS.Cells(r, 5).Validation
+                        .Delete
+                        .Add Type:=xlValidateList, AlertStyle:=xlValidAlertWarning, _
+                             Formula1:="=P_Baremes!$F$" & premier & ":$F$" & dernier
+                    End With
+                    nb = nb + 1
+                End If
             End If
         End If
     Next r
-    MsgBox nb & " liste(s) deroulante(s) mise(s) a jour.", vbInformation, "Listes"
+    Proteger wsS
+    MsgBox nb & FR(" liste(s) d~eroulante(s) mise(s) ~a jour. Les modalit~es d'un crit~ere doivent se suivre dans P_Baremes."), vbInformation, "Listes"
 End Sub
 
 ' Exporte les parametres du modele (valeurs) dans un classeur date, pour archivage / versionnement.

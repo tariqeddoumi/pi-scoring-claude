@@ -3,6 +3,9 @@ import json, sys, time
 sys.path.insert(0, sys.argv[0].rsplit("/", 1)[0])
 import lo
 X = sys.argv[1]; VEC = sys.argv[2]
+# « libelles » : les modalités, le segment et la zone sont saisis par leur libellé en clair
+# (listes déroulantes de l'outil 5.1) au lieu du code ; les résultats doivent être identiques.
+LIBELLES = len(sys.argv) > 3 and sys.argv[3] == "libelles"
 vec = json.load(open(VEC, encoding="utf-8"))
 ctx, desk = lo.start()
 try:
@@ -29,10 +32,27 @@ try:
         if t.value == "FORMULA":
             return c.getString() if int(c.FormulaResultType2) == 2 else c.getValue()
         return c.getValue() if t.value == "VALUE" else c.getString()
+    lab = {}
+    if LIBELLES:
+        K, B, F, J = (sh.getByName(n) for n in ("P_Criteres", "P_Baremes", "P_Referentiels", "P_Ajustements"))
+        code_of_key = {K.getCellByPosition(5, r).getString(): K.getCellByPosition(0, r).getString() for r in range(4, 64) if K.getCellByPosition(5, r).getString()}
+        opt = {(B.getCellByPosition(0, r).getString(), B.getCellByPosition(2, r).getString()): B.getCellByPosition(5, r).getString()
+               for r in range(4, 400) if B.getCellByPosition(1, r).getString() == "MODALITE"}
+        for k, c in code_of_key.items():
+            for (cc, v), l in opt.items():
+                if cc == c: lab[(k, v)] = l
+        for r in range(65, 75):
+            if F.getCellByPosition(0, r).getString(): lab[(F.getCellByPosition(0, r).getString(), F.getCellByPosition(1, r).getString())] = F.getCellByPosition(2, r).getString()
+        for r in range(4, 24):
+            for c0 in (0, 4):
+                if J.getCellByPosition(c0, r).getString(): lab[("@", J.getCellByPosition(c0, r).getString())] = J.getCellByPosition(c0 + 1, r).getString()
+        print(f"Saisie par libellés : {len(lab)} correspondances code → libellé")
+    def L(k, v):
+        return lab.get((k, v), v) if LIBELLES and isinstance(v, str) else v
     ok = 0
     for case in vec:
-        for k, r in rowof.items(): setv(S, f"E{r}", case["inputs"].get(k))
-        setv(S, "C6", case["segment"]); setv(S, "C7", case["zone"]); setv(S, "C8", case["cls"])
+        for k, r in rowof.items(): setv(S, f"E{r}", L(k, case["inputs"].get(k)))
+        setv(S, "C6", L("@", case["segment"])); setv(S, "C7", L("@", case["zone"])); setv(S, "C8", case["cls"])
         doc.calculateAll()
         res = {n: getv(R, a) for n, a in OUT.items()}
         e = case["expected"]

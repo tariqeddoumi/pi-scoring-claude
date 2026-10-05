@@ -12,8 +12,8 @@ import json, os, sys, xlsxwriter
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.path.join(HERE, "_build") + os.sep
 SNAPSHOT = os.path.join(HERE, "..", "..", "prisma", "models", "PI_PROMOTION_v5.0.0.json")
-TOOL_VERSION = "5.0"
-TOOL_DATE = "30/09/2026"
+TOOL_VERSION = "5.1"
+TOOL_DATE = "05/10/2026"
 
 
 def from_snapshot(path):
@@ -43,17 +43,56 @@ def from_snapshot(path):
 meta, crit, bar, alr = from_snapshot(SNAPSHOT)
 refs = json.load(open(D + "referentiels.json", encoding="utf-8"))
 vec = json.load(open(D + "vectors.json", encoding="utf-8"))
-OUT = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, "PI_Promotion_Modele_v5.xlsx")
+# Usage : build_workbook.py [sortie.xlsx|sortie.xlsm] [--cache valeurs.json] [--vba vbaProject.bin]
+# --cache : valeurs calculées (LibreOffice) écrites comme résultats en cache des formules, pour
+#           que l'aperçu (mode protégé, messagerie, téléphone) affiche le vrai résultat ;
+# --vba   : projet VBA intégré (classeur .xlsm prêt à l'emploi).
+args = sys.argv[1:]
+def opt(name):
+    if name in args:
+        i = args.index(name); v = args[i + 1]; del args[i:i + 2]; return v
+    return None
+CACHE_PATH, VBA_PATH = opt("--cache"), opt("--vba")
+OUT = args[0] if args else os.path.join(HERE, "PI_Promotion_Modele_v5.xlsx")
+CACHE = json.load(open(CACHE_PATH, encoding="utf-8")) if CACHE_PATH else {}
 
 wb = xlsxwriter.Workbook(OUT)
+if VBA_PATH:
+    wb.add_vba_project(VBA_PATH)
+
+# Résultats en cache : chaque formule reçoit la valeur calculée par LibreOffice (même adresse).
+from xlsxwriter.worksheet import Worksheet as _WS
+from xlsxwriter.utility import xl_cell_to_rowcol as _rc
+_wf, _waf = _WS.write_formula, _WS.write_array_formula
+def _cached(ws, row, col):
+    v = CACHE.get(ws.name, {}).get(f"{row},{col}")
+    return v
+def _write_formula(self, *a, **k):
+    if isinstance(a[0], str):
+        row, col = _rc(a[0]); rest = a[1:]
+    else:
+        row, col = a[0], a[1]; rest = a[2:]
+    formula = rest[0]; fmt = rest[1] if len(rest) > 1 else k.get("cell_format")
+    v = _cached(self, row, col)
+    return _wf(self, row, col, formula, fmt, v if v is not None else 0) if CACHE else _wf(self, row, col, formula, fmt)
+def _write_array_formula(self, *a, **k):
+    if isinstance(a[0], str):
+        rng = a[0].split(":"); r1, c1 = _rc(rng[0]); r2, c2 = _rc(rng[-1]); rest = a[1:]
+    else:
+        r1, c1, r2, c2 = a[:4]; rest = a[4:]
+    formula = rest[0]; fmt = rest[1] if len(rest) > 1 else None
+    v = _cached(self, r1, c1)
+    return _waf(self, r1, c1, r2, c2, formula, fmt, v if v is not None else 0) if CACHE else _waf(self, r1, c1, r2, c2, formula, fmt)
+_WS.write_formula, _WS.write_array_formula = _write_formula, _write_array_formula
 NAVY, BLUE, LIGHT, GREY = "#1F3864", "#2E5496", "#D9E1F2", "#F2F2F2"
 f = lambda **k: wb.add_format({"font_name": "Calibri", "font_size": 10, **k})
 F_TITLE = f(bold=True, font_size=16, font_color=NAVY)
 F_SUB = f(italic=True, font_color="#595959")
 F_H = f(bold=True, font_color="white", bg_color=BLUE, border=1, text_wrap=True, valign="vcenter")
 F_HS = f(bold=True, font_color=NAVY, bg_color=LIGHT, border=1)
-F_IN = f(bg_color="#FFF2CC", border=1)
-F_INN = f(bg_color="#FFF2CC", border=1, num_format="0.####")
+# Cellules de saisie (jaunes) : non verrouillées, seules modifiables quand la feuille est protégée.
+F_IN = f(bg_color="#FFF2CC", border=1, locked=False)
+F_INN = f(bg_color="#FFF2CC", border=1, num_format="0.####", locked=False)
 F_P = f(bg_color="#DDEBF7", border=1)
 F_PN = f(bg_color="#DDEBF7", border=1, num_format="0.####")
 F_C = f(bg_color=GREY, border=1)
@@ -111,14 +150,18 @@ def key_list(k):
     return None
 
 # ------------------------------------------------------------------ feuilles
-wsL = wb.add_worksheet("LisezMoi")
+# Ordre de travail : Accueil → Saisie → Fiche ; puis outils ; onglets techniques masqués.
+wsAc = wb.add_worksheet("Accueil")
 wsS = wb.add_worksheet("Saisie")
-wsR = wb.add_worksheet("Resultat")
+wsFi = wb.add_worksheet("Fiche")
 wsC = wb.add_worksheet("Calculateurs")
 wsP = wb.add_worksheet("Portefeuille")
 wsX = wb.add_worksheet("Stress")
-wsT = wb.add_worksheet("Tests")
+wsR = wb.add_worksheet("Resultat")
 wsH = wb.add_worksheet("Historique")
+wsL = wb.add_worksheet("Aide")
+wsT = wb.add_worksheet("Tests")
+wsV = wb.add_worksheet("Validation")   # rapport de la macro ValiderModele (aucune feuille créée par macro)
 wsG = wb.add_worksheet("P_General")
 wsK = wb.add_worksheet("P_Criteres")
 wsB = wb.add_worksheet("P_Baremes")
@@ -127,7 +170,11 @@ wsJ = wb.add_worksheet("P_Ajustements")
 wsF = wb.add_worksheet("P_Referentiels")
 for w in (wsG, wsK, wsB, wsA, wsJ, wsF): w.set_tab_color("#5B9BD5")
 for w in (wsS, wsC): w.set_tab_color("#FFC000")
-wsR.set_tab_color("#70AD47")
+for w in (wsFi, wsAc): w.set_tab_color("#70AD47")
+wsR.set_tab_color("#A9D08E")
+# Paramètres et cas de référence : masqués (ruban « Scoring PI » › Paramètres, ou clic droit › Afficher).
+for w in (wsT, wsV, wsG, wsK, wsB, wsA, wsJ, wsF): w.hide()
+wsV.write("A1", "Validation du modèle : ruban « Scoring PI » › Valider le modèle (le rapport s'affiche ici).", F_SUB)
 
 # ============================================================ P_General
 wsG.set_column("A:A", 34); wsG.set_column("B:I", 16)
@@ -180,6 +227,17 @@ wb.define_name("P_PhaseCodes", "=P_General!$A$40:$A$42")
 wsG.write("A44", "Repères de retard de paiement (jours)", F_HS)
 for i, (lab, v, nm) in enumerate([("Seuil pré-douteux", 90, "P_DPD1"), ("Seuil douteux", 180, "P_DPD2"), ("Seuil compromis", 360, "P_DPD3")]):
     r = 45 + i; wsG.write(f"A{r}", lab, F_C); wsG.write(f"B{r}", v, F_PN); wb.define_name(nm, f"=P_General!$B${r}")
+wsG.write("A50", "Libellés des décisions (affichage)", F_HS)
+wsG.write_row("A51", ["Code", "Libellé"], F_H)
+DEC_LABELS = [("GO", "Favorable"), ("GO_WITH_CONDITIONS", "Favorable sous conditions"), ("WATCH_LIST", "Surveillance (watch list)"),
+              ("NO_GO", "Défavorable"), ("DOSSIER_INCOMPLET", "Dossier incomplet")]
+for i, (c_, l_) in enumerate(DEC_LABELS):
+    wsG.write(f"A{52+i}", c_, F_P); wsG.write(f"B{52+i}", l_, F_P)
+wb.define_name("P_DecTbl", "=P_General!$A$52:$B$56")
+# Interrupteur des calculateurs : les macros de traitement de masse (portefeuille,
+# autotests) le coupent pour qu'aucune valeur du dossier courant ne se mêle aux lignes scorées.
+wsG.write("D4", "Calculateurs actifs", F_C); wsG.write_boolean("E4", True, F_P)
+wb.define_name("Calc_Actif", "=P_General!$E$4")
 
 # ============================================================ P_Ajustements
 wsJ.set_column("A:A", 22); wsJ.set_column("B:B", 30); wsJ.set_column("C:C", 10); wsJ.set_column("E:E", 22); wsJ.set_column("F:F", 30); wsJ.set_column("G:G", 10)
@@ -198,6 +256,9 @@ for i in range(20):
             for c in cols: wsJ.write_blank(f"{c}{r}", None, F_P)
 wb.define_name("P_SegCodes", "=P_Ajustements!$A$5:$A$24"); wb.define_name("P_SegTbl", "=P_Ajustements!$A$5:$C$24")
 wb.define_name("P_ZoneCodes", "=P_Ajustements!$E$5:$E$24"); wb.define_name("P_ZoneTbl", "=P_Ajustements!$E$5:$G$24")
+wb.define_name("P_SegLabels", f"=P_Ajustements!$B$5:$B${4+len(meta['segments'])}")
+wb.define_name("P_ZoneLabels", f"=P_Ajustements!$F$5:$F${4+len(meta['zones'])}")
+wb.define_name("P_SegLabelsAll", "=P_Ajustements!$B$5:$B$24"); wb.define_name("P_ZoneLabelsAll", "=P_Ajustements!$F$5:$F$24")
 
 # ============================================================ P_Criteres
 NCR = 60; CR0 = 5
@@ -296,65 +357,158 @@ wsF.write_row("A49", ["Code", "Libellé", "Situation de travaux visée requise"]
 NAT = [(x["code"], x["label"], "Oui" if x["requiresWorksCertificate"] else "Non") for x in refs["natures"]]
 for i, n in enumerate(NAT):
     for j in range(3): wsF.write(49 + i, j, n[j], F_P)
+wsF.write("A64", "Modalités des données d'alerte (libellé affiché → code)", F_HS)
+wsF.write_row("A65", ["Clé", "Code", "Libellé"], F_H)
+MODS = [("restructured", "no", "Non"), ("restructured", "yes", "Oui — créance restructurée"),
+        ("legal_exposure", "clear", "Aucun litige"), ("legal_exposure", "watch", "Sous surveillance"), ("legal_exposure", "litigation", "Litige en cours")]
+for i, (k_, c_, l_) in enumerate(MODS):
+    wsF.write(65 + i, 0, k_, F_P); wsF.write(65 + i, 1, c_, F_P); wsF.write(65 + i, 2, l_, F_P)
+wb.define_name("R_ModKey", "=P_Referentiels!$A$66:$A$75"); wb.define_name("R_ModCode", "=P_Referentiels!$B$66:$B$75")
+wb.define_name("R_ModLab", "=P_Referentiels!$C$66:$C$75")
+MOD_ROWS = {}
+for i, (k_, _, _) in enumerate(MODS): MOD_ROWS.setdefault(k_, []).append(66 + i)
 wsF.write("A56", "Dispositifs d'aide à l'acquéreur (information)", F_HS)
 for i, (c, l) in enumerate([(x["code"], x["label"]) for x in refs["aid"]]):
     wsF.write(56 + i, 0, c, F_P); wsF.write(56 + i, 1, l, F_P)
 
 # ============================================================ Saisie
 S0 = 13; SN = 80; SL = S0 + SN - 1
-wsS.set_column("A:A", 26); wsS.set_column("B:B", 34); wsS.set_column("C:C", 44); wsS.set_column("D:D", 8)
-wsS.set_column("E:G", 16); wsS.set_column("H:H", 58)
+NCRIT = len(crit_keys); CRIT_LAST = S0 + NCRIT - 1
+# Unité affichée (et repère d'exemple) des données numériques ; « % » = en points de pourcentage.
+UNIT = {"promoter_completed_projects": "nombre de projets (ex. 8)", "promoter_gearing": "% (dettes / fonds propres, ex. 85)",
+        "mono_project_concentration": "% (ex. 35)", "equity_injected_ratio": "% (ex. 100)", "progress_vs_plan": "% (ex. 100)",
+        "land_cost_ratio": "% (ex. 22)", "authorization_completeness_pct": "%", "equipment_unbudgeted_pct": "% du coût",
+        "pre_sale_rate": "% (ex. 62)", "sales_vs_plan": "% (ex. 100)", "dso_days": "jours (ex. 90)", "cash_coverage": "ratio (ex. 1,2)",
+        "funding_gap_pct": "% (ex. 0)", "stock_rotation_months": "mois (ex. 16)", "stressed_margin_pct": "% (ex. 18)",
+        "secured_sales_rate": "%", "slow_liquidity_share_pct": "% du CA", "cancellation_rate_pct": "%", "gross_margin_pct": "% (ex. 27)",
+        "ltc": "% (ex. 61)", "ltv_stressed": "% (ex. 65)", "guarantee_coverage": "% (ex. 125)", "interest_coverage": "ratio (ex. 3,2)",
+        "release_quotity_gap_pts": "points", "drawdown_vs_progress_pct": "%", "cost_overrun_pct": "%",
+        "dpd_days": "jours", "construction_delay_months": "mois", "project_stopped_months": "mois"}
+PCT = {k for k, u in UNIT.items() if u.startswith("%")}
+# Lignes des modalités de chaque critère qualitatif dans P_Baremes (listes déroulantes en clair).
+BAR_ROWS, OPT_LABEL = {}, {}
+for i_, b_ in enumerate(bar):
+    if b_[1] == "MODALITE":
+        BAR_ROWS.setdefault(b_[0], []).append(5 + i_); OPT_LABEL[(b_[0], b_[5])] = b_[6]
+MOD_LABEL = {(k_, c_): l_ for k_, c_, l_ in MODS}
+BA_ = "P_Baremes!$A$5:$A$400"; BC_ = "P_Baremes!$C$5:$C$400"; BF_ = "P_Baremes!$F$5:$F$400"
+F_STATE = f(font_size=9, bg_color=GREY, border=1)
+wsS.set_column("A:A", 24); wsS.set_column("B:B", 30, None, {"hidden": True}); wsS.set_column("C:C", 46)
+wsS.set_column("D:D", 8, None, {"hidden": True}); wsS.set_column("E:E", 22); wsS.set_column("F:F", 16)
+wsS.set_column("G:G", 16, None, {"hidden": True}); wsS.set_column("H:H", 34); wsS.set_column("I:I", 30)
 wsS.write("A1", "Saisie du dossier", F_TITLE)
-wsS.write("A2", "Cellules jaunes = à renseigner. Une donnée absente n'améliore JAMAIS le résultat (note plancher, ou « dossier incomplet » si la donnée est décisionnelle).", F_SUB)
+wsS.write("A2", "Renseignez les cellules jaunes (listes déroulantes en clair). Laissez VIDE une donnée inconnue : elle n'améliore jamais le résultat. La colonne « État » signale ce qui manque.", F_SUB)
 lab = [("A4", "Référence dossier"), ("A5", "Nom du projet"), ("A6", "Segment"), ("A7", "Zone"), ("A8", "Classe réglementaire BAM"), ("A9", "Phase du projet (challenger)"), ("A10", "Version du modèle")]
-for a, t in lab: wsS.write(a, t, F_L)
-for a in ("C4", "C5", "C6", "C7", "C8", "C9"): wsS.write_blank(a, None, F_IN)
-wsS.write("C10", "", F_C); wsS.write_formula("C10", "=P_Version&\" — \"&P_Date", F_C)
-wsS.data_validation("C6", {"validate": "list", "source": "=P_SegCodes", "ignore_blank": True, "error_type": "warning"})
-wsS.data_validation("C7", {"validate": "list", "source": "=P_ZoneCodes", "ignore_blank": True, "error_type": "warning"})
+for a_, t in lab: wsS.write(a_, t, F_L)
+for a_ in ("C4", "C5", "C6", "C7", "C8", "C9"): wsS.write_blank(a_, None, F_IN)
+wsS.write_formula("C10", "=P_Version&\" — \"&P_Date", F_C)
+F_CODE = f(font_size=8, font_color="#7F7F7F")
+# Segment et zone : libellés en clair dans la liste ; le code (colonne D) alimente le moteur.
+wsS.write_formula("D6", '=IF(C6="","",IFERROR(INDEX(P_SegCodes,MATCH(C6,P_SegLabelsAll,0)),C6))', F_CODE)
+wsS.write_formula("D7", '=IF(C7="","",IFERROR(INDEX(P_ZoneCodes,MATCH(C7,P_ZoneLabelsAll,0)),C7))', F_CODE)
+wsS.data_validation("C6", {"validate": "list", "source": "=P_SegLabels", "ignore_blank": True, "error_type": "warning",
+                          "error_title": "Segment", "error_message": "Choisissez un segment dans la liste."})
+wsS.data_validation("C7", {"validate": "list", "source": "=P_ZoneLabels", "ignore_blank": True, "error_type": "warning",
+                          "error_title": "Zone", "error_message": "Choisissez une zone dans la liste."})
 wsS.data_validation("C8", {"validate": "list", "source": "=P_ClsCodes", "ignore_blank": True})
 wsS.data_validation("C9", {"validate": "list", "source": "=P_PhaseCodes", "ignore_blank": True})
 wsS.write("D8", "", F_C)
 wsS.write_formula("E8", '=IFERROR(IF(NOT(ISNUMBER(INDEX(In_Retenue,MATCH("dpd_days",In_Cles,0)))),"",IF(INDEX(In_Retenue,MATCH("dpd_days",In_Cles,0))>=P_DPD3,"COMPROMIS",IF(INDEX(In_Retenue,MATCH("dpd_days",In_Cles,0))>=P_DPD2,"DOUTEUX",IF(INDEX(In_Retenue,MATCH("dpd_days",In_Cles,0))>=P_DPD1,"PRE_DOUTEUX","SAIN")))),"")', F_C)
-wsS.write_formula("F8", '=IF(OR(C8="",E8=""),"",IF(MATCH(C8,P_ClsCodes,0)<MATCH(E8,P_ClsCodes,0),"⚠ Classe moins sévère que le retard constaté","Cohérent avec le retard"))', F_C)
-wsS.write("G8", "← classe suggérée par le seul retard de paiement (les déclencheurs qualitatifs 1/W — art. 5, 12.6, 12.7, restructuration — restent à apprécier)", f(font_size=8, italic=True, font_color="#7F7F7F"))
-wsS.write_row("A12", ["Section", "Clé technique", "Donnée", "Type", "Valeur saisie", "Valeur calculée", "Valeur retenue", "Aide"], F_H)
+wsS.write_formula("F8", '=IF(OR(C8="",E8=""),"",IF(MATCH(C8,P_ClsCodes,0)<MATCH(E8,P_ClsCodes,0),"⚠ Moins sévère que le retard","Cohérente avec le retard"))', F_C)
+wsS.write_comment("E8", "Classe suggérée par le seul retard de paiement. Les déclencheurs qualitatifs 1/W (art. 5, 12.6, 12.7, restructuration) restent à apprécier.", {"x_scale": 2})
+wsS.write_comment("C8", "Classe réglementaire BAM du dossier. Vide = dossier incomplet.", {"x_scale": 1.5})
+wsS.write_comment("C9", "Facultatif : sert uniquement au score « challenger » pondéré par phase (indicatif).", {"x_scale": 1.5})
+# Résultat en direct (le moteur recalcule à chaque saisie)
+wsS.write("H3", "Résultat en direct", F_HS); wsS.write_blank("I3", None, F_HS)
+F_PANEL = f(bold=True, bg_color=GREY, border=1)
+panel = [("H4", "Score final (0–100)", "I4", "=Res_ScoreFinal", f(bold=True, bg_color=GREY, border=1, num_format="0.00", font_size=12)),
+         ("H5", "Décision", "I5", '=IFERROR(VLOOKUP(Res_Decision,P_DecTbl,2,FALSE),Res_Decision)', F_PANEL),
+         ("H6", "Classe interne", "I6", "=Res_ClasseInt", F_PANEL),
+         ("H7", "Critères renseignés", "I7", f'=SUMPRODUCT((G{S0}:G{CRIT_LAST}<>"")*1)&" / {NCRIT}"', F_PANEL),
+         ("H8", "Données décisionnelles manquantes", "I8", f'=COUNTIF(I{S0}:I{SL},"⚠ Manquant*")', F_PANEL),
+         ("H9", "Valeurs à vérifier (%)", "I9", f'=COUNTIF(I{S0}:I{SL},"⚠ En %*")+COUNTIF(I{S0}:I{SL},"⚠ Valeur hors*")', F_PANEL)]
+for la, lt, va, fm, fmt in panel:
+    wsS.write(la, lt, F_C); wsS.write_formula(va, fm, fmt)
+wsS.write_url("H10", "internal:Fiche!A1", string="→ Ouvrir la fiche de résultat")
+wsS.write_formula("I10", '=IF(Calc_Actif,"","⚠ Calculateurs désactivés")', f(font_color="#9C0006", bold=True))
+for code_, fmt_ in (("GO", F_OK), ("GO_WITH_CONDITIONS", f(bg_color="#E2EFDA", font_color="#375623", bold=True)), ("WATCH_LIST", F_WA), ("NO_GO", F_KO), ("DOSSIER_INCOMPLET", F_GR)):
+    wsS.conditional_format("I5", {"type": "formula", "criteria": f'=Res_Decision="{code_}"', "format": fmt_})
+wsS.conditional_format("I8:I9", {"type": "cell", "criteria": ">", "value": 0, "format": F_KO})
+wsS.write_row("A12", ["Section", "Clé technique", "Donnée", "Type", "Votre saisie", "Calculé (Calculateurs)", "Valeur utilisée", "Unité / aide", "État"], F_H)
+decisional = lambda r: f'OR(COUNTIFS(P_Criteres!$F$5:$F$64,B{r},P_Criteres!$G$5:$G$64,"Oui")>0,COUNTIFS(P_Criteres!$F$5:$F$64,B{r},P_Criteres!$K$5:$K$64,"Oui")>0,B{r}=P_ExtraKey)'
 for i in range(SN):
     r = S0 + i
     if i < NK:
         sec, k, lb, t = KEYS[i]
         wsS.write(f"A{r}", sec, F_C); wsS.write(f"B{r}", k, F_C); wsS.write(f"C{r}", lb, F_C); wsS.write(f"D{r}", t, F_C)
         wsS.write_blank(f"E{r}", None, F_IN)
-        if k in DERIVED: pass
-        else: wsS.write_blank(f"F{r}", None, F_C)
-        wsS.write_formula(f"G{r}", f'=IF(E{r}<>"",IF(D{r}="BOOL",IF(E{r}="Oui",TRUE,IF(E{r}="Non",FALSE,"")),E{r}),IF(F{r}="","",IF(D{r}="BOOL",IF(F{r}="Oui",TRUE,IF(F{r}="Non",FALSE,"")),F{r})))', F_C)
-        L = key_list(k)
-        if t == "BOOL": h = "Oui / Non"; wsS.data_validation(f"E{r}", {"validate": "list", "source": ["Oui", "Non"], "ignore_blank": True})
-        elif L: h = "valeurs : " + " | ".join(L); wsS.data_validation(f"E{r}", {"validate": "list", "source": L, "ignore_blank": True, "error_type": "warning"})
+        if k not in DERIVED: wsS.write_blank(f"F{r}", None, F_C)
+        c = crit_by_key.get(k)
+        hors_liste = None
+        if t == "BOOL":
+            g = f'=IF(E{r}<>"",IF(E{r}="Oui",TRUE,IF(E{r}="Non",FALSE,"")),IF(F{r}="","",IF(F{r}="Oui",TRUE,IF(F{r}="Non",FALSE,""))))'
+            h = "Oui / Non"
+            wsS.data_validation(f"E{r}", {"validate": "list", "source": ["Oui", "Non"], "ignore_blank": True,
+                                          "error_title": lb[:31], "error_message": "Choisissez Oui ou Non (ou laissez vide si inconnu)."})
+        elif t == "QUAL" and c is not None:
+            rows_ = BAR_ROWS[c[1]]
+            g = (f'=IF(E{r}<>"",IF(SUMPRODUCT(({BA_}="{c[1]}")*({BF_}=E{r}))>0,'
+                 f'INDEX({BC_},SUMPRODUCT(MAX(({BA_}="{c[1]}")*({BF_}=E{r})*(ROW({BA_})-4)))),E{r}),IF(F{r}="","",F{r}))')
+            h = "choisir dans la liste"
+            wsS.data_validation(f"E{r}", {"validate": "list", "source": f"=P_Baremes!$F${rows_[0]}:$F${rows_[-1]}", "ignore_blank": True,
+                                          "error_type": "warning", "error_title": lb[:31], "error_message": "Choisissez une valeur dans la liste."})
+            hors_liste = f'AND(E{r}<>"",COUNTIFS({BA_},"{c[1]}",{BC_},G{r})=0)'
+        elif t == "QUAL":
+            rows_ = MOD_ROWS[k]
+            g = (f'=IF(E{r}<>"",IF(SUMPRODUCT((R_ModKey="{k}")*(R_ModLab=E{r}))>0,'
+                 f'INDEX(R_ModCode,SUMPRODUCT(MAX((R_ModKey="{k}")*(R_ModLab=E{r})*(ROW(R_ModKey)-65)))),E{r}),IF(F{r}="","",F{r}))')
+            h = "choisir dans la liste"
+            wsS.data_validation(f"E{r}", {"validate": "list", "source": f"=P_Referentiels!$C${rows_[0]}:$C${rows_[-1]}", "ignore_blank": True,
+                                          "error_type": "warning", "error_title": lb[:31], "error_message": "Choisissez une valeur dans la liste."})
+            hors_liste = f'AND(E{r}<>"",COUNTIFS(R_ModKey,"{k}",R_ModCode,G{r})=0)'
         else:
-            c = crit_by_key.get(k); h = "nombre" + (f" ({c[11]})" if c else "")
-        if k in DERIVED: h += " — calculé par l'onglet Calculateurs ; la saisie prime"
-        if k in ("dpd_days",): h += " — donnée décisionnelle"
+            g = f'=IF(E{r}<>"",E{r},IF(F{r}="","",F{r}))'
+            h = UNIT.get(k, "nombre")
+            wsS.data_validation(f"E{r}", {"validate": "decimal", "criteria": "between", "minimum": -1e12, "maximum": 1e12, "ignore_blank": True,
+                                          "error_title": lb[:31], "error_message": "Saisissez un nombre (ex. 62 pour 62 %), ou laissez vide si inconnu."})
+        wsS.write_formula(f"G{r}", g, F_C)
+        if k in DERIVED: h += " — calculé par l'onglet Calculateurs ; votre saisie prime"
         wsS.write(f"H{r}", h, f(font_size=9, font_color="#595959"))
+        pct = "TRUE" if k in PCT else "FALSE"
+        state = (f'=IF({pct}*ISNUMBER(G{r})*(N(G{r})>0)*(N(G{r})<1),"⚠ En % : saisir 62 pour 62 %",'
+                 + (f'IF({hors_liste},"⚠ Valeur hors liste",' if hors_liste else "")
+                 + f'IF(G{r}<>"","✔ Renseigné",IF({decisional(r)},"⚠ Manquant — décisionnel","○ Non renseigné")))'
+                 + (")" if hors_liste else ""))
+        wsS.write_formula(f"I{r}", state, F_STATE)
     else:
-        for c in "ABCDFG": wsS.write_blank(f"{c}{r}", None, F_C)
+        for c_ in "ABCDFHI": wsS.write_blank(f"{c_}{r}", None, F_C)
         wsS.write_blank(f"E{r}", None, F_IN)
         wsS.write_formula(f"G{r}", f'=IF(E{r}<>"",E{r},IF(F{r}="","",F{r}))', F_C)
+wsS.conditional_format(f"I{S0}:I{SL}", {"type": "text", "criteria": "begins with", "value": "⚠ Manquant", "format": F_KO})
+wsS.conditional_format(f"I{S0}:I{SL}", {"type": "text", "criteria": "begins with", "value": "⚠", "format": F_WA})
+wsS.conditional_format(f"I{S0}:I{SL}", {"type": "text", "criteria": "begins with", "value": "✔", "format": f(font_color="#006100", bg_color="#E2EFDA")})
 wb.define_name("In_Cles", f"=Saisie!$B${S0}:$B${SL}"); wb.define_name("In_Saisie", f"=Saisie!$E${S0}:$E${SL}")
 wb.define_name("In_Calc", f"=Saisie!$F${S0}:$F${SL}"); wb.define_name("In_Retenue", f"=Saisie!$G${S0}:$G${SL}")
+wb.define_name("In_Etat", f"=Saisie!$I${S0}:$I${SL}")
 SROW = {k: S0 + i for i, (_, k, _, _) in enumerate(KEYS)}
 wsS.freeze_panes(12, 3)
 # Dossier d'exemple (cas de référence T06 : trésorerie tendue → alerte et décision
-# sous conditions). À remplacer : bouton « Nouveau dossier » (macro NouveauDossier).
+# sous conditions). À remplacer : ruban « Scoring PI » › Nouveau dossier.
 EXEMPLE = next(v for v in vec if v["id"] == "T06")
-for a, v in (("C4", "EXEMPLE"), ("C5", "Dossier d'exemple — à remplacer (bouton « Nouveau dossier »)"),
-             ("C6", "moyen_haut"), ("C7", "casa_centre"), ("C8", "SAIN"), ("C9", "CONSTRUCTION")):
-    wsS.write(a, v, F_IN)
+for a_, v in (("C4", "EXEMPLE"), ("C5", "Dossier d'exemple — à remplacer (ruban « Scoring PI » › Nouveau dossier)"),
+              ("C6", seglab["moyen_haut"]), ("C7", zonelab["casa_centre"]), ("C8", "SAIN"), ("C9", "CONSTRUCTION")):
+    wsS.write(a_, v, F_IN)
+def display_value(k, v):
+    """Valeur saisie telle qu'affichée : libellé en clair pour les listes, Oui/Non pour les booléens."""
+    if isinstance(v, bool): return "Oui" if v else "Non"
+    c = crit_by_key.get(k)
+    if c is not None and c[3] == "QUAL": return OPT_LABEL.get((c[1], v), v)
+    return MOD_LABEL.get((k, v), v)
 for k, r in SROW.items():
     v = EXEMPLE["inputs"].get(k)
     if v is None: continue
-    if isinstance(v, bool): v = "Oui" if v else "Non"
-    wsS.write(f"E{r}", v, F_IN)
+    wsS.write(f"E{r}", display_value(k, v), F_IN)
+wsS.protect("", {"format_columns": True, "format_rows": True, "insert_hyperlinks": False})
 
 # ============================================================ Calculateurs
 wsC.set_column("A:A", 30); wsC.set_column("B:B", 50); wsC.set_column("C:H", 15)
@@ -421,6 +575,7 @@ wsC.write_row("A104", ["Concours", "", "Encours tiré (MAD)", "Non tiré (MAD)",
 for i in range(10):
     r = 105 + i
     wsC.write_blank(f"A{r}", None, F_IN); wsC.write_blank(f"C{r}", None, F_IN); wsC.write_blank(f"D{r}", None, F_IN); wsC.write_blank(f"E{r}", None, F_IN)
+    wsC.write_blank(f"B{r}", None, f(locked=False))
     wsC.write_formula(f"F{r}", f'=MAX(0,N(C{r}))+MAX(0,N(D{r}))*IF(E{r}="",1,MIN(1,MAX(0,E{r})))', f(bg_color=GREY, border=1, num_format="#,##0"))
 wsC.write("A116", "Exposition agrégée (MAD)", F_L); wsC.write_formula("C116", "=SUM(F105:F114)", f(bg_color=GREY, border=1, num_format="#,##0"))
 wsC.write("A117", "Limite (MAD)", F_L); wsC.write_formula("C117", '=IF(ISNUMBER(C100),ROUND(C100*C101/100,2),"")', f(bg_color=GREY, border=1, num_format="#,##0"))
@@ -430,15 +585,15 @@ wsC.write("A120", "Limite dépassée ?", F_L); wsC.write_formula("C120", '=IF(AN
 wsC.write("A121", "Grand risque ?", F_L); wsC.write_formula("C121", '=IF(AND(ISNUMBER(C100),N(C100)>0),C116>=C100*C102/100,"")', F_C)
 # --- E arrêt de chantier (même règle que le journal d'événements de l'application)
 wsC.write("A124", "E. Arrêt de chantier", F_HS)
-wsC.write("A125", "Date de début de l'arrêt en cours", F_L); wsC.write_blank("C125", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy"))
-wsC.write("A126", "Date de reprise effective (vide si toujours à l'arrêt)", F_L); wsC.write_blank("C126", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy"))
-wsC.write("A127", "Date d'évaluation (vide = aujourd'hui)", F_L); wsC.write_blank("C127", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy"))
+wsC.write("A125", "Date de début de l'arrêt en cours", F_L); wsC.write_blank("C125", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy", locked=False))
+wsC.write("A126", "Date de reprise effective (vide si toujours à l'arrêt)", F_L); wsC.write_blank("C126", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy", locked=False))
+wsC.write("A127", "Date d'évaluation (vide = aujourd'hui)", F_L); wsC.write_blank("C127", None, f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy", locked=False))
 wsC.write("A128", "Durée de l'arrêt en cours (mois)", F_L)
 wsC.write_formula("C128", '=IF(OR(NOT(ISNUMBER(C125)),ISNUMBER(C126)),"",MAX(0,INT((IF(ISNUMBER(C127),C127,TODAY())-C125)/30.4375)))', F_CN)
 wsC.write("D128", "≥ 12 mois : alerte bloquante « projet à l'arrêt » (souffrance automatique). Un arrêt terminé n'alimente plus la donnée.", f(font_size=8, italic=True))
 # --- F à H : modèle v5 (mêmes règles que lib/domain/programmeV5.ts)
 NOTE = f(font_size=8, italic=True)
-F_DATE = f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy")
+F_DATE = f(bg_color="#FFF2CC", border=1, num_format="dd/mm/yyyy", locked=False)
 F_MAD = f(bg_color=GREY, border=1, num_format="#,##0")
 wsC.write("A131", "F. Déblocages selon l'avancement et le calendrier (v5)", F_HS)
 wsC.write("A132", "Montant autorisé des crédits de travaux (MAD)", F_L); wsC.write_blank("C132", None, F_IN)
@@ -498,6 +653,7 @@ wsC.write("A189", "Dépassement du coût à terminaison (%)", F_L)
 wsC.write_formula("C189", '=IF(AND(ISNUMBER(C187),ISNUMBER(C188),N(C187)>0),ROUND((C188-C187)/C187*100,2),"")', F_CN)
 wsC.write("A190", "Périmètre : si la banque ne finance qu'une tranche, saisir ici les chiffres de cette seule tranche.", NOTE)
 wsC.set_column("I:K", 13)
+wsC.protect("", {"format_columns": True, "format_rows": True})
 # Plages de saisie des calculateurs (vidées par la macro NouveauDossier ;
 # les paramètres de l'établissement — fonds propres, limites — sont conservés).
 for nm, ref_ in [("Calc_Auth", "$D$8:$D$31"), ("Calc_Valeur", "$C$39"), ("Calc_Lots", "$A$42:$D$81"),
@@ -508,7 +664,8 @@ for nm, ref_ in [("Calc_Auth", "$D$8:$D$31"), ("Calc_Valeur", "$C$39"), ("Calc_L
     wb.define_name(nm, f"=Calculateurs!{ref_}")
 # ---- branchement des valeurs dérivées dans Saisie!F
 def setF(key, formula):
-    wsS.write_formula(f"F{SROW[key]}", formula, F_C)
+    # Calc_Actif = FAUX pendant les traitements de masse : aucune valeur du dossier courant ne fuit.
+    wsS.write_formula(f"F{SROW[key]}", f'=IF(Calc_Actif,{formula[1:]},"")', F_C)
 setF("authorization_completeness_pct", '=IF(Calculateurs!C35,Calculateurs!C33,"")')
 setF("works_authorization_blocked", '=IF(Calculateurs!C35,IF(Calculateurs!C34,"Oui","Non"),"")')
 setF("secured_sales_rate", '=Calculateurs!C85')
@@ -539,7 +696,7 @@ summ = [
  (6, "Score final (0–100)", '=IF(E28,0,ROUND(MIN(100,MAX(0,C13*C14)),2))', F_BIG),
  (7, "Décision", '=IF(E28,"NO_GO",IF(E21,"NO_GO",IF(E22,"NO_GO",IF(E23,"DOSSIER_INCOMPLET",IF(E20,"NO_GO",IF(C6>=P_GO,"GO",IF(C6>=P_GWC,"GO_WITH_CONDITIONS",IF(C6>=P_WATCH,"WATCH_LIST","NO_GO"))))))))', F_BIGT),
  (8, "Classe interne", '=IF(E28,"Souffrance",IF(E21,"Souffrance",IF(E22,"Défaut avéré",IF(E23,"Dossier incomplet",IF(C6>=P_GO,"Sain",IF(C6>=P_GWC,"Surveillance",IF(C6>=P_WATCH,"Sensible probable","Sensible")))))))', F_BIGT),
- (9, "PD proxy (indicative, non calibrée)", '=ROUND(1/(1+EXP(-(P_PDa-P_PDb*C6))),4)', F_CP),
+ (9, "PD proxy (indicative, non calibrée)", '=IF(E23,"n/d",ROUND(1/(1+EXP(-(P_PDa-P_PDb*C6))),4))', F_CP),
  (10, "Score économique S_éco (avant ajustement)", '=IF(SUM(D32:D39)=0,0,ROUND(SUM(E32:E39)/SUM(D32:D39),2))', F_CN),
  (11, "Score ajusté S_adj = S_éco×(1+α+β)", '=ROUND(MIN(100,MAX(0,C10*(1+C17+C18))),2)', F_CN),
  (12, "Malus cumulés D5 (points)", f'=SUM(J{AL1}:J{ALN})', F_CN),
@@ -547,8 +704,8 @@ summ = [
  (14, "Coefficient réglementaire BAM", '=IF(Saisie!C8="",1,IFERROR(VLOOKUP(Saisie!C8,P_Classes,5,FALSE),1))', F_CN),
  (15, "Note économique (capacité de remboursement)", f'=IFERROR(ROUND(SUMPRODUCT($Q${CR1}:$Q${CRN}*($N${CR1}:$N${CRN}<>"GUARANTEE")*$F${CR1}:$F${CRN})/SUMPRODUCT($Q${CR1}:$Q${CRN}*($N${CR1}:$N${CRN}<>"GUARANTEE"))/P_Scale*100,2),C10)', F_CN),
  (16, "Note de sûretés (perte en cas de défaut)", f'=IFERROR(ROUND(SUMPRODUCT($Q${CR1}:$Q${CRN}*($N${CR1}:$N${CRN}="GUARANTEE")*$F${CR1}:$F${CRN})/SUMPRODUCT($Q${CR1}:$Q${CRN}*($N${CR1}:$N${CRN}="GUARANTEE"))/P_Scale*100,2),"n/a")', F_CN),
- (17, "α segment", '=IF(Saisie!C6="",0,IFERROR(VLOOKUP(Saisie!C6,P_SegTbl,3,FALSE),0))', F_CP),
- (18, "β zone", '=IF(Saisie!C7="",0,IFERROR(VLOOKUP(Saisie!C7,P_ZoneTbl,3,FALSE),0))', F_CP),
+ (17, "α segment", '=IF(Saisie!$D$6="",0,IFERROR(VLOOKUP(Saisie!$D$6,P_SegTbl,3,FALSE),0))', F_CP),
+ (18, "β zone", '=IF(Saisie!$D$7="",0,IFERROR(VLOOKUP(Saisie!$D$7,P_ZoneTbl,3,FALSE),0))', F_CP),
  (19, "Segment / zone hors référentiel", '=IF(E19,"Oui — à signaler","Non")', F_C),
  (20, "Critère éliminatoire (gate) franchi", '=IF(E20,"Oui","Non")', F_C),
  (21, "Alerte bloquante (souffrance automatique)", '=IF(E21,"Oui","Non")', F_C),
@@ -566,7 +723,7 @@ for r, lab_, fm, fmt in summ:
 for r in (24, 25, 26): wsR.set_row(r - 1, 32)
 wsR.set_row(5, 30); wsR.set_row(6, 24); wsR.set_row(7, 24)
 raw = {
- 19: '=OR(AND(Saisie!C6<>"",ISNA(MATCH(Saisie!C6,P_SegCodes,0))),AND(Saisie!C7<>"",ISNA(MATCH(Saisie!C7,P_ZoneCodes,0))))',
+ 19: '=OR(AND(Saisie!$D$6<>"",ISNA(MATCH(Saisie!$D$6,P_SegCodes,0))),AND(Saisie!$D$7<>"",ISNA(MATCH(Saisie!$D$7,P_ZoneCodes,0))))',
  20: f'=OR(I{CR1}:I{CRN})',
  21: f'=SUMPRODUCT((C{AL1}:C{ALN}="BLOCKING")*(H{AL1}:H{ALN}=TRUE))>0',
  22: '=OR(IFERROR(VLOOKUP(Saisie!C8,P_Classes,3,FALSE)="Oui",FALSE),Saisie!C8="CTX")',
@@ -600,7 +757,7 @@ for i in range(8):
     wsR.write_formula(f"G{r}", f'=ROUND(C{r}*F{r},2)', F_CN)
 # détail critères
 wsR.write("A41", "Détail par critère (explicabilité)", F_HS)
-hdr = ["Code", "Domaine", "Critère", "Clé", "Valeur", "Note /10", "Poids", "Pondéré", "Gate franchi", "Donnée critique manquante", "Note plancher", "Nb correspondances", "Note brute", "Famille", "Type", "Poids domaine", "Poids effectif", "Cumul manquantes", "Cumul conditions", "Libellés manquants"]
+hdr = ["Code", "Domaine", "Critère", "Clé", "Valeur", "Note /10", "Poids", "Pondéré", "Gate franchi", "Donnée critique manquante", "Note plancher", "Nb correspondances", "Note brute", "Famille", "Type", "Poids domaine", "Poids effectif", "Cumul manquantes", "Cumul conditions", "Libellés manquants", "Rang (lecture)", "Valeur en clair"]
 wsR.write_row(f"A{AL_H - 65}", hdr, F_H)   # row 42
 wsR.write(f"A{SEED}", "(clé additionnelle)", F_C)
 wsR.write_formula(f"D{SEED}", "=P_ExtraKey", F_C)
@@ -610,7 +767,7 @@ wsR.write_formula(f"R{SEED}", f'=IF(J{SEED},D{SEED},"")', F_C)
 wsR.write_formula(f"S{SEED}", '=""', F_C)
 wsR.write_formula(f"T{SEED}", f'=IF(J{SEED},IFERROR(INDEX(Saisie!$C$13:$C$92,MATCH(D{SEED},In_Cles,0)),D{SEED}),"")', F_C)
 BA = "P_Baremes!$A$5:$A$400"; BB = "P_Baremes!$B$5:$B$400"; BC = "P_Baremes!$C$5:$C$400"
-BD = "P_Baremes!$D$5:$D$400"; BE = "P_Baremes!$E$5:$E$400"; BH = "P_Baremes!$H$5:$H$400"
+BD = "P_Baremes!$D$5:$D$400"; BE = "P_Baremes!$E$5:$E$400"; BH = "P_Baremes!$H$5:$H$400"; BF = "P_Baremes!$F$5:$F$400"
 for i in range(NCR):
     r = CR1 + i; s = CR0 + i; p = r - 1
     W = lambda col, fm, fmt=F_C: wsR.write_formula(f"{col}{r}", fm, fmt)
@@ -638,9 +795,12 @@ for i in range(NCR):
     # avec son jalon de levée (même libellé que l'application).
     W("S", f'=IF(I{r},S{p}&IF(S{p}="","","; ")&"Lever la condition « "&C{r}&" » avant "&SUBSTITUTE(LOWER(IF(P_Criteres!I{s}="","TIRAGE",P_Criteres!I{s})),"etude","étude"),S{p})')
     W("T", f'=IF(AND(J{r},NOT(ISNUMBER(SEARCH(","&D{r}&",",","&R{p}&",")))),T{p}&IF(T{p}="","",", ")&IFERROR(INDEX(Saisie!$C$13:$C$92,MATCH(D{r},In_Cles,0)),D{r}),T{p})')
+    # Lecture (Fiche) : clé de classement des notes les plus basses (critères pondérés), valeur en clair.
+    W("U", f'=IF(OR($A{r}="",N(G{r})<=0),"",F{r}+ROW()/1000000)', F_CN4)
+    W("V", f'=IF($A{r}="","",IF($E{r}="","(non renseignée)",IF($O{r}="QUAL",IFERROR(INDEX({BF},SUMPRODUCT(MAX(({BA}=$A{r})*({BB}="MODALITE")*({BC}=$E{r})*(ROW({BA})-4)))),$E{r}),$E{r})))')
 # détail alertes
 wsR.write("A106", "Détail des alertes D5", F_HS)
-wsR.write_row(f"A{AL_H}", ["Code", "Libellé", "Sévérité", "Opérateur", "Clé", "Valeur", "Valeur réf.", "Déclenchée", "Non exclue (donnée absente)", "Malus appliqué", "Comité", "Clé numérique manquante", "Cumul manquantes", "Cumul alertes", "Libellés manquants"], F_H)
+wsR.write_row(f"A{AL_H}", ["Code", "Libellé", "Sévérité", "Opérateur", "Clé", "Valeur", "Valeur réf.", "Déclenchée", "Non exclue (donnée absente)", "Malus appliqué", "Comité", "Clé numérique manquante", "Cumul manquantes", "Cumul alertes", "Libellés manquants", "Cumul libellés alertes"], F_H)
 for i in range(NAL):
     r = AL1 + i; s = AL0 + i
     W = lambda col, fm, fmt=F_C: wsR.write_formula(f"{col}{r}", fm, fmt)
@@ -660,6 +820,8 @@ for i in range(NAL):
     W("M", f'=IF(L{r},IF(ISNUMBER(SEARCH(","&E{r}&",",","&{pm}&",")),{pm},{pm}&IF({pm}="","",",")&E{r}),{pm})')
     W("N", f'=IF(OR(H{r},I{r}),{pn}&IF({pn}="","",", ")&A{r},{pn})')
     W("O", f'=IF(AND(L{r},NOT(ISNUMBER(SEARCH(","&E{r}&",",","&{pm}&",")))),{po}&IF({po}="","",", ")&IFERROR(INDEX(Saisie!$C$13:$C$92,MATCH(E{r},In_Cles,0)),E{r}),{po})')
+    pq = '""' if i == 0 else f"P{r-1}"
+    W("P", f'=IF(OR(H{r},I{r}),{pq}&IF({pq}="","","; ")&B{r}&IF(I{r}," (donnée absente)",""),{pq})')
 # mise en forme conditionnelle
 wsR.conditional_format("C7", {"type": "cell", "criteria": "==", "value": '"GO"', "format": F_OK})
 wsR.conditional_format("C7", {"type": "cell", "criteria": "==", "value": '"GO_WITH_CONDITIONS"', "format": f(bg_color="#E2EFDA", font_color="#375623")})
@@ -674,6 +836,132 @@ for nm, cell_ in [("Res_ScoreFinal", "C6"), ("Res_Decision", "C7"), ("Res_Classe
                   ("Res_Manquantes", "C24"), ("Res_Conditions", "C25"), ("Res_Alertes", "C26"), ("Res_Comite", "E27")]:
     wb.define_name(nm, f"=Resultat!${cell_[0]}${cell_[1:]}")
 wb.define_name("Res_DomCodes", f"=Resultat!$A${DOM1}:$A${DOMN}"); wb.define_name("Res_DomScores", f"=Resultat!$C${DOM1}:$C${DOMN}")
+wb.define_name("Res_AlertesLib", f"=Resultat!$P${ALN}")
+wsR.set_column("U:V", 16)
+wsR.write("A3", "Calcul pas à pas (lecture seule). La synthèse lisible est dans l'onglet Fiche.", F_SUB)
+wsR.protect("", {"format_columns": True, "format_rows": True})
+
+
+# ============================================================ Fiche (synthèse lisible, imprimable)
+F_FT = f(bold=True, font_size=16, font_color=NAVY)
+F_FBOX = f(bold=True, font_size=10, font_color="#595959", align="center", valign="vcenter", border=1, bg_color=LIGHT)
+F_FBIG = f(bold=True, font_size=24, align="center", valign="vcenter", border=1, num_format="0.00")
+F_FBIGT = f(bold=True, font_size=15, align="center", valign="vcenter", border=1, text_wrap=True)
+F_FL = f(bold=True, valign="top", border=1, bg_color=GREY)
+F_FV = f(valign="top", border=1, text_wrap=True)
+F_FN = f(border=1, num_format="0.0"); F_FNT = f(border=1, num_format="0.0", valign="top", align="center", bold=True); F_FP = f(border=1, num_format="0%"); F_FT1 = f(border=1, text_wrap=True, valign="top")
+wsFi.hide_gridlines(2)
+wsFi.set_column("A:A", 30); wsFi.set_column("B:D", 19); wsFi.set_column("E:F", 13); wsFi.set_column("H:I", 10, None, {"hidden": True})
+wsFi.write_formula("A1", '="Fiche de scoring — "&IF(Saisie!C4="","(dossier sans référence)",Saisie!C4)', F_FT)
+wsFi.write_formula("A2", '=IF(Saisie!C5="","",Saisie!C5)', f(bold=True, font_size=12))
+wsFi.write_formula("A3", f'="Modèle PI_PROMOTION "&P_Version&" · outil {TOOL_VERSION}"', F_SUB)
+wsFi.write("E3", "Calculé le", f(align="right", font_color="#595959")); wsFi.write_formula("F3", "=TODAY()", f(num_format="dd/mm/yyyy", font_color="#595959"))
+wsFi.write("A5", "Score final / 100", F_FBOX); wsFi.merge_range("B5:C5", "Décision", F_FBOX); wsFi.merge_range("D5:F5", "Classe interne", F_FBOX)
+wsFi.merge_range("A6:A7", "", F_FBIG); wsFi.write_formula("A6", "=Res_ScoreFinal", F_FBIG)
+wsFi.merge_range("B6:C7", "", F_FBIGT); wsFi.write_formula("B6", '=IFERROR(VLOOKUP(Res_Decision,P_DecTbl,2,FALSE),Res_Decision)', F_FBIGT)
+wsFi.merge_range("D6:F7", "", F_FBIGT); wsFi.write_formula("D6", "=Res_ClasseInt", F_FBIGT)
+wsFi.set_row(5, 26); wsFi.set_row(6, 26)
+DEC_FMT = [("GO", "#C6EFCE", "#006100"), ("GO_WITH_CONDITIONS", "#E2EFDA", "#375623"), ("WATCH_LIST", "#FFEB9C", "#7F6000"),
+           ("NO_GO", "#FFC7CE", "#9C0006"), ("DOSSIER_INCOMPLET", "#D9D9D9", "#404040")]
+for code_, bg_, fg_ in DEC_FMT:
+    for rng_ in ("A6:A7", "B6:C7", "D6:F7"):
+        wsFi.conditional_format(rng_, {"type": "formula", "criteria": f'=Res_Decision="{code_}"', "format": wb.add_format({"bg_color": bg_, "font_color": fg_})})
+wsFi.merge_range("A9:F9", "Principaux éléments", F_HS)
+facts = [
+ ("Segment · zone", '=IF(Saisie!C6="","(segment non renseigné)",Saisie!C6)&" · "&IF(Saisie!C7="","(zone non renseignée)",Saisie!C7)'),
+ ("Classe réglementaire BAM", '=IF(Saisie!C8="","(non renseignée — dossier incomplet)",IFERROR(VLOOKUP(Saisie!C8,P_Classes,2,FALSE),Saisie!C8))'),
+ ("Note économique · note de sûretés", '=FIXED(Res_EcoScore,1)&" / 100   ·   sûretés : "&IF(ISNUMBER(Res_GuarScore),FIXED(Res_GuarScore,1)&" / 100","n/a")'),
+ ("Malus des alertes", '=FIXED(Res_Malus,0)&" point(s)"'),
+ ("PD indicative (non calibrée)", '=IF(ISNUMBER(Res_PD),FIXED(Res_PD*100,1)&" %","n/d (dossier incomplet)")'),
+ ("Critères renseignés", "=Saisie!I7"),
+ ("Données décisionnelles manquantes", '=IF(Res_Manquantes="","Aucune",Res_Manquantes)'),
+ ("Conditions à lever", '=IF(Res_Conditions="","Aucune",Res_Conditions)'),
+ ("Alertes déclenchées", '=IF(Res_AlertesLib="","Aucune",Res_AlertesLib)'),
+ ("Retour en comité requis", '=IF(Res_Comite,"Oui","Non")'),
+]
+for i, (lab_, fm) in enumerate(facts):
+    r = 10 + i
+    wsFi.write(f"A{r}", lab_, F_FL); wsFi.merge_range(f"B{r}:F{r}", "", F_FV); wsFi.write_formula(f"B{r}", fm, F_FV)
+    if lab_ in ("Données décisionnelles manquantes", "Conditions à lever", "Alertes déclenchées"): wsFi.set_row(r - 1, 44)
+for r in (16, 17, 18):
+    wsFi.conditional_format(f"B{r}:F{r}", {"type": "formula", "criteria": f'=$B${r}<>"Aucune"', "format": wb.add_format({"font_color": "#9C0006"})})
+wsFi.conditional_format("B19:F19", {"type": "formula", "criteria": '=$B$19="Oui"', "format": wb.add_format({"font_color": "#9C0006", "bold": True})})
+wsFi.merge_range("A21:F21", "Scores par domaine", F_HS)
+wsFi.write_row("A22", ["Domaine", "Score / 100", "Poids", "Contribution"], F_H)
+for i in range(8):
+    r = 23 + i; q = DOM1 + i
+    wsFi.write_formula(f"A{r}", f'=IF(Resultat!$A${q}="","",Resultat!$A${q}&" — "&Resultat!$B${q})', F_FT1)
+    wsFi.write_formula(f"B{r}", f'=IF(Resultat!$A${q}="","",Resultat!$C${q})', F_FN)
+    wsFi.write_formula(f"C{r}", f'=IF(Resultat!$A${q}="","",Resultat!$D${q})', F_FP)
+    wsFi.write_formula(f"D{r}", f'=IF(Resultat!$A${q}="","",Resultat!$E${q})', F_FN)
+wsFi.conditional_format("B23:B30", {"type": "data_bar", "bar_color": "#5B9BD5", "min_type": "num", "min_value": 0, "max_type": "num", "max_value": 100, "bar_solid": True})
+wsFi.merge_range("A32:F32", "Points d'attention — les 5 notes les plus basses", F_HS)
+wsFi.write_row("A33", ["Critère", "Domaine", "Valeur retenue", "", "Note / 10", ""], F_H)
+wsFi.merge_range("C33:D33", "Valeur retenue", F_H); wsFi.merge_range("E33:F33", "Note / 10", F_H)
+U_ = f"Resultat!$U${CR1}:$U${CRN}"
+for k_ in range(5):
+    r = 34 + k_
+    wsFi.write_formula(f"H{r}", f'=IFERROR(SMALL({U_},{k_ + 1}),"")', F_C)
+    wsFi.write_formula(f"I{r}", f'=IF(H{r}="","",MATCH(H{r},{U_},0))', F_C)
+    wsFi.write_formula(f"A{r}", f'=IF(I{r}="","",INDEX(Resultat!$C${CR1}:$C${CRN},I{r}))', F_FT1)
+    wsFi.write_formula(f"B{r}", f'=IF(I{r}="","",IFERROR(INDEX(P_DomNoms,MATCH(INDEX(Resultat!$B${CR1}:$B${CRN},I{r}),P_DomCodes,0)),""))', F_FT1)
+    wsFi.merge_range(f"C{r}:D{r}", "", F_FT1); wsFi.write_formula(f"C{r}", f'=IF(I{r}="","",INDEX(Resultat!$V${CR1}:$V${CRN},I{r}))', F_FT1)
+    wsFi.merge_range(f"E{r}:F{r}", "", F_FNT); wsFi.write_formula(f"E{r}", f'=IF(I{r}="","",INDEX(Resultat!$F${CR1}:$F${CRN},I{r}))', F_FNT)
+    wsFi.set_row(r - 1, 30)
+wsFi.conditional_format("E34:F38", {"type": "cell", "criteria": "<", "value": 5, "format": F_KO})
+wsFi.conditional_format("E34:F38", {"type": "cell", "criteria": "between", "minimum": 5, "maximum": 6.99, "format": F_WA})
+wsFi.merge_range("A40:F40", "Outil indicatif. La décision officielle se prend dans l'application (circuit de validation, comité). Détail du calcul : onglet Resultat.", f(italic=True, font_size=8, font_color="#7F7F7F", text_wrap=True))
+wsFi.set_row(39, 24)
+wsFi.print_area("A1:F40"); wsFi.fit_to_pages(1, 1); wsFi.set_paper(9); wsFi.set_portrait(); wsFi.center_horizontally()
+wsFi.set_margins(left=0.5, right=0.5, top=0.6, bottom=0.6)
+wsFi.set_footer("&L&8Scoring PI — promotion immobilière&R&8&D")
+wsFi.protect("", {"format_columns": True, "format_rows": True})
+
+# ============================================================ Accueil
+F_AH = f(bold=True, font_color="white", bg_color=NAVY, font_size=11)
+F_AL = f(bold=True, valign="top", text_wrap=True)
+F_AT = f(valign="top", text_wrap=True)
+wsAc.hide_gridlines(2); wsAc.set_column("A:A", 2); wsAc.set_column("B:B", 34); wsAc.set_column("C:C", 92)
+wsAc.write("B1", "Outil de scoring — Promotion immobilière", f(bold=True, font_size=20, font_color=NAVY))
+wsAc.write_formula("B2", f'="Modèle PI_PROMOTION "&P_Version&" (publié le "&P_Date&") · outil {TOOL_VERSION} du {TOOL_DATE}"', F_SUB)
+wsAc.merge_range("B4:C4", "Dossier en cours", F_AH)
+cur = [("Référence · projet", '=IF(Saisie!C4="","(aucun dossier — commencez par l\'onglet Saisie)",Saisie!C4&" — "&Saisie!C5)', F_C),
+       ("Score final / 100", "=Res_ScoreFinal", f(bold=True, font_size=14, bg_color=GREY, border=1, num_format="0.00", align="left")),
+       ("Décision", '=IFERROR(VLOOKUP(Res_Decision,P_DecTbl,2,FALSE),Res_Decision)', f(bold=True, font_size=12, border=1, bg_color=GREY)),
+       ("Classe interne", "=Res_ClasseInt", F_C),
+       ("Critères renseignés", "=Saisie!I7", F_C),
+       ("Données décisionnelles manquantes", "=Saisie!I8", F_C)]
+for i, (lab_, fm, fmt_) in enumerate(cur):
+    wsAc.write(f"B{5+i}", lab_, F_L); wsAc.write_formula(f"C{5+i}", fm, fmt_)
+for code_, bg_, fg_ in DEC_FMT:
+    wsAc.conditional_format("C7", {"type": "formula", "criteria": f'=Res_Decision="{code_}"', "format": wb.add_format({"bg_color": bg_, "font_color": fg_})})
+wsAc.conditional_format("C10", {"type": "cell", "criteria": ">", "value": 0, "format": F_KO})
+wsAc.write_url("C11", "internal:Fiche!A1", string="→ Ouvrir la fiche de résultat")
+wsAc.merge_range("B13:C13", "Comment faire", F_AH)
+steps = [("1. Nouveau dossier", "Saisie!C4", "Ruban « Scoring PI » › Nouveau dossier : vide la saisie et les calculateurs. Sans macros : effacez les cellules jaunes de l'onglet Saisie."),
+         ("2. Renseigner la saisie", "Saisie!E13", "Identité du dossier puis données, dans les cellules jaunes (listes en clair). Laissez vide une donnée inconnue. La colonne « État » signale ce qui manque ; le résultat se met à jour en direct en haut de la feuille."),
+         ("3. Calculateurs (facultatif)", "Calculateurs!A4", "Autorisations, ventes sécurisées, mainlevée, division des risques, arrêt de chantier, déblocages, équipements exigés, programme mixte : ils calculent 16 données de la saisie (votre saisie directe prime)."),
+         ("4. Lire et imprimer la fiche", "Fiche!A1", "Décision, notes, données manquantes, conditions à lever, alertes, points d'attention. Imprimable sur une page (Ctrl+P) ; ruban › Exporter la fiche en PDF."),
+         ("5. Enregistrer le dossier", "Portefeuille!A5", "Ruban › Enregistrer le dossier : il est rangé dans l'onglet Portefeuille (même référence = mise à jour). Ruban › Ouvrir un dossier pour le recharger."),
+         ("6. Aller plus loin", "Stress!A1", "Stress test (7 scénarios), scoring de tout le portefeuille, journal des calculs (onglet Historique), aide détaillée (onglet Aide).")]
+for i, (lab_, target, txt) in enumerate(steps):
+    r = 14 + i
+    wsAc.write_url(f"B{r}", f"internal:{target}", f(bold=True, font_color="#0563C1", underline=1, valign="top"), string=lab_)
+    wsAc.write(f"C{r}", txt, F_AT); wsAc.set_row(r - 1, 32)
+wsAc.merge_range("B21:C21", "Macros et ruban « Scoring PI »", F_AH)
+mac = [("Fichier .xlsm", "Les macros et l'onglet de ruban « Scoring PI » sont intégrés : rien à installer. Si Excel indique que les macros sont bloquées (fichier reçu par e-mail ou téléchargé) : fermez le fichier, clic droit › Propriétés › cochez « Débloquer » › OK, rouvrez-le puis cliquez « Activer le contenu »."),
+       ("Sans macros", "Le calcul (saisie, fiche, résultat) fonctionne sans macros, y compris dans le fichier .xlsx : seules les actions du ruban (nouveau dossier, enregistrer, PDF, stress, portefeuille) sont indisponibles.")]
+for i, (lab_, txt) in enumerate(mac):
+    wsAc.write(f"B{22+i}", lab_, F_AL); wsAc.write(f"C{22+i}", txt, F_AT); wsAc.set_row(21 + i, 44)
+wsAc.merge_range("B25:C25", "Bon à savoir", F_AH)
+tips = [("Vide ≠ 0", "Une donnée vide est « absente » : note plancher, ou « dossier incomplet » si elle est décisionnelle. Ne saisissez jamais 0 ou « Non » à la place d'une donnée inconnue."),
+        ("Pourcentages", "Saisir les pourcentages en points : 62 pour 62 %. Une valeur comme 0,62 est signalée dans la colonne « État »."),
+        ("Feuilles protégées", "Seules les cellules jaunes sont modifiables (protection sans mot de passe : Révision › Ôter la protection si besoin)."),
+        ("Paramètres du modèle", "Onglets P_* masqués : ruban › Paramètres (afficher / masquer). Toute modification : Valider le modèle, puis informer le propriétaire du modèle."),
+        ("Décision officielle", "Ce classeur est un outil d'aide (simulation, préparation de comité, formation). La décision officielle se prend dans l'application.")]
+for i, (lab_, txt) in enumerate(tips):
+    wsAc.write(f"B{26+i}", lab_, F_AL); wsAc.write(f"C{26+i}", txt, F_AT); wsAc.set_row(25 + i, 30)
+wsAc.protect("", {"format_columns": True, "format_rows": True})
 
 # ============================================================ résultats batch / tests
 RES_COLS = ["Score final", "Décision", "Classe interne", "Malus D5", "Dossier complet", "D1", "D2", "D3", "D4", "Score éco.", "Note sûretés", "PD indicative", "Alertes", "Données manquantes", "Conditions"]
@@ -688,7 +976,7 @@ def head_inputs(ws, first_two):
     ws.set_row(3, 42)
 # Portefeuille
 wsP.write("A1", "Scoring de portefeuille", F_TITLE)
-wsP.write("A2", "Une ligne par dossier. Les valeurs Oui/Non pour les booléens. Macro : ScorerPortefeuille (Alt+F8) — remplit les colonnes de résultat à droite.", F_SUB)
+wsP.write("A2", "Une ligne par dossier (ruban › Enregistrer le dossier ajoute ou met à jour la ligne du dossier en cours ; Ouvrir un dossier le recharge). Ruban › Scorer le portefeuille remplit les colonnes de résultat à droite. Booléens : Oui / Non.", F_SUB)
 head_inputs(wsP, ["Référence", "Nom du projet"])
 PR0 = 5; PRN = 204
 for j, t in enumerate(RES_COLS): wsP.write(3, 5 + NK + j, t, f(bold=True, font_color="white", bg_color="#548235", border=1, text_wrap=True))
@@ -743,41 +1031,44 @@ for i in range(10):
         else: wsX.write(r, j, v, F_P if j < 2 else F_PN)
     for j in range(9, 12): wsX.write_blank(r, j, None, F_C)
 wsX.set_column("A:A", 12); wsX.set_column("B:B", 22); wsX.set_column("C:L", 14)
-wsX.conditional_format("K5:K14", {"type": "cell", "criteria": "==", "value": '"NO_GO"', "format": F_KO})
-wsX.conditional_format("K5:K14", {"type": "cell", "criteria": "==", "value": '"GO"', "format": F_OK})
+for lab_, fmt_ in (("Défavorable", F_KO), ("Favorable", F_OK), ("Favorable sous conditions", f(bg_color="#E2EFDA", font_color="#375623")),
+                   ("Surveillance (watch list)", F_WA), ("Dossier incomplet", F_GR)):
+    wsX.conditional_format("K5:K14", {"type": "cell", "criteria": "==", "value": f'"{lab_}"', "format": fmt_})
 # Historique
 wsH.write("A1", "Historique des calculs (journal)", F_TITLE)
 wsH.write("A2", "Alimenté par les macros (ScorerDossier, ScorerPortefeuille). La version du modèle est tracée sur chaque ligne.", F_SUB)
 wsH.write_row("A4", ["Date / heure", "Utilisateur", "Dossier", "Version du modèle", "Score final", "Décision", "Classe interne", "Malus D5", "Dossier complet"], F_H)
 wsH.set_column("A:A", 20); wsH.set_column("B:D", 22); wsH.set_column("E:I", 16)
 
-# ============================================================ LisezMoi
+# ============================================================ Aide
 wsL.hide_gridlines(2); wsL.set_column("A:A", 3); wsL.set_column("B:B", 30); wsL.set_column("C:C", 110)
-wsL.write("B1", "Outil de scoring — Promotion immobilière", F_TITLE)
+wsL.write("B1", "Aide — outil de scoring de la promotion immobilière", F_TITLE)
 wsL.write_formula("B2", f'="Modèle PI_PROMOTION "&P_Version&" — publié le "&P_Date&" · outil {TOOL_VERSION} ({TOOL_DATE})"', F_SUB)
 rows = [
  ("À quoi sert ce classeur", "Calculer le score, la décision et la classe interne d'un dossier de promotion immobilière selon le modèle publié, hors de l'application : simulation, préparation de comité, agence, dépannage, formation. Il reproduit le moteur de production (vérifié sur " + str(len(vec)) + " cas de référence)."),
- ("Principe", "Le MOTEUR est en formules Excel (onglet Resultat) : chaque note est traçable cellule par cellule et les barèmes se modifient sans code. Le VBA (fichiers .bas fournis) AUTOMATISE : nouveau dossier, scoring de portefeuille, stress test, validation du modèle, autotests, journal, export PDF."),
- ("1. Nouveau dossier", "Le classeur s'ouvre sur un dossier d'EXEMPLE. Bouton « Nouveau dossier » (macro NouveauDossier) : vide la saisie et les calculateurs — les paramètres de l'établissement (fonds propres, limites) sont conservés."),
- ("2. Renseigner le dossier", "Onglet Saisie : référence, nom, segment, zone, classe réglementaire BAM, puis les données (cellules jaunes). Un champ laissé VIDE = donnée absente : jamais 0, jamais « Non ». Les données dérivées (autorisations, ventes sécurisées, mainlevée, division des risques, arrêt de chantier) se calculent dans l'onglet Calculateurs ; une valeur saisie prime."),
- ("3. Lire le résultat", "Onglet Resultat : score final, décision, classe interne, notes économique et de sûretés, données décisionnelles manquantes (en clair), conditions à lever avec leur jalon, alertes, retour en comité, détail par critère et par domaine."),
- ("4. Automatiser (VBA)", "Alt+F11 → Fichier → Importer un fichier → sélectionner les 5 fichiers .bas du dossier « vba ». Débogage → Compiler VBAProject. Puis exécuter InstallerBoutons (une seule fois) et enregistrer au format .xlsm."),
- ("5. Vérifier", "Exécuter ExecuterAutotests : attendu « " + str(len(vec)) + " / " + str(len(vec)) + " cas conformes ». Exécuter ValiderModele après toute modification des paramètres."),
+ ("Principe", "Le MOTEUR est en formules Excel (onglet Resultat) : chaque note est traçable cellule par cellule et les barèmes se modifient sans code. Les macros AUTOMATISENT : nouveau dossier, enregistrer / ouvrir un dossier, export PDF, stress test, scoring de portefeuille, autotests, validation du modèle, journal."),
+ ("Parcours", "Accueil → Saisie (cellules jaunes, résultat en direct) → Fiche (synthèse imprimable). Calculateurs, Portefeuille, Stress et Historique au besoin. Resultat = calcul pas à pas."),
+ ("Ruban « Scoring PI »", "Dossier : Nouveau, Enregistrer, Ouvrir, Exporter la fiche en PDF. Analyse : Stress test, Scorer le portefeuille. Outil : Autotests, Valider le modèle, Paramètres (afficher / masquer), Aide. Sans ruban : Alt+F8 et choisir la macro (NouveauDossier, EnregistrerDossier, OuvrirDossier, ExporterPDF, LancerStress, ScorerPortefeuille, ExecuterAutotests, ValiderModele, BasculerParametres)."),
+ ("Fichier sans macros", "Le fichier .xlsx calcule tout (saisie, fiche, résultat). Pour y ajouter les macros : Alt+F11 › Fichier › Importer les 6 fichiers .bas du dossier « vba », puis enregistrer au format .xlsm ; InstallerBoutons ajoute des boutons sur l'Accueil."),
+ ("Saisie", "Vide = donnée absente (jamais 0, jamais « Non »). Pourcentages en points (62 pour 62 %). Listes en clair : le code technique est déduit automatiquement. La colonne « État » indique : ✔ renseigné, ⚠ manquant — décisionnel (le dossier sera incomplet), ○ non renseigné (note plancher), ⚠ valeur à vérifier."),
+ ("Enregistrer les dossiers", "Enregistrer le dossier range les valeurs utilisées (y compris celles des calculateurs) dans le Portefeuille, avec le résultat. Ouvrir un dossier : sélectionnez sa ligne dans le Portefeuille (ou tapez sa référence) ; la saisie et les calculateurs du dossier courant sont d'abord vidés."),
+ ("Vérifier", "Ruban › Autotests : attendu « " + str(len(vec)) + " / " + str(len(vec)) + " cas conformes ». Valider le modèle après toute modification des paramètres."),
  ("Invariants de décision", "Donnée manquante ≠ amélioration (note plancher ; alerte « non exclue » si sa donnée numérique manque) · Défaut avéré → NO_GO · Classe non renseignée → dossier incomplet · Aucun malus pour la division des risques (retour en comité)."),
  ("Ce que le classeur ne fait pas", "Classification BAM complète (déclencheurs qualitatifs 1/W, restructuration, effet de groupe) : la classe est saisie ; seule une suggestion fondée sur le retard est affichée. Trésorerie mensuelle, LGD, IFRS 9, workflow d'approbation, historisation multi-utilisateurs : dans l'application."),
- ("Limites d'usage", "Classeur individuel : pas de contrôle d'accès ni de piste d'audit opposable. La décision officielle se prend dans l'application. La PD affichée est INDICATIVE et non calibrée. Les grilles par phase et l'effet des coefficients territoriaux sont des challengers."),
- ("Paramétrage", "Onglets P_* (bleus) : critères, barèmes, alertes, ajustements, référentiels, seuils. Modifier = ValiderModele + SnapshotModele + information du propriétaire du modèle. La version de référence reste celle de l'application."),
- ("Version de l'outil", f"Outil {TOOL_VERSION} du {TOOL_DATE} — modèle, référentiels et cas de référence lus depuis les sources de l'application. Nouveautés : dossier d'exemple et bouton « Nouveau dossier », données manquantes en clair, conditions avec jalon, calculateur d'arrêt de chantier, macros fiabilisées (exécutées de bout en bout sous tableur)."),
+ ("Limites d'usage", "Classeur individuel : pas de contrôle d'accès ni de piste d'audit opposable. La décision officielle se prend dans l'application. La PD affichée est INDICATIVE et non calibrée (non affichée si le dossier est incomplet). Les grilles par phase et l'effet des coefficients territoriaux sont des challengers."),
+ ("Paramétrage", "Onglets P_* (masqués ; ruban › Paramètres) : critères, barèmes, alertes, ajustements, référentiels, seuils, libellés des décisions. Modifier = Valider le modèle + Instantané du modèle + information du propriétaire du modèle. Après ajout d'une modalité : Rafraîchir les listes."),
+ ("Version de l'outil", f"Outil {TOOL_VERSION} du {TOOL_DATE} : classeur .xlsm prêt à l'emploi (macros intégrées, ruban), page d'accueil, fiche de résultat imprimable, saisie en clair avec état des données et résultat en direct, enregistrement des dossiers dans le portefeuille, feuilles protégées, valeurs visibles même en aperçu. Correction : les calculateurs du dossier courant ne faussent plus le scoring du portefeuille ni les autotests."),
 ]
-for i, (a, b) in enumerate(rows):
+for i, (a_, b_) in enumerate(rows):
     r = 4 + i
-    wsL.write(f"B{r}", a, F_WB); wsL.write(f"C{r}", b, F_W); wsL.set_row(r - 1, 48)
+    wsL.write(f"B{r}", a_, F_WB); wsL.write(f"C{r}", b_, F_W); wsL.set_row(r - 1, 48)
 TR = 4 + len(rows) + 1
 wsL.write(f"B{TR}", "Onglets", F_HS); wsL.write(f"C{TR}", "", F_HS)
-tabs = [("Saisie", "Données du dossier"), ("Resultat", "Moteur de calcul et restitution"), ("Calculateurs", "Autorisations, ventes sécurisées, mainlevée, division des risques, arrêt de chantier"),
-        ("Portefeuille", "Scoring de masse (macro)"), ("Stress", "Chocs sur le dossier courant (macro)"), ("Tests", f"{len(vec)} cas de référence (macro)"),
-        ("Historique", "Journal des calculs"), ("P_*", "Paramètres du modèle (bleus)")]
-for i, (a, b) in enumerate(tabs): wsL.write(f"B{TR+1+i}", a, F_L); wsL.write(f"C{TR+1+i}", b)
-wsS.activate(); wsL.set_first_sheet()
+tabs = [("Accueil", "Dossier en cours et mode d'emploi"), ("Saisie", "Données du dossier (cellules jaunes) et résultat en direct"),
+        ("Fiche", "Synthèse lisible et imprimable"), ("Calculateurs", "Données dérivées : autorisations, ventes sécurisées, mainlevée, division des risques, arrêt de chantier, déblocages, équipements, programme mixte"),
+        ("Portefeuille", "Dossiers enregistrés et scoring de masse"), ("Stress", "Chocs sur le dossier courant"), ("Resultat", "Calcul pas à pas (moteur)"),
+        ("Historique", "Journal des calculs"), ("Tests, P_* (masqués)", f"{len(vec)} cas de référence ; paramètres du modèle")]
+for i, (a_, b_) in enumerate(tabs): wsL.write(f"B{TR+1+i}", a_, F_L); wsL.write(f"C{TR+1+i}", b_)
+wsAc.activate(); wsAc.set_first_sheet()
 wb.close()
 print("Classeur généré :", OUT)

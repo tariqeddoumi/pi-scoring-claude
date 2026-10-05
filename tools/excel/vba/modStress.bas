@@ -130,7 +130,7 @@ Public Sub LancerStress()
     res = LireResultat()
     scoreBase = CDbl(res(0))
     ws.Range("C3").Value = res(0)
-    ws.Range("E3").Value = res(1)
+    ws.Range("E3").Value = LibelleDecision(res(1))
     For r = 5 To 14
         If Len(CStr(ws.Cells(r, 1).Value)) > 0 Then
             RemettreEtatSauvegarde
@@ -139,7 +139,7 @@ Public Sub LancerStress()
             Application.Calculate
             res = LireResultat()
             ws.Cells(r, 10).Value = res(0)
-            ws.Cells(r, 11).Value = res(1)
+            ws.Cells(r, 11).Value = LibelleDecision(res(1))
             ws.Cells(r, 12).Value = Arrondi2(CDbl(res(0)) - scoreBase)
         End If
     Next r
@@ -155,7 +155,7 @@ Fin:
         MsgBox "Stress interrompu : " & erreur, vbCritical
     Else
         ws.Activate
-        MsgBox "Stress termine. Le dossier courant a ete restaure.", vbInformation, "Stress test"
+        MsgBox FR("Stress termin~e : 7 sc~enarios. Le dossier courant a ~et~e restaur~e."), vbInformation, "Stress test"
     End If
 End Sub
 
