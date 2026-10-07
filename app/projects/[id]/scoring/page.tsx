@@ -9,7 +9,6 @@ import { loadActiveModelConfig } from "@/server/services/modelLoader";
 import { prisma } from "@/lib/prisma";
 import { DbSetupNotice, safe } from "@/lib/dbGuard";
 import { ProjectSubnav } from "@/components/ProjectSubnav";
-import { DossierAiPanel } from "@/components/DossierAiPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +60,11 @@ export default async function ScoringWizardPage({ params }: { params: Promise<{ 
         </p>
       </div>
       <ProjectSubnav projectId={p.id} active="scoring" />
-      <DossierAiPanel projectId={p.id} />
+      <p className="rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
+        Pièces du client (business plan, autorisations, état des préventes…) :{" "}
+        <Link href={`/projects/${p.id}/documents`} className="font-medium text-primary hover:underline">déposez-les dans « Documents »</Link>{" "}
+        pour pré-remplir cette saisie et suivre les pièces manquantes.
+      </p>
       <ScoringWizard projectId={p.id} initial={initial} steps={steps} />
       <ScoreTimeline runs={history} />
     </div>

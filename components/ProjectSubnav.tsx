@@ -1,12 +1,13 @@
 import Link from "next/link";
 
-// Sous-navigation commune aux trois vues d'un dossier : Fiche | Scoring | Suivi.
-// Rend la circulation évidente pour les centres d'affaires (un dossier = trois
+// Sous-navigation commune aux vues d'un dossier : Fiche | Scoring | Documents | Suivi.
+// Rend la circulation évidente pour les centres d'affaires (un dossier = quatre
 // onglets, toujours au même endroit).
 
 const TABS = [
   { key: "fiche", label: "Fiche du dossier", path: "" },
   { key: "scoring", label: "Saisie & scoring", path: "/scoring" },
+  { key: "documents", label: "Documents", path: "/documents" },
   { key: "suivi", label: "Suivi & événements", path: "/suivi" },
 ] as const;
 

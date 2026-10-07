@@ -19,6 +19,7 @@ référentiels administrables, moteurs métier purs et testés.
 | **Provisionnement** | EAD − agios réservés − garanties éligibles → base × taux. Taux 1/W : Sensible 10% · Pré-douteux 20% · Douteux 50% · Compromis 100%. Créance **irrégulière** (couverture 100%). |
 | **Garanties** | Quotités réglementaires **100% / 80% / 50%**, **abattements progressifs** (art.41/21), seuil d'évaluation hypothécaire (1 M / 5 M MAD), exigence de 1er rang. |
 | **Règle bloquante** | **CTX ⇒ NO_GO et score final = 0**. Souffrance automatique (impayé ≥ 90 j, projet arrêté ≥ 12 mois) hors score. |
+| **Documents du dossier** | Onglet « Documents » : dépôt des pièces du client (PDF même longs, découpés dans le navigateur ; photos ; Excel). Chaque pièce est **lue et classée** (référentiel de 37 pièces, pratique marocaine), les **données de la saisie** qu'elle établit sont proposées avec **page et citation**, les désaccords entre pièces signalés ; report dans la saisie, la fiche projet et la chaîne d'autorisations (champs vides par défaut, journalisé). **Liste des pièces manquantes** selon le jalon du dossier (étude, octroi, signature, tirage), copiable pour la relance du client. Fichiers non conservés. Lecture du contenu : `ANTHROPIC_API_KEY` (sinon classement d'après le nom du fichier). |
 | **Gouvernance** | RBAC (Admin, Risk Analyst, Relationship Manager, Manager, Auditor), **AuditLog** avant/après sur tout calcul et changement, runs en **transaction Prisma**. |
 
 > Le détail de la conformité article par article est dans
